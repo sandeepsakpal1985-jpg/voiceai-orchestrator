@@ -4,14 +4,20 @@
 # This config is used by the livekit-server Docker container.
 #
 # For production:
-#   1. Change the API key and secret
+#   1. Change the API keys below
 #   2. Set a domain and configure TLS/certificates
-#   3. For SIP/Twilio, enable the SIP integration
+#   3. For SIP/Twilio, run a separate livekit-sip service
 # ============================================================================
 
+# Main server port (WebSocket + RTC)
 port: 7880
+
 bind_addresses:
   - "0.0.0.0"
+
+# API Keys — used for JWT authentication (replaces old api.key/api.secret)
+keys:
+  devkey: devsecret
 
 # WebRTC Configuration
 rtc:
@@ -22,12 +28,6 @@ rtc:
   use_external_ip: false
   # For production behind NAT, set your public IP:
   # node_ip: "your-public-ip"
-
-# API Configuration
-api:
-  port: 7881
-  key: devkey
-  secret: devsecret
 
 # Redis Configuration (required for multi-node scaling)
 redis:
@@ -45,26 +45,8 @@ room:
   max_participants: 10
   empty_timeout: 300  # 5 minutes before empty room cleanup
 
-# SIP Configuration (Twilio/PSTN integration via LiveKit SIP)
-#
-# To connect Twilio Elastic SIP Trunk:
-#   1. Set the Origination URL to: sip:<your-server-ip>:5060;transport=udp
-#   2. Add your server's public IP to Twilio's IP ACL
-#   3. Incoming calls dispatch to rooms via dispatch_rules
-#
-# RTP port range must be open for UDP: 50000-50100
-sip:
-  enabled: true
-  server_address: "0.0.0.0"
-  sip_port: 5060
-  # TLS (optional — uncomment for encrypted SIP)
-  # use_tls: true
-  # tls_cert: /path/to/cert.pem
-  # tls_key: /path/to/key.pem
-
-  # Dispatch rules map incoming SIP calls to LiveKit rooms
-  dispatch_rules:
-    - destination: "twilio-sip-trunk"
-      rule: "match all"
-      room: "sip-{{.To}}"
-      participant_identity: "caller-{{.From}}"
+# WebHook Configuration (optional — for room events)
+# webhook:
+#   urls:
+#     - "http://voiceai-api:8000/livekit/webhook"
+#   api_key: devkey
