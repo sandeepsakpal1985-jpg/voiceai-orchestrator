@@ -43,6 +43,7 @@ const navigation = [
     items: [
       { title: "AI Agent", href: "/dashboard/ai-agent", icon: Bot },
       { title: "Call Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+      { title: "Tracking Events", href: "/dashboard/analytics/events", icon: Activity },
       { title: "Live Monitoring", href: "/dashboard/live-monitoring", icon: Radio },
       { title: "Realtime Dashboard", href: "/dashboard/realtime-dashboard", icon: Activity },
       { title: "Call History", href: "/dashboard/call-history", icon: History },

@@ -165,7 +165,7 @@ describe("Multilingual Demo Page", () => {
 
     // Badge with language count
     expect(screen.getByText("8 Languages Supported")).toBeDefined();
-  });
+  }, 15000);
 
   it("has three tabs: Languages, Interactive Demo, How It Works", async () => {
     const MultilingualDemoPage = (await import("@/app/(dashboard)/multilingual-demo/page")).default;

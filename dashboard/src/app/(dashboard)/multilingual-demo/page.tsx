@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -530,15 +531,55 @@ export default function MultilingualDemoPage() {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
         <Navbar />
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-            <p className="text-sm text-zinc-500">Loading languages...</p>
+        <div className="p-6 space-y-6">
+          {/* Skeleton header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-7 w-48" />
+                <Skeleton className="h-4 w-72" />
+              </div>
+            </div>
+            <Skeleton className="h-7 w-40 rounded-full" />
+          </div>
+
+          {/* Skeleton banner */}
+          <Skeleton className="h-24 w-full rounded-xl" />
+
+          {/* Skeleton language cards grid */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-3 w-14" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <div className="pt-2">
+                    <Skeleton className="h-3 w-12 mb-2" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-7 w-7 rounded-md" />
+                      <Skeleton className="h-7 w-14 rounded-md" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
