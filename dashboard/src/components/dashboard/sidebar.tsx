@@ -17,6 +17,7 @@ import {
   Mic2,
   MicVocal,
   Globe,
+  Languages,
   Megaphone,
   Headphones,
   Activity,
@@ -57,6 +58,7 @@ const navigation = [
       { title: "Voice Selection", href: "/dashboard/voices", icon: Mic2 },
       { title: "Voice Cloning", href: "/dashboard/voice-cloning", icon: MicVocal },
       { title: "Multilingual", href: "/dashboard/multilingual", icon: Globe },
+      { title: "Multilingual Demo", href: "/dashboard/multilingual-demo", icon: Languages },
     ],
   },
   {
