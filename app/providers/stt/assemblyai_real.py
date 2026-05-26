@@ -19,13 +19,28 @@ import asyncio
 import logging
 import os
 import tempfile
-from typing import AsyncIterator
-
-import assemblyai as aai
+from typing import Any, AsyncIterator
 
 from app.providers.base import STTProvider
 
 logger = logging.getLogger("voiceai.stt.assemblyai")
+
+# Module-level cache for lazy import
+_aai = None
+
+
+def _get_aai():
+    """Lazy-import assemblyai so the module can be imported without it installed."""
+    global _aai
+    if _aai is None:
+        try:
+            import assemblyai as aai  # noqa: PLC0415
+            _aai = aai
+        except ImportError:
+            raise ImportError(
+                "assemblyai package is required. Install with: pip install assemblyai"
+            )
+    return _aai
 
 
 class AssemblyAISTTProvider(STTProvider):
@@ -45,6 +60,7 @@ class AssemblyAISTTProvider(STTProvider):
     ):
         self._api_key = api_key or os.getenv("ASSEMBLYAI_API_KEY", "")
         if self._api_key:
+            aai = _get_aai()
             aai.settings.api_key = self._api_key
 
     @property
@@ -75,6 +91,8 @@ class AssemblyAISTTProvider(STTProvider):
                 "AssemblyAI API key is not configured. "
                 "Set ASSEMBLYAI_API_KEY environment variable."
             )
+
+        aai = _get_aai()
 
         # Write bytes to a temp file so AssemblyAI can read it
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
@@ -127,6 +145,7 @@ class AssemblyAISTTProvider(STTProvider):
                 "AssemblyAI API key is required for streaming transcription."
             )
 
+        aai = _get_aai()
         sample_rate = kwargs.get("sample_rate", 16000)
 
         # Capture event loop reference for thread-safe callback scheduling
@@ -135,7 +154,7 @@ class AssemblyAISTTProvider(STTProvider):
         # Build the real-time transcriber
         transcriber = aai.RealtimeTranscriber(
             sample_rate=sample_rate,
-            on_data=lambda data: None,  # We handle via callbacks
+            on_data=lambda data: None,
             on_error=lambda error: logger.error("AssemblyAI RT error: %s", error),
             on_close=lambda: logger.debug("AssemblyAI RT connection closed"),
         )
@@ -147,9 +166,7 @@ class AssemblyAISTTProvider(STTProvider):
             text = transcript.text.strip()
             if text:
                 # Schedule the put in the captured event loop (thread-safe)
-                loop.call_soon_threadsafe(
-                    result_queue.put_nowait, text
-                )
+                loop.call_soon_threadsafe(result_queue.put_nowait, text)
 
         def on_interim_transcript(transcript: aai.RealtimeTranscript) -> None:
             pass  # We only yield final transcripts
@@ -181,7 +198,6 @@ class AssemblyAISTTProvider(STTProvider):
                         )
                         yield text
                     except asyncio.TimeoutError:
-                        # No more transcripts expected
                         break
             finally:
                 send_task.cancel()

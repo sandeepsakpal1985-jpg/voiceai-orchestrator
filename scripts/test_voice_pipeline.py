@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Voice Pipeline CLI Test Tool — Test STT → LLM → TTS end-to-end.
+Voice Pipeline CLI Test Tool -- Test STT -> LLM -> TTS end-to-end.
 
 This command-line tool exercises the VoiceAI voice pipeline by sending
 test audio through each stage and reporting results. It can:
@@ -8,7 +8,7 @@ test audio through each stage and reporting results. It can:
   1. Transcribe a WAV file through the configured STT provider
   2. Send the transcription through the LLM for a response
   3. Synthesize the LLM response through the TTS provider
-  4. Run the full pipeline (STT → LLM → TTS) in one command
+  4. Run the full pipeline (STT -> LLM -> TTS) in one command
   5. Benchmark latency for each stage
 
 Usage:
@@ -19,13 +19,13 @@ Usage:
     python scripts/test_voice_pipeline.py benchmark demo.wav --iterations 3
 
 Environment Variables:
-    STT_PROVIDER       — STT provider to use (default: whisper)
-    LLM_PROVIDER       — LLM provider to use (default: ollama)
-    TTS_PROVIDER       — TTS provider to use (default: kokoro)
-    ASSEMBLYAI_API_KEY — Required if STT_PROVIDER=assemblyai
-    DEEPGRAM_API_KEY   — Required if STT_PROVIDER=deepgram
-    OPENAI_API_KEY     — Required if LLM_PROVIDER=openai
-    ELEVENLABS_API_KEY — Required if TTS_PROVIDER=elevenlabs
+    STT_PROVIDER       -- STT provider to use (default: whisper)
+    LLM_PROVIDER       -- LLM provider to use (default: ollama)
+    TTS_PROVIDER       -- TTS provider to use (default: kokoro)
+    ASSEMBLYAI_API_KEY -- Required if STT_PROVIDER=assemblyai
+    DEEPGRAM_API_KEY   -- Required if STT_PROVIDER=deepgram
+    OPENAI_API_KEY     -- Required if LLM_PROVIDER=openai
+    ELEVENLABS_API_KEY -- Required if TTS_PROVIDER=elevenlabs
 """
 
 import argparse
@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 def _format_duration(seconds: float) -> str:
     """Format duration in a human-readable way."""
     if seconds < 0.001:
-        return f"{seconds * 1_000_000:.0f}µs"
+        return f"{seconds * 1_000_000:.0f}us"
     elif seconds < 1.0:
         return f"{seconds * 1_000:.1f}ms"
     else:
@@ -61,7 +61,7 @@ def _load_wav(path: str) -> bytes:
     return data
 
 
-# ── Provider Initialization ─────────────────────────────────────────
+# -- Provider Initialization -----------------------------------------
 
 def _init_registry():
     """Initialize the provider registry with all available providers."""
@@ -74,7 +74,7 @@ def _init_registry():
 
     # Register STT providers
     registry.register_stt("whisper", WhisperSTTProvider(
-        model_size=settings.WHISPER_MODEL,
+        model_size=settings.WHISPER_MODEL_SIZE,
         device=settings.WHISPER_DEVICE,
         compute_type=settings.WHISPER_COMPUTE_TYPE,
     ))
@@ -131,7 +131,7 @@ def _init_registry():
     return registry
 
 
-# ── Commands ────────────────────────────────────────────────────────
+# -- Commands --------------------------------------------------------
 
 
 async def cmd_transcribe(args):
@@ -151,8 +151,8 @@ async def cmd_transcribe(args):
     text = await stt.transcribe(audio_data, language=args.language)
     elapsed = time.perf_counter() - start
 
-    print(f"  ⏱  Duration: {_format_duration(elapsed)}")
-    print(f"  📝 Transcription:")
+    print(f"  Time:  Duration: {_format_duration(elapsed)}")
+    print(f"  Text: Transcription:")
     print(f"     {text}")
     return text
 
@@ -184,8 +184,8 @@ async def cmd_complete(args):
     )
     elapsed = time.perf_counter() - start
 
-    print(f"  ⏱  Duration: {_format_duration(elapsed)}")
-    print(f"  🤖 Response:")
+    print(f"  Time:  Duration: {_format_duration(elapsed)}")
+    print(f"  AI: Response:")
     print(f"     {response}")
     return response
 
@@ -213,19 +213,19 @@ async def cmd_synthesize(args):
     )
     elapsed = time.perf_counter() - start
 
-    print(f"  ⏱  Duration: {_format_duration(elapsed)}")
-    print(f"  🔊 Audio size: {len(audio):,} bytes")
+    print(f"  Time:  Duration: {_format_duration(elapsed)}")
+    print(f"  Audio: Audio size: {len(audio):,} bytes")
 
     if args.output:
         with open(args.output, "wb") as f:
             f.write(audio)
-        print(f"  💾 Saved to: {args.output}")
+        print(f"  Saved: Saved to: {args.output}")
 
     return audio
 
 
 async def cmd_pipeline(args):
-    """Run the full STT → LLM → TTS pipeline."""
+    """Run the full STT -> LLM -> TTS pipeline."""
     from app.config import settings
     from app.voice import get_voice_pipeline
 
@@ -245,20 +245,19 @@ async def cmd_pipeline(args):
     print()
 
     # Step 1: STT
-    print("─── Step 1: STT ───")
+    print("--- Step 1: STT ---")
     start = time.perf_counter()
     text = await pipeline.stt.transcribe(audio_data, language=language)
     stt_elapsed = time.perf_counter() - start
-    print(f"  ⏱  {_format_duration(stt_elapsed)}")
-    print(f"  📝 {text}")
+    print(f"  [STT {_format_duration(stt_elapsed)}] {text}")
     print()
 
     if not text.strip():
-        print("[WARN] No transcription produced — aborting pipeline.")
+        print("[WARN] No transcription produced -- aborting pipeline.")
         return
 
     # Step 2: Build messages and run LLM
-    print("─── Step 2: LLM ───")
+    print("--- Step 2: LLM ---")
     messages = [
         {"role": "system", "content": system_prompt or "You are a helpful voice assistant. Keep responses concise and conversational."},
         {"role": "user", "content": text},
@@ -266,12 +265,11 @@ async def cmd_pipeline(args):
     start = time.perf_counter()
     response = await pipeline.llm.complete(messages, temperature=0.7, max_tokens=256)
     llm_elapsed = time.perf_counter() - start
-    print(f"  ⏱  {_format_duration(llm_elapsed)}")
-    print(f"  🤖 {response}")
+    print(f"  [LLM {_format_duration(llm_elapsed)}] {response}")
     print()
 
     # Step 3: TTS
-    print("─── Step 3: TTS ───")
+    print("--- Step 3: TTS ---")
     start = time.perf_counter()
     audio = await pipeline.tts.synthesize(
         text=response,
@@ -279,22 +277,20 @@ async def cmd_pipeline(args):
         language=language,
     )
     tts_elapsed = time.perf_counter() - start
-    print(f"  ⏱  {_format_duration(tts_elapsed)}")
-    print(f"  🔊 {len(audio):,} bytes")
+    print(f"  [TTS {_format_duration(tts_elapsed)}] {len(audio):,} bytes")
 
     if args.output:
         with open(args.output, "wb") as f:
             f.write(audio)
-        print(f"  💾 Saved to: {args.output}")
+        print(f"  [Saved] {args.output}")
     print()
 
     # Summary
     total = stt_elapsed + llm_elapsed + tts_elapsed
-    print(f"─── Pipeline Summary ───")
-    print(f"  STT: {_format_duration(stt_elapsed)}")
-    print(f"  LLM: {_format_duration(llm_elapsed)}")
-    print(f"  TTS: {_format_duration(tts_elapsed)}")
-    print(f"  ─────────────────────")
+    print("--- Pipeline Summary ---")
+    print(f"  STT:   {_format_duration(stt_elapsed)}")
+    print(f"  LLM:   {_format_duration(llm_elapsed)}")
+    print(f"  TTS:   {_format_duration(tts_elapsed)}")
     print(f"  Total: {_format_duration(total)}")
 
     return {
@@ -367,7 +363,7 @@ async def cmd_benchmark(args):
             print(f"FAIL: {e}")
 
     print()
-    print(f"─── Benchmark Results ({iterations} iterations) ───")
+    print(f"--- Benchmark Results ({iterations} iterations) ---")
 
     if stt_times:
         print(f"  STT:  avg={_format_duration(sum(stt_times)/len(stt_times))} "
@@ -393,21 +389,21 @@ async def cmd_list_providers(args):
 
     providers = registry.all_providers()
     print()
-    print("─── Registered Providers ───")
+    print("--- Registered Providers ---")
     print(f"  STT: {', '.join(providers['stt']) or 'none'}")
     print(f"  LLM: {', '.join(providers['llm']) or 'none'}")
     print(f"  TTS: {', '.join(providers['tts']) or 'none'}")
     print()
 
     from app.config import settings
-    print("─── Active Providers ───")
+    print("--- Active Providers ---")
     print(f"  STT: {settings.STT_PROVIDER}")
     print(f"  LLM: {settings.LLM_PROVIDER}")
     print(f"  TTS: {settings.TTS_PROVIDER}")
     print()
 
 
-# ── Main CLI ────────────────────────────────────────────────────────
+# -- Main CLI --------------------------------------------------------
 
 
 def main():
@@ -439,7 +435,7 @@ def main():
     p.add_argument("--output", "-o", default="output.wav", help="Output WAV path")
 
     # pipeline
-    p = subparsers.add_parser("pipeline", help="Run full STT→LLM→TTS pipeline")
+    p = subparsers.add_parser("pipeline", help="Run full STT->LLM->TTS pipeline")
     p.add_argument("file", help="Path to WAV file")
     p.add_argument("--language", default="en", help="Language code")
     p.add_argument("--system", help="System prompt override")
