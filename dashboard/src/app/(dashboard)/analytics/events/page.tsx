@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { trackPageView, useTrackingCleanup } from "@/lib/tracking";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -120,8 +121,12 @@ export default function TrackingEventsPage() {
   }, []);
 
   useEffect(() => {
+    trackPageView("/analytics/events", "Tracking Events Page");
     fetchEvents();
   }, [fetchEvents]);
+
+  // Cleanup tracking queue on unmount
+  useEffect(() => useTrackingCleanup(), []);
 
   // Auto-refresh every 10 seconds if enabled
   useEffect(() => {

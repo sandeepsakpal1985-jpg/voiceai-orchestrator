@@ -182,3 +182,83 @@ async def test_all_provider_arrays_non_empty():
             assert len(lang["sttProviders"]) > 0, f"{lang['code']} has no STT providers"
             assert len(lang["llmProviders"]) > 0, f"{lang['code']} has no LLM providers"
             assert len(lang["ttsProviders"]) > 0, f"{lang['code']} has no TTS providers"
+
+
+@pytest.mark.asyncio
+async def test_languages_returns_cors_headers_with_origin():
+    """GET /api/languages should include CORS headers when Origin is sent."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get(
+            "/api/languages",
+            headers={"Origin": "http://localhost:3000"},
+        )
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+@pytest.mark.asyncio
+async def test_languages_cors_allows_multiple_origins():
+    """GET /api/languages should allow all configured origins."""
+    origins = ["http://localhost:3000", "http://localhost:3001"]
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        for origin in origins:
+            response = await client.get(
+                "/api/languages",
+                headers={"Origin": origin},
+            )
+            assert response.status_code == 200
+            assert response.headers.get("access-control-allow-origin") == origin, \
+                f"Expected CORS origin {origin}, got {response.headers.get('access-control-allow-origin')}"
+
+
+@pytest.mark.asyncio
+async def test_languages_no_cors_without_origin():
+    """GET /api/languages should not include CORS headers when no Origin is sent."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/languages")
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") is None
+
+
+@pytest.mark.asyncio
+async def test_languages_content_type():
+    """GET /api/languages should return Content-Type application/json."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/languages")
+        assert response.status_code == 200
+        content_type = response.headers.get("content-type", "")
+        assert "application/json" in content_type, \
+            f"Expected application/json, got {content_type}"
+
+
+@pytest.mark.asyncio
+async def test_languages_options_preflight():
+    """OPTIONS /api/languages should return proper CORS preflight headers."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.options(
+            "/api/languages",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert response.headers.get("access-control-allow-methods") is not None
+        assert "GET" in response.headers.get("access-control-allow-methods", "")
