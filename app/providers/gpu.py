@@ -143,7 +143,7 @@ def detect_gpu_config() -> GpuInfo:
             "TORCH_DEVICE=cuda but no GPU detected — will fall back to CPU at runtime"
         )
 
-    if whisper_dev:
+    if whisper_dev and whisper_dev != "auto":
         info.recommended_device = whisper_dev
         if whisper_dev == "cpu":
             info.recommended_compute_type = "int8"
