@@ -1,0 +1,308 @@
+[
+  {
+    "id": "EMP_001",
+    "text": "I completely understand your concern.",
+    "audio_file": "ENG_EMP_001.mp3",
+    "type": "empathy",
+    "emotion": "soft",
+    "energy": 2,
+    "tags": [
+      "angry_customer",
+      "frustrated_customer",
+      "supportive"
+    ],
+    "usable_before": [
+      "reassurance",
+      "action",
+      "question"
+    ],
+    "usable_after": [
+      "greeting",
+      "validation"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "EMP_002",
+    "text": "That sounds genuinely frustrating.",
+    "audio_file": "ENG_EMP_002.mp3",
+    "type": "empathy",
+    "emotion": "soft",
+    "energy": 2,
+    "tags": [
+      "angry_customer",
+      "frustrated_customer"
+    ],
+    "usable_before": [
+      "validation",
+      "apology"
+    ],
+    "usable_after": [
+      "greeting"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "VAL_001",
+    "text": "Anyone in your situation would feel upset.",
+    "audio_file": "ENG_VAL_001.mp3",
+    "type": "validation",
+    "emotion": "supportive",
+    "energy": 3,
+    "tags": [
+      "angry_customer",
+      "emotional_customer"
+    ],
+    "usable_before": [
+      "apology",
+      "reassurance"
+    ],
+    "usable_after": [
+      "empathy"
+    ],
+    "priority": 7
+  },
+
+  {
+    "id": "VAL_002",
+    "text": "Your frustration is completely understandable.",
+    "audio_file": "ENG_VAL_002.mp3",
+    "type": "validation",
+    "emotion": "supportive",
+    "energy": 3,
+    "tags": [
+      "frustrated_customer",
+      "angry_customer"
+    ],
+    "usable_before": [
+      "apology",
+      "reassurance"
+    ],
+    "usable_after": [
+      "empathy"
+    ],
+    "priority": 7
+  },
+
+  {
+    "id": "APO_001",
+    "text": "I sincerely apologize for the inconvenience.",
+    "audio_file": "APO_001.mp3",
+    "type": "apology",
+    "emotion": "soft",
+    "energy": 2,
+    "tags": [
+      "angry_customer",
+      "frustrated_customer"
+    ],
+    "usable_before": [
+      "reassurance",
+      "action"
+    ],
+    "usable_after": [
+      "validation",
+      "empathy"
+    ],
+    "priority": 9
+  },
+
+  {
+    "id": "APO_002",
+    "text": "We truly regret the inconvenience caused.",
+    "audio_file": "APO_002.mp3",
+    "type": "apology",
+    "emotion": "soft",
+    "energy": 2,
+    "tags": [
+      "angry_customer",
+      "emotional_customer"
+    ],
+    "usable_before": [
+      "reassurance",
+      "action"
+    ],
+    "usable_after": [
+      "validation"
+    ],
+    "priority": 9
+  },
+
+  {
+    "id": "RES_001",
+    "text": "I'll definitely share this feedback with the management team.",
+    "audio_file": "ENG_RES_001.mp3",
+    "type": "reassurance",
+    "emotion": "calming",
+    "energy": 2,
+    "tags": [
+      "reassurance",
+      "de_escalation"
+    ],
+    "usable_before": [
+      "action",
+      "question",
+      "closing"
+    ],
+    "usable_after": [
+      "validation",
+      "apology"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "RES_002",
+    "text": "Please don't worry, we will look into this seriously.",
+    "audio_file": "ENG_RES_002.mp3",
+    "type": "reassurance",
+    "emotion": "calming",
+    "energy": 2,
+    "tags": [
+      "support",
+      "de_escalation"
+    ],
+    "usable_before": [
+      "action",
+      "question"
+    ],
+    "usable_after": [
+      "apology",
+      "validation"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "ACT_001",
+    "text": "Let me quickly look into this for you.",
+    "audio_file": "ACT_001.mp3",
+    "type": "action",
+    "emotion": "professional",
+    "energy": 3,
+    "tags": [
+      "support",
+      "problem_solving"
+    ],
+    "usable_before": [
+      "question",
+      "reassurance"
+    ],
+    "usable_after": [
+      "apology",
+      "validation"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "ACT_002",
+    "text": "I'm making a note of this immediately.",
+    "audio_file": "ACT_002.mp3",
+    "type": "action",
+    "emotion": "professional",
+    "energy": 3,
+    "tags": [
+      "problem_solving",
+      "support"
+    ],
+    "usable_before": [
+      "question",
+      "closing"
+    ],
+    "usable_after": [
+      "reassurance",
+      "apology"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "QUE_001",
+    "text": "Could you please help me understand what happened?",
+    "audio_file": "QUE_001.mp3",
+    "type": "question",
+    "emotion": "soft",
+    "energy": 2,
+    "tags": [
+      "information_collection",
+      "support"
+    ],
+    "usable_before": [
+      "reassurance",
+      "action"
+    ],
+    "usable_after": [
+      "empathy",
+      "validation",
+      "apology"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "QUE_002",
+    "text": "May I know a little more about the issue?",
+    "audio_file": "QUE_002.mp3",
+    "type": "question",
+    "emotion": "soft",
+    "energy": 2,
+    "tags": [
+      "information_collection",
+      "support"
+    ],
+    "usable_before": [
+      "action",
+      "closing"
+    ],
+    "usable_after": [
+      "validation",
+      "apology"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "CLS_001",
+    "text": "Thank you for your time, have a wonderful day.",
+    "audio_file": "CLS_001.mp3",
+    "type": "closing",
+    "emotion": "professional",
+    "energy": 2,
+    "tags": [
+      "closing",
+      "polite"
+    ],
+    "usable_before": [
+      "none"
+    ],
+    "usable_after": [
+      "reassurance",
+      "action",
+      "apology"
+    ],
+    "priority": 8
+  },
+
+  {
+    "id": "CLS_002",
+    "text": "We appreciate your feedback, thank you so much.",
+    "audio_file": "CLS_002.mp3",
+    "type": "closing",
+    "emotion": "warm",
+    "energy": 2,
+    "tags": [
+      "closing",
+      "positive"
+    ],
+    "usable_before": [
+      "none"
+    ],
+    "usable_after": [
+      "reassurance",
+      "action"
+    ],
+    "priority": 8
+  }
+]

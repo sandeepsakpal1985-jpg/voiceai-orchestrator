@@ -1,0 +1,29 @@
+# LiveKit Server Test Configuration
+# Used by docker-compose.test.yml for E2E SIP smoke tests
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+
+redis:
+  address: redis:6379
+
+sip:
+  enabled: true
+  bind_addresses:
+    - "0.0.0.0"
+  sip_port: 5060
+  dispatch_rules:
+    - destination: "twilio-sip-trunk"
+      rule: "match all"
+      room: "sip-{{.To}}"
+      participant_identity: "caller-{{.From}}"
+
+keys:
+  test-key: test-secret
+
+log_level: debug

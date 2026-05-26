@@ -1,0 +1,19 @@
+{
+  "EMPATHY": [
+    "ENG_EMP_001.wav",
+    "ENG_EMP_002.wav",
+    "ENG_EMP_003.wav"
+  ],
+  "REASSURANCE": [
+    "ENG_RES_001.wav",
+    "ENG_RES_002.wav",
+    "ENG_RES_003.wav"
+  ],
+  "FILLER": [
+    "ENG_FIL_001.wav",
+    "ENG_FIL_002.wav"
+  ],
+  "CLOSING": [
+    "ENG_CLOSE_001.wav"
+  ]
+}

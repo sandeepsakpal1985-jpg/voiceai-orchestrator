@@ -1,0 +1,80 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# VoiceAI Orchestrator — Test Environment
+# ═══════════════════════════════════════════════════════════════════════════
+# Spins up a minimal test environment for E2E integration testing:
+#   - LiveKit server (with SIP enabled)
+#   - Redis (for LiveKit)
+#   - Test runner (runs pytest smoke tests against the stack)
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── LiveKit Server ────────────────────────────────────────────────────
+  # In-memory mode (no PostgreSQL needed) for testing SIP dispatch.
+  livekit-server:
+    image: livekit/livekit-server:latest
+    command: >
+      --config /etc/livekit/config.yaml
+      --node-ip=0.0.0.0
+    volumes:
+      - ./livekit.test.yaml:/etc/livekit/config.yaml:ro
+    ports:
+      - "7880:7880"   # WebRTC / HTTP
+      - "7881:7881"   # TCP
+      - "7882:7882/udp" # UDP
+      - "5060:5060"   # SIP
+      - "5060:5060/udp"
+    depends_on:
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:7881/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Redis ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+
+  # ── Test Runner ────────────────────────────────────────────────────────
+  # Runs the E2E smoke tests against LiveKit SIP and the FastAPI backend.
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    command: >
+      sh -c "
+        echo 'Waiting for LiveKit...' &&
+        sleep 10 &&
+        echo 'Running SIP smoke test...' &&
+        python scripts/test_sip_smoke.py --livekit-url http://livekit-server:7880
+      "
+    environment:
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=test-key
+      - LIVEKIT_API_SECRET=test-secret
+      - SIP_ENABLED=true
+      - SIP_SERVER_ADDRESS=livekit-server
+      - SIP_PORT=5060
+      - STT_PROVIDER=whisper
+      - LLM_PROVIDER=ollama
+      - TTS_PROVIDER=kokoro
+      - LIVEKIT_ENABLED=true
+      - PYTHONDONTWRITEBYTECODE=1
+    depends_on:
+      livekit-server:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./scripts:/app/scripts

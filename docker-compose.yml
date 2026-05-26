@@ -1,0 +1,286 @@
+# ============================================================================
+# VoiceAI Orchestrator — Docker Compose (Self-Hosted Deployment)
+# ============================================================================
+#
+# Targets: Hetzner, OVH, RunPod, bare-metal GPU servers
+#
+# Services:
+#   livekit-server   — WebRTC realtime voice transport
+#   voiceai-api      — FastAPI backend (orchestration + HTTP API)
+#   voiceai-worker   — LiveKit agent worker (voice pipeline)
+#   ollama           — Local LLM inference (Qwen, Mistral, Llama, Gemma)
+#   postgres         — Database (conversations, agents, CRM)
+#   dashboard        — Next.js admin UI (optional)
+#   redis            — Caching, rate limiting (optional)
+#
+# Usage:
+#   docker compose up -d                    # Start all services
+#   docker compose up -d postgres ollama    # Start only core services
+#   docker compose logs -f                  # Follow logs
+# ============================================================================
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: voiceai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: voiceai
+      POSTGRES_PASSWORD: voiceai
+      POSTGRES_DB: voiceai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voiceai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (optional — for rate limiting + caching) ────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: voiceai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    profiles:
+      - full
+
+  # ── Ollama (Local LLM Inference) ──────────────────────────────────
+  # Default model: qwen2.5:7b (change via OLLAMA_MODEL in .env)
+  # GPU: Ollama auto-detects CUDA when nvidia-container-toolkit is installed.
+  #       The GPU device reservation is harmless on CPU-only hosts (Docker skips it).
+  ollama:
+    image: ollama/ollama:latest
+    container_name: voiceai-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_KEEP_ALIVE: 5m
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ── LiveKit Server (Realtime Voice Transport) ─────────────────────
+  livekit-server:
+    image: livekit/livekit-server:latest
+    container_name: voiceai-livekit
+    restart: unless-stopped
+    ports:
+      - "7880:7880"   # WebSocket
+      - "7881:7881"   # HTTP API
+      - "7882:7882/udp" # WebRTC ICE/UDP
+      - "1935:1935"   # RTMP (future)
+      - "5060:5060/udp" # SIP (Twilio Elastic Trunk)
+      - "5060:5060/tcp" # SIP (TCP fallback)
+    command: >
+      --config /etc/livekit/config.yaml
+      --node-ip=0.0.0.0
+    volumes:
+      - ./livekit.yaml:/etc/livekit/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:7881/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── VoiceAI API (FastAPI Backend) ─────────────────────────────────
+  voiceai-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: voiceai-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      LIVEKIT_URL: ws://livekit-server:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret
+      OLLAMA_BASE_URL: http://ollama:11434
+      DATABASE_URL: postgresql://voiceai:voiceai@postgres:5432/voiceai
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    volumes:
+      - ./audio:/app/audio
+      - chroma_data:/app/chroma_data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── VoiceAI Worker (LiveKit Agent) ────────────────────────────────
+  # Runs the STT → LLM → TTS pipeline inside LiveKit rooms
+  # GPU: --profile gpu to activate CUDA-accelerated Whisper/TTS
+  voiceai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: voiceai-worker
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      LIVEKIT_URL: ws://livekit-server:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret
+      OLLAMA_BASE_URL: http://ollama:11434
+      DATABASE_URL: postgresql://voiceai:voiceai@postgres:5432/voiceai
+      LIVEKIT_WORKER_PORT: 8001
+    depends_on:
+      livekit-server:
+        condition: service_started
+      ollama:
+        condition: service_started
+    volumes:
+      - ./audio:/app/audio
+      - chroma_data:/app/chroma_data
+    command: ["python", "-m", "app.livekit.worker_server"]
+
+  # ── Dashboard (Next.js Admin UI — optional) ──────────────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: voiceai-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://voiceai:voiceai@postgres:5432/voiceai
+      NEXTAUTH_URL: http://localhost:3000
+      API_URL: http://voiceai-api:8000
+    depends_on:
+      - voiceai-api
+    profiles:
+      - full
+
+  # ══════════════════════════════════════════════════════════════════
+  # GPU-Accelerated Service Variants
+  # ══════════════════════════════════════════════════════════════════
+  # These override the default CPU services with GPU-enabled builds + device access.
+  # Activate with: docker compose --profile gpu up -d
+  # Requirements: nvidia-container-toolkit installed on the host.
+  # ══════════════════════════════════════════════════════════════════
+
+  # ── VoiceAI API (GPU — CUDA Whisper + Embeddings) ──────────────
+  voiceai-api-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu-runtime
+    container_name: voiceai-api-gpu
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      LIVEKIT_URL: ws://livekit-server:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret
+      OLLAMA_BASE_URL: http://ollama:11434
+      DATABASE_URL: postgresql://voiceai:voiceai@postgres:5432/voiceai
+      REDIS_URL: redis://redis:6379
+      TORCH_DEVICE: cuda
+      WHISPER_DEVICE: cuda
+      WHISPER_COMPUTE_TYPE: float16
+      XTTS_DEVICE: cuda
+      EMBEDDING_DEVICE: cuda
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    volumes:
+      - ./audio:/app/audio
+      - chroma_data:/app/chroma_data
+    profiles:
+      - gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── VoiceAI Worker (GPU — CUDA Whisper + TTS) ──────────────────
+  voiceai-worker-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu-runtime
+    container_name: voiceai-worker-gpu
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      LIVEKIT_URL: ws://livekit-server:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret
+      OLLAMA_BASE_URL: http://ollama:11434
+      DATABASE_URL: postgresql://voiceai:voiceai@postgres:5432/voiceai
+      LIVEKIT_WORKER_PORT: 8001
+      TORCH_DEVICE: cuda
+      WHISPER_DEVICE: cuda
+      WHISPER_COMPUTE_TYPE: float16
+      XTTS_DEVICE: cuda
+      EMBEDDING_DEVICE: cuda
+    depends_on:
+      livekit-server:
+        condition: service_started
+      ollama:
+        condition: service_started
+    volumes:
+      - ./audio:/app/audio
+      - chroma_data:/app/chroma_data
+    command: ["python", "-m", "app.livekit.worker_server"]
+    profiles:
+      - gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  chroma_data:

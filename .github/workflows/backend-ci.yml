@@ -1,0 +1,106 @@
+# ============================================================================
+# VoiceAI Orchestrator — Backend CI
+#
+# Runs on every push to main and every pull request.
+# Steps: lint → test (unit) → test (E2E smoke with docker-compose)
+# ============================================================================
+
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "requirements.txt"
+      - "Dockerfile"
+      - "docker-compose*.yml"
+      - "livekit*.yaml"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "requirements.txt"
+      - "Dockerfile"
+      - "docker-compose*.yml"
+      - "livekit*.yaml"
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint-and-test:
+    name: Lint + Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx flake8
+
+      - name: Lint with flake8
+        run: |
+          flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 app/ --count --max-complexity=10 --max-line-length=120 --statistics
+
+      - name: Run unit tests
+        run: |
+          python -m pytest app/__tests__/ -v --no-header -x --timeout=120
+        env:
+          STT_PROVIDER: whisper
+          LLM_PROVIDER: ollama
+          TTS_PROVIDER: kokoro
+          LIVEKIT_ENABLED: "false"
+          SIP_ENABLED: "false"
+          PYTHONDONTWRITEBYTECODE: 1
+
+  e2e-smoke:
+    name: E2E Smoke Tests (SIP + LiveKit)
+    runs-on: ubuntu-latest
+    # Only run on main or when explicitly triggered
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest pytest-asyncio
+
+      - name: Start test infrastructure
+        run: |
+          docker compose -f docker-compose.test.yml up --build -d livekit-server redis
+          echo "Waiting for services to be healthy..."
+          sleep 15
+
+      - name: Run SIP smoke test
+        run: |
+          docker compose -f docker-compose.test.yml run --rm test-runner
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.test.yml logs --tail=100 livekit-server
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f docker-compose.test.yml down -v

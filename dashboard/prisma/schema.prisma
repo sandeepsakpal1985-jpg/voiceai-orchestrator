@@ -1,0 +1,568 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  TRIALING
+}
+
+enum CallStatus {
+  QUEUED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  BUSY
+  NO_ANSWER
+}
+
+enum SentimentLabel {
+  VERY_POSITIVE
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  VERY_NEGATIVE
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProviderType {
+  TWILIO
+  VONAGE
+  TWILIO_VOICE
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Multi-Tenancy ──
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  website     String?
+  description String?  @db.Text
+  timezone    String   @default("UTC")
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members   OrganizationMember[]
+  workspaces Workspace[]
+  apiKeys   ApiKey[]
+  users     User[]
+}
+
+model Workspace {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?  @db.Text
+  settings       Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+}
+
+model OrganizationMember {
+  id             String                 @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationMemberRole @default(MEMBER)
+  invitedBy      String?
+  joinedAt       DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  role           UserRole  @default(USER)
+  organizationId String?
+  companyName    String?
+  phone          String?
+  timezone       String    @default("UTC")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  memberships    OrganizationMember[]
+  subscription       Subscription?
+  apiKeys            ApiKey[]
+  callLogs           CallLog[]
+  prompts            Prompt[]
+  knowledgeDocuments KnowledgeDocument[]
+  crmConnections     CrmConnection[]
+  campaigns          Campaign[]
+  voiceSettings      VoiceSettings?
+  multilingualConfig MultilingualConfig?
+  agents            Agent[]
+  pipelines         Pipeline[]
+  leads             Lead[]
+  socialConnections SocialConnection[]
+  billingInvoices   BillingInvoice[]
+  sentimentAnalytics SentimentAnalytic[]
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String
+  key       String   @unique
+  userId    String
+  organizationId String?
+  lastUsed  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  active    Boolean  @default(true)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id])
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  organizationId String?
+  planId        String
+  status        SubscriptionStatus @default(TRIALING)
+  currentPeriodStart DateTime      @default(now())
+  currentPeriodEnd   DateTime?
+  trialEnd      DateTime?
+  cancelAtPeriodEnd Boolean         @default(false)
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan   Plan   @relation(fields: [planId], references: [id])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  currency    String   @default("USD")
+  interval    String   @default("month")
+  apiCalls    Int      @default(0)
+  minCalls    Int      @default(0)
+  maxCalls    Int?
+  callMinutes Int      @default(0)
+  teamSeats   Int      @default(1)
+  features    Json     @default("[]")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model CallLog {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String?
+  campaignId     String?
+  workspaceId    String?
+  contactName    String?
+  contactPhone   String
+  duration       Int?
+  status         CallStatus   @default(QUEUED)
+  direction      String       @default("outbound")
+  cost           Float?
+  sentiment      SentimentLabel?
+  sentimentScore Float?
+  transcript     String?      @db.Text
+  recordingUrl   String?
+  recordingDuration Int?
+  notes          String?      @db.Text
+  tags           Json         @default("[]")
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+}
+
+model Prompt {
+  id        String   @id @default(cuid())
+  userId    String
+  organizationId String?
+  workspaceId    String?
+  name      String
+  content   String   @db.Text
+  category  String   @default("general")
+  variables Json     @default("[]")
+  isActive  Boolean  @default(true)
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeDocument {
+  id          String   @id @default(cuid())
+  userId      String
+  organizationId String?
+  workspaceId    String?
+  name        String
+  fileType    String
+  fileSize    Int
+  fileUrl     String
+  content     String?  @db.Text
+  status      String   @default("processing")
+  tags        Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CrmConnection {
+  id           String   @id @default(cuid())
+  userId       String
+  organizationId String?
+  provider     String
+  name         String
+  apiKey       String?
+  apiUrl       String?
+  credentials  Json?
+  status       String   @default("connected")
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  userId      String
+  organizationId String?
+  workspaceId    String?
+  name        String
+  description String?        @db.Text
+  status      CampaignStatus @default(DRAFT)
+  script      String?        @db.Text
+  voiceId     String?
+  language    String         @default("en-US")
+  schedule    Json?
+  targetList  Json?
+  totalCalls  Int            @default(0)
+  completedCalls Int         @default(0)
+  successRate Float?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  callLogs CallLog[]
+}
+
+model VoiceSettings {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  voiceId         String  @default("en-US-Wavenet-D")
+  languageCode    String  @default("en-US")
+  speakingRate    Float   @default(1.0)
+  pitch           Float   @default(0.0)
+  volumeGainDb    Float   @default(0.0)
+  provider        String  @default("google")
+  model           String? @default("default")
+  emotion         String? @default("neutral")
+  customization   Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MultilingualConfig {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  defaultLanguage String   @default("en-US")
+  fallbackLanguage String  @default("en-US")
+  autoDetect      Boolean  @default(true)
+  supportedLanguages Json  @default("[]")
+  translationProvider String @default("google")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BillingInvoice {
+  id           String   @id @default(cuid())
+  userId       String
+  organizationId String?
+  amount       Float
+  currency     String   @default("USD")
+  status       String   @default("pending")
+  description  String?
+  invoiceUrl   String?
+  paidAt       DateTime?
+  dueDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SentimentAnalytic {
+  id             String         @id @default(cuid())
+  userId         String
+  callLogId      String?
+  organizationId String?
+  overallLabel   SentimentLabel
+  overallScore   Float
+  segments       Json           @default("[]")
+  keywords       Json           @default("[]")
+  emotionalTone  Json           @default("{}")
+  createdAt      DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Phase 4: AI Agent Builder ──
+
+model Agent {
+  id                  String   @id @default(cuid())
+  userId              String
+  organizationId      String?
+  workspaceId         String?
+  name                String
+  description         String?  @db.Text
+  systemPrompt        String   @db.Text
+  personality         Json     @default("{}")
+  voiceId             String?
+  language            String   @default("en-US")
+  speakingRate        Float    @default(1.0)
+  pitch               Float    @default(0.0)
+  temperature         Float    @default(0.7)
+  maxTokens           Int      @default(1024)
+  sttProvider         String   @default("whisper")
+  llmProvider         String   @default("openai")
+  ttsProvider         String   @default("elevenlabs")
+  memoryEnabled       Boolean  @default(true)
+  memoryType          String   @default("conversation")
+  maxMemoryTokens     Int      @default(4000)
+  toolsEnabled        Boolean  @default(true)
+  calendarConnected   Boolean  @default(false)
+  crmConnected        Boolean  @default(false)
+  socialConnected     Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tools           AgentTool[]
+  socialAccounts  AgentSocialAccount[]
+}
+
+model AgentTool {
+  id        String   @id @default(cuid())
+  agentId   String
+  name      String
+  type      String   // "function", "webhook", "n8n", "api"
+  config    Json     @default("{}")
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model AgentSocialAccount {
+  id           String   @id @default(cuid())
+  agentId      String
+  platform     String   // "instagram", "facebook", "whatsapp"
+  accountId    String
+  accountName  String?
+  accessToken  String?
+  refreshToken String?
+  webhookUrl   String?
+  autoReply    Boolean  @default(false)
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, platform, accountId])
+}
+
+// ── Phase 5: CRM ──
+
+model Pipeline {
+  id          String   @id @default(cuid())
+  userId      String
+  organizationId String?
+  name        String
+  description String?  @db.Text
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stages PipelineStage[]
+  leads  Lead[]
+}
+
+model PipelineStage {
+  id         String   @id @default(cuid())
+  pipelineId String
+  name       String
+  order      Int
+  color      String   @default("#6366f1")
+  winProbability Int  @default(50)
+  createdAt  DateTime @default(now())
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  leads    Lead[]
+
+  @@unique([pipelineId, order])
+}
+
+model Lead {
+  id              String   @id @default(cuid())
+  userId          String
+  organizationId  String?
+  pipelineId      String?
+  stageId         String?
+  contactName     String
+  contactPhone    String?
+  contactEmail    String?
+  company         String?
+  title           String?
+  source          String?  // "call", "web", "instagram", "facebook", "whatsapp", "manual"
+  score           Int      @default(0)
+  status          String   @default("new")  // "new", "contacted", "qualified", "negotiating", "won", "lost"
+  notes           String?  @db.Text
+  tags            Json     @default("[]")
+  customFields    Json     @default("{}")
+  lastContactedAt DateTime?
+  assignedTo      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pipeline Pipeline?      @relation(fields: [pipelineId], references: [id])
+  stage    PipelineStage? @relation(fields: [stageId], references: [id])
+  activities ActivityLog[]
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  leadId    String
+  userId    String
+  type      String   // "note", "call", "email", "meeting", "sms", "social", "system"
+  content   String   @db.Text
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model SocialConnection {
+  id            String   @id @default(cuid())
+  userId        String
+  organizationId String?
+  platform      String   // "instagram", "facebook", "whatsapp"
+  accountId     String
+  accountName   String?
+  accessToken   String?
+  refreshToken  String?
+  webhookSecret String?
+  autoReply     Boolean  @default(false)
+  welcomeMessage String? @db.Text
+  status        String   @default("connected")
+  lastSyncAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform, accountId])
+}

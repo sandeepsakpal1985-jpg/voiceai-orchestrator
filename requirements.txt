@@ -1,0 +1,114 @@
+# ============================================================================
+# VoiceAI Orchestrator — Python Dependencies (Self-Hosted Architecture)
+# ============================================================================
+#
+# This project is built for a self-hosted AI voice platform.
+# Dependencies are organized by priority:
+#   1. Core runtime (required)
+#   2. Local-first AI (default — always available)
+#   3. Optional cloud providers (disabled by default)
+#
+# Usage:
+#   pip install -r requirements.txt          # Install everything
+#   pip install -r requirements.txt --no-deps # Minimal install
+#
+# ============================================================================
+# CORE RUNTIME (Required)
+# ============================================================================
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+httpx>=0.27.0
+python-multipart>=0.0.9
+sse-starlette>=2.0.0
+
+# WebSocket support (admin dashboard + streaming)
+websockets>=12.0
+
+# Async file I/O
+aiofiles>=24.0.0
+
+# Audio Processing
+sounddevice>=0.5.0
+soundfile>=0.12.0
+numpy>=1.24.0
+
+# Database
+asyncpg>=0.29.0
+sqlalchemy[asyncio]>=2.0.0
+alembic>=1.13.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Redis (optional, for rate limiting)
+redis>=5.0.0
+
+# ============================================================================
+# LOCAL AI PROVIDERS (Default — Required for self-hosted operation)
+# ============================================================================
+
+# STT: Faster-Whisper (local transcription, multilingual)
+faster-whisper>=1.0.0
+
+# LLM: Ollama (local Qwen, Mistral, Llama, Gemma via HTTP API)
+# Connects to running Ollama server — no additional pip package needed
+
+# TTS: Kokoro (lightweight local TTS, ~82M params, CPU-friendly)
+# PRIMARY default TTS — fast inference, multilingual, no GPU needed
+kokoro>=0.1.0
+
+# TTS: OpenVoice v2 (voice cloning TTS)
+# SECONDARY TTS — for voice cloning use cases
+# openvoice>=1.0.0  # Uncomment when voice cloning is needed
+
+# TTS: XTTS-v2 via Coqui TTS (local multi-language TTS, ~1.8GB model)
+# TERTIARY TTS — heavy, use only for advanced multilingual needs
+# TTS>=0.22.0  # Uncomment for XTTS-v2 support
+
+# Local Embeddings (RAG, Memory, Semantic Search)
+sentence-transformers>=3.0.0
+
+# PyTorch (required by faster-whisper, sentence-transformers)
+# CPU-only: pip install torch --index-url https://download.pytorch.org/whl/cpu
+# CUDA: pip install torch
+torch>=2.0.0
+
+# ============================================================================
+# REALTIME VOICE RUNTIME (LiveKit)
+# ============================================================================
+
+# LiveKit Python SDK for realtime voice transport
+# Core runtime — enables WebRTC voice sessions
+livekit>=1.0.0
+livekit-api>=1.0.0
+
+# ============================================================================
+# OPTIONAL CLOUD PROVIDERS (Disabled by default — enable via API keys)
+# ============================================================================
+
+# LLM: OpenAI (cloud fallback)
+# Requires OPENAI_API_KEY in environment
+
+# LLM: Gemini (cloud fallback)
+# Requires GEMINI_API_KEY in environment
+
+# LLM: OpenRouter (cloud multi-model access)
+# Requires OPENROUTER_API_KEY in environment
+
+# TTS: ElevenLabs (cloud TTS fallback)
+# Requires ELEVENLABS_API_KEY in environment
+
+# STT: Deepgram (cloud STT fallback)
+# Requires DEEPGRAM_API_KEY in environment
+
+# ============================================================================
+# DEV / TESTING
+# ============================================================================
+
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+coverage>=7.0.0

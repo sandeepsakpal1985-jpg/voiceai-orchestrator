@@ -1,0 +1,109 @@
+# ============================================================================
+# VoiceAI Platform — Docker Compose (Production Stack)
+# ============================================================================
+# Services:
+#   postgres     — PostgreSQL database
+#   orchestrator — FastAPI voice AI backend (STT → LLM → TTS pipeline)
+#   app          — Next.js dashboard (port 3000)
+#   websocket    — WebSocket server for real-time monitoring (port 3001)
+#
+# Usage:
+#   docker compose up -d               # Start everything
+#   docker compose logs -f             # Tail logs
+#   docker compose down                # Stop everything
+# ============================================================================
+
+version: "3.9"
+
+services:
+  # ── PostgreSQL Database ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voiceai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voiceai}
+      POSTGRES_DB: ${POSTGRES_DB:-voiceai}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voiceai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Orchestrator ───────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${ORCHESTRATOR_PORT:-8000}:8000"
+    environment:
+      APP_NAME: VoiceAI Orchestrator
+      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voiceai}:${POSTGRES_PASSWORD:-voiceai}@postgres:5432/${POSTGRES_DB:-voiceai}
+      STT_PROVIDER: ${STT_PROVIDER:-whisper}
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-base}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      TTS_PROVIDER: ${TTS_PROVIDER:-elevenlabs}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      DEFAULT_VOICE_ID: ${DEFAULT_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+      AUDIO_FOLDER: /app/audio
+      AUTH_SECRET: ${AUTH_SECRET}
+    volumes:
+      - audio_data:/app/audio
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Next.js Dashboard ──────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voiceai}:${POSTGRES_PASSWORD:-voiceai}@postgres:5432/${POSTGRES_DB:-voiceai}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_SECRET: ${AUTH_SECRET}
+      NEXT_PUBLIC_WS_URL: ws://websocket:3001
+      NEXT_PUBLIC_ORCHESTRATOR_URL: http://orchestrator:8000
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node server.js"
+
+  # ── WebSocket Server ───────────────────────────────────────────────
+  websocket:
+    build:
+      context: .
+      dockerfile: Dockerfile.ws
+    restart: unless-stopped
+    ports:
+      - "${WS_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voiceai}:${POSTGRES_PASSWORD:-voiceai}@postgres:5432/${POSTGRES_DB:-voiceai}
+      AUTH_SECRET: ${AUTH_SECRET}
+      WS_PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  audio_data:

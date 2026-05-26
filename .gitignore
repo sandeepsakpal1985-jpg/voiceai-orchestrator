@@ -1,0 +1,50 @@
+# VoiceAI Orchestrator — Python .gitignore
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local AI model data
+chroma_data/
+models/
+checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Audio files
+audio/*.mp3
+audio/*.wav
+audio/*.ogg
+
+# Generated files
+*.egg-info/
+dist/
+build/
+*.whl
+nul
+node_modules/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.env
+chroma_data/

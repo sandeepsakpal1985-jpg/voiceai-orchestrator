@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["app/__tests__"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.mypy]
+python_version = 3.12
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app/__tests__/*"]
+ignore_errors = true
