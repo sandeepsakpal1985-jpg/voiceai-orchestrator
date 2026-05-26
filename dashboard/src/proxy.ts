@@ -37,10 +37,12 @@ export function proxy(request: NextRequest) {
   // Skip for:
   //   - /api/webhooks/* — called by external services (Twilio)
   //   - /api/auth/*    — NextAuth handles CSRF internally
+  //   - /api/tracking  — called via sendBeacon which can't set custom headers
   const isStateChanging = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
   const isWebhook = pathname.startsWith("/api/webhooks/");
   const isAuthRoute = pathname.startsWith("/api/auth/");
-  if (isStateChanging && !isWebhook && !isAuthRoute) {
+  const isTracking = pathname.startsWith("/api/tracking");
+  if (isStateChanging && !isWebhook && !isAuthRoute && !isTracking) {
     const csrfHeader = request.headers.get("x-requested-with");
     if (!csrfHeader || csrfHeader !== "XMLHttpRequest") {
       return new NextResponse(

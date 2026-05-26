@@ -30,6 +30,7 @@ from app.routers import (
     runtime_router,
     voice_profiles_router,
     monitoring_router,
+    languages_router,
 )
 
 # ── Logging Setup ───────────────────────────────────────────────────
@@ -432,6 +433,7 @@ app.include_router(sip_router)
 app.include_router(runtime_router)
 app.include_router(voice_profiles_router)
 app.include_router(monitoring_router)
+app.include_router(languages_router)
 
 # ── Middleware: Rate Limiting (token bucket per IP) ──
 from app.middleware.rate_limit import RateLimitMiddleware

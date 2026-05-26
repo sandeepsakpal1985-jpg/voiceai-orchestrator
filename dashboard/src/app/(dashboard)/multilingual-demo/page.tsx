@@ -18,10 +18,12 @@ import {
   ArrowRight,
   Loader2,
   Brain,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trackPageView, trackInteraction } from "@/lib/tracking";
 
-// ── Supported Languages ──────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────
 
 interface Language {
   code: string;
@@ -31,123 +33,75 @@ interface Language {
   voice: string;
   sttModel: string;
   ttsModel: string;
+  sttProviders?: string[];
+  llmProviders?: string[];
+  ttsProviders?: string[];
   samples: string[];
 }
 
-const languages: Language[] = [
+interface ApiLanguage {
+  code: string;
+  name: string;
+  native: string;
+  flag: string;
+  voice: string;
+  sttProviders?: string[];
+  llmProviders?: string[];
+  ttsProviders?: string[];
+  samples: string[];
+}
+
+// ── Fallback Languages (used when backend API is unreachable) ─────
+
+const FALLBACK_LANGUAGES: Language[] = [
   {
-    code: "en",
-    name: "English",
-    native: "English",
-    flag: "🇺🇸",
-    voice: "en-US-Wavenet-D",
-    sttModel: "Whisper / Deepgram",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "Hello! Welcome to VoiceAI. How can I help you today?",
-      "Our AI voice platform supports real-time conversations in over 30 languages.",
-      "You can deploy agents that speak naturally with your customers worldwide.",
-    ],
+    code: "en", name: "English", native: "English", flag: "🇺🇸",
+    voice: "en-US-Wavenet-D", sttModel: "Whisper / Deepgram", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["Hello! Welcome to VoiceAI. How can I help you today?", "Our AI voice platform supports real-time conversations in over 30 languages.", "You can deploy agents that speak naturally with your customers worldwide."],
   },
   {
-    code: "hi",
-    name: "Hindi",
-    native: "हिन्दी",
-    flag: "🇮🇳",
-    voice: "hi-IN-Wavenet-A",
-    sttModel: "Whisper / Deepgram",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "नमस्ते! वॉइसएआई में आपका स्वागत है। मैं आपकी कैसे सहायता कर सकता हूँ?",
-      "हमारा AI वॉइस प्लेटफ़ॉर्म 30 से अधिक भाषाओं में रीयल-टाइम बातचीत का समर्थन करता है।",
-      "आप ऐसे एजेंट तैनात कर सकते हैं जो आपके ग्राहकों से दुनिया भर में स्वाभाविक रूप से बात करते हैं।",
-    ],
+    code: "hi", name: "Hindi", native: "हिन्दी", flag: "🇮🇳",
+    voice: "hi-IN-Wavenet-A", sttModel: "Whisper / Deepgram", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["नमस्ते! वॉइसएआई में आपका स्वागत है। मैं आपकी कैसे सहायता कर सकता हूँ?", "हमारा AI वॉइस प्लेटफ़ॉर्म 30 से अधिक भाषाओं में रीयल-टाइम बातचीत का समर्थन करता है।", "आप ऐसे एजेंट तैनात कर सकते हैं जो आपके ग्राहकों से दुनिया भर में स्वाभाविक रूप से बात करते हैं।"],
   },
   {
-    code: "es",
-    name: "Spanish",
-    native: "Español",
-    flag: "🇪🇸",
-    voice: "es-ES-Wavenet-B",
-    sttModel: "Whisper / Deepgram",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "¡Hola! Bienvenido a VoiceAI. ¿Cómo puedo ayudarte hoy?",
-      "Nuestra plataforma de voz con IA admite conversaciones en tiempo real en más de 30 idiomas.",
-      "Puedes implementar agentes que hablen naturalmente con tus clientes en todo el mundo.",
-    ],
+    code: "es", name: "Spanish", native: "Español", flag: "🇪🇸",
+    voice: "es-ES-Wavenet-B", sttModel: "Whisper / Deepgram", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["¡Hola! Bienvenido a VoiceAI. ¿Cómo puedo ayudarte hoy?", "Nuestra plataforma de voz con IA admite conversaciones en tiempo real en más de 30 idiomas.", "Puedes implementar agentes que hablen naturalmente con tus clientes en todo el mundo."],
   },
   {
-    code: "fr",
-    name: "French",
-    native: "Français",
-    flag: "🇫🇷",
-    voice: "fr-FR-Wavenet-C",
-    sttModel: "Whisper / Deepgram",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "Bonjour ! Bienvenue chez VoiceAI. Comment puis-je vous aider aujourd'hui ?",
-      "Notre plateforme vocale IA prend en charge les conversations en temps réel dans plus de 30 langues.",
-      "Vous pouvez déployer des agents qui parlent naturellement avec vos clients dans le monde entier.",
-    ],
+    code: "fr", name: "French", native: "Français", flag: "🇫🇷",
+    voice: "fr-FR-Wavenet-C", sttModel: "Whisper / Deepgram", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["Bonjour ! Bienvenue chez VoiceAI. Comment puis-je vous aider aujourd'hui ?", "Notre plateforme vocale IA prend en charge les conversations en temps réel dans plus de 30 langues.", "Vous pouvez déployer des agents qui parlent naturellement avec vos clients dans le monde entier."],
   },
   {
-    code: "de",
-    name: "German",
-    native: "Deutsch",
-    flag: "🇩🇪",
-    voice: "de-DE-Wavenet-A",
-    sttModel: "Whisper / Deepgram",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "Hallo! Willkommen bei VoiceAI. Wie kann ich Ihnen heute helfen?",
-      "Unsere KI-Sprachplattform unterstützt Echtzeit-Gespräche in über 30 Sprachen.",
-      "Sie können Agenten einsetzen, die natürlich mit Ihren Kunden weltweit sprechen.",
-    ],
+    code: "de", name: "German", native: "Deutsch", flag: "🇩🇪",
+    voice: "de-DE-Wavenet-A", sttModel: "Whisper / Deepgram", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["Hallo! Willkommen bei VoiceAI. Wie kann ich Ihnen heute helfen?", "Unsere KI-Sprachplattform unterstützt Echtzeit-Gespräche in über 30 Sprachen.", "Sie können Agenten einsetzen, die natürlich mit Ihren Kunden weltweit sprechen."],
   },
   {
-    code: "ja",
-    name: "Japanese",
-    native: "日本語",
-    flag: "🇯🇵",
-    voice: "ja-JP-Wavenet-C",
-    sttModel: "Whisper",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "こんにちは！VoiceAIへようこそ。本日はどのようなご用件でしょうか？",
-      "当社のAI音声プラットフォームは、30以上の言語でのリアルタイム会話をサポートしています。",
-      "世界中のお客様と自然に会話できるエージェントを展開できます。",
-    ],
+    code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵",
+    voice: "ja-JP-Wavenet-C", sttModel: "Whisper", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["こんにちは！VoiceAIへようこそ。本日はどのようなご用件でしょうか？", "当社のAI音声プラットフォームは、30以上の言語でのリアルタイム会話をサポートしています。", "世界中のお客様と自然に会話できるエージェントを展開できます。"],
   },
   {
-    code: "zh",
-    name: "Chinese",
-    native: "中文",
-    flag: "🇨🇳",
-    voice: "zh-CN-Wavenet-A",
-    sttModel: "Whisper",
-    ttsModel: "Kokoro / ElevenLabs",
-    samples: [
-      "你好！欢迎来到VoiceAI。今天我能为您做些什么？",
-      "我们的AI语音平台支持超过30种语言的实时对话。",
-      "您可以部署能够自然地与全球客户交谈的智能代理。",
-    ],
+    code: "zh", name: "Chinese", native: "中文", flag: "🇨🇳",
+    voice: "zh-CN-Wavenet-A", sttModel: "Whisper", ttsModel: "Kokoro / ElevenLabs",
+    samples: ["你好！欢迎来到VoiceAI。今天我能为您做些什么？", "我们的AI语音平台支持超过30种语言的实时对话。", "您可以部署能够自然地与全球客户交谈的智能代理。"],
   },
   {
-    code: "ar",
-    name: "Arabic",
-    native: "العربية",
-    flag: "🇦🇪",
-    voice: "ar-XA-Wavenet-A",
-    sttModel: "Whisper / Deepgram",
-    ttsModel: "ElevenLabs",
-    samples: [
-      "مرحباً! أهلاً بك في VoiceAI. كيف يمكنني مساعدتك اليوم؟",
-      "منصتنا الصوتية بالذكاء الاصطناعي تدعم المحادثات الفورية بأكثر من 30 لغة.",
-      "يمكنك نشر وكلاء يتحدثون بشكل طبيعي مع عملائك في جميع أنحاء العالم.",
-    ],
+    code: "ar", name: "Arabic", native: "العربية", flag: "🇦🇪",
+    voice: "ar-XA-Wavenet-A", sttModel: "Whisper / Deepgram", ttsModel: "ElevenLabs",
+    samples: ["مرحباً! أهلاً بك في VoiceAI. كيف يمكنني مساعدتك اليوم؟", "منصتنا الصوتية بالذكاء الاصطناعي تدعم المحادثات الفورية بأكثر من 30 لغة.", "يمكنك نشر وكلاء يتحدثون بشكل طبيعي مع عملائك في جميع أنحاء العالم."],
   },
 ];
+
+/** Convert API language format (arrays) to display format (strings) */
+function apiToDisplay(api: ApiLanguage): Language {
+  const sttModel = api.sttProviders?.join(" / ") ?? "Whisper";
+  const ttsModel = api.ttsProviders?.join(" / ") ?? "Kokoro";
+  return { ...api, sttModel, ttsModel, sttProviders: api.sttProviders, ttsProviders: api.ttsProviders };
+}
 
 // ── Demo Scenarios ───────────────────────────────────────────────
 
@@ -322,9 +276,13 @@ function LanguageCard({
 function ScenarioCard({
   scenario,
   selectedLang,
+  onStartDemo,
+  onComplete,
 }: {
   scenario: Scenario;
   selectedLang: Language;
+  onStartDemo?: () => void;
+  onComplete?: () => void;
 }) {
   const [step, setStep] = useState(0);
   const [isActive, setIsActive] = useState(false);
@@ -334,7 +292,8 @@ function ScenarioCard({
     setIsActive(true);
     setStep(0);
     setShowAgent(false);
-  }, []);
+    onStartDemo?.();
+  }, [onStartDemo]);
 
   const nextStep = useCallback(() => {
     if (step < scenario.prompts.length - 1) {
@@ -351,6 +310,13 @@ function ScenarioCard({
     setStep(0);
     setShowAgent(false);
   }, []);
+
+  // Track demo completion
+  useEffect(() => {
+    if (isActive && showAgent && step >= scenario.prompts.length - 1) {
+      onComplete?.();
+    }
+  }, [isActive, showAgent, step, scenario.prompts.length, onComplete]);
 
   return (
     <Card>
@@ -451,10 +417,61 @@ function ScenarioCard({
 // ── Main Page ────────────────────────────────────────────────────
 
 export default function MultilingualDemoPage() {
-  const [selectedLang, setSelectedLang] = useState<Language>(languages[0]);
+  const [languages, setLanguages] = useState<Language[]>(FALLBACK_LANGUAGES);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedLang, setSelectedLang] = useState<Language>(FALLBACK_LANGUAGES[0]);
   const [playingText, setPlayingText] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("languages");
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const hasTrackedView = useRef(false);
+
+  // ── Fetch languages from API with fallback ──
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchLanguages() {
+      try {
+        const res = await fetch("/api/languages", {
+          headers: { "Accept": "application/json" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+
+        const apiLangs: ApiLanguage[] = data.languages ?? data;
+        const displayLangs = apiLangs.map(apiToDisplay) as Language[];
+
+        if (displayLangs.length > 0) {
+          setLanguages(displayLangs);
+          setSelectedLang(displayLangs[0]);
+        }
+        setIsLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        setApiError("Could not reach backend — using local language data");
+        setIsLoading(false);
+        // Fallback already set via useState initial value
+      }
+    }
+
+    fetchLanguages();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Track page view once ──
+  useEffect(() => {
+    if (!hasTrackedView.current) {
+      hasTrackedView.current = true;
+      trackPageView("/multilingual-demo", "Multilingual Demo Page");
+    }
+  }, []);
+
+  // ── Track language selection ──
+  const handleSelectLang = useCallback((lang: Language) => {
+    setSelectedLang(lang);
+    trackInteraction("/multilingual-demo", "select_language", lang.name, lang.code);
+  }, []);
 
   const handlePlaySample = useCallback(
     (text: string) => {
@@ -475,14 +492,32 @@ export default function MultilingualDemoPage() {
         : `${selectedLang.code}`;
       utterance.rate = 0.9;
       utterance.pitch = 1.0;
-      utterance.onstart = () => setPlayingText(text);
+      utterance.onstart = () => {
+        setPlayingText(text);
+        trackInteraction("/multilingual-demo", "play_sample", selectedLang.name);
+      };
       utterance.onend = () => setPlayingText(null);
       utterance.onerror = () => setPlayingText(null);
       synthRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     },
-    [playingText, selectedLang.code]
+    [playingText, selectedLang.code, selectedLang.name]
   );
+
+  // ── Track tab changes ──
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    trackInteraction("/multilingual-demo", "switch_tab", tab);
+  }, []);
+
+  // ── Track demo interactions ──
+  const handleStartDemo = useCallback((scenarioId: string) => {
+    trackInteraction("/multilingual-demo", "start_demo", scenarioId);
+  }, []);
+
+  const handleCompleteDemo = useCallback((scenarioId: string) => {
+    trackInteraction("/multilingual-demo", "complete_demo", scenarioId);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -490,6 +525,20 @@ export default function MultilingualDemoPage() {
       window.speechSynthesis.cancel();
     };
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+        <Navbar />
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            <p className="text-sm text-zinc-500">Loading languages...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -506,7 +555,7 @@ export default function MultilingualDemoPage() {
                 Multilingual Demo
               </h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Experience VoiceAI in 8 languages — try STT, TTS, and interactive conversations
+                Experience VoiceAI in {languages.length} languages — try STT, TTS, and interactive conversations
               </p>
             </div>
           </div>
@@ -516,7 +565,19 @@ export default function MultilingualDemoPage() {
           </Badge>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* API fallback warning */}
+        {apiError && (
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{apiError}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList>
             <TabsTrigger value="languages">
               <Globe className="h-4 w-4 mr-2" />
@@ -553,7 +614,7 @@ export default function MultilingualDemoPage() {
                     variant="secondary"
                     size="sm"
                     className="bg-white/20 text-white hover:bg-white/30 border-0"
-                    onClick={() => setActiveTab("demo")}
+                    onClick={() => { setActiveTab("demo"); trackInteraction("/multilingual-demo", "try_demo", selectedLang.name); }}
                   >
                     Try Demo
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -569,7 +630,7 @@ export default function MultilingualDemoPage() {
                   key={lang.code}
                   lang={lang}
                   isSelected={selectedLang.code === lang.code}
-                  onSelect={() => setSelectedLang(lang)}
+                  onSelect={() => handleSelectLang(lang)}
                   onPlay={handlePlaySample}
                   isPlaying={playingText !== null}
                 />
@@ -598,7 +659,7 @@ export default function MultilingualDemoPage() {
                     variant="secondary"
                     size="sm"
                     className="bg-white/20 text-white hover:bg-white/30 border-0"
-                    onClick={() => setActiveTab("languages")}
+                    onClick={() => handleTabChange("languages")}
                   >
                     <Globe className="h-4 w-4 mr-2" />
                     Change
@@ -614,6 +675,8 @@ export default function MultilingualDemoPage() {
                   key={scenario.id}
                   scenario={scenario}
                   selectedLang={selectedLang}
+                  onStartDemo={() => handleStartDemo(scenario.id)}
+                  onComplete={() => handleCompleteDemo(scenario.id)}
                 />
               ))}
             </div>

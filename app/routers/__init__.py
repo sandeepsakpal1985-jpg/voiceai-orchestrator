@@ -11,6 +11,7 @@ from .sip import router as sip_router
 from .runtime import router as runtime_router
 from .voice_profiles import router as voice_profiles_router
 from .monitoring import router as monitoring_router
+from .languages import router as languages_router
 
 __all__ = [
     "health_router",
@@ -26,4 +27,5 @@ __all__ = [
     "runtime_router",
     "voice_profiles_router",
     "monitoring_router",
+    "languages_router",
 ]

@@ -63,7 +63,61 @@ vi.stubGlobal("WebSocket", MockWebSocket);
 const mockSpeak = vi.fn();
 const mockCancel = vi.fn();
 const mockGetVoices = vi.fn().mockReturnValue([]);
-const mockUtterance = vi.fn();
+const mockUtterance = vi.fn();  // ── Mock fetch for /api/languages (page now fetches languages dynamically) ──
+  const mockLanguagesResponse = {
+  languages: [
+    {
+      code: "en", name: "English", native: "English", flag: "🇺🇸",
+      voice: "en-US-Wavenet-D", sttProviders: ["Whisper", "Deepgram"],
+      llmProviders: ["Ollama", "OpenAI"], ttsProviders: ["Kokoro", "ElevenLabs"],
+      rtl: false,
+      samples: ["Hello! Welcome to VoiceAI.", "How can I help you today?"],
+    },
+    {
+      code: "hi", name: "Hindi", native: "हिन्दी", flag: "🇮🇳",
+      voice: "hi-IN-Wavenet-A", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["Kokoro"], rtl: false,
+      samples: ["नमस्ते!", "वॉइसएआई में आपका स्वागत है।"],
+    },
+    {
+      code: "es", name: "Spanish", native: "Español", flag: "🇪🇸",
+      voice: "es-ES-Wavenet-B", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["Kokoro"], rtl: false,
+      samples: ["¡Hola!", "Bienvenido a VoiceAI."],
+    },
+    {
+      code: "fr", name: "French", native: "Français", flag: "🇫🇷",
+      voice: "fr-FR-Wavenet-C", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["Kokoro"], rtl: false,
+      samples: ["Bonjour!", "Bienvenue chez VoiceAI."],
+    },
+    {
+      code: "de", name: "German", native: "Deutsch", flag: "🇩🇪",
+      voice: "de-DE-Wavenet-A", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["Kokoro"], rtl: false,
+      samples: ["Hallo!", "Willkommen bei VoiceAI."],
+    },
+    {
+      code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵",
+      voice: "ja-JP-Wavenet-C", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["Kokoro"], rtl: false,
+      samples: ["こんにちは！", "VoiceAIへようこそ。"],
+    },
+    {
+      code: "zh", name: "Chinese", native: "中文", flag: "🇨🇳",
+      voice: "zh-CN-Wavenet-A", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["Kokoro"], rtl: false,
+      samples: ["你好！", "欢迎来到VoiceAI。"],
+    },
+    {
+      code: "ar", name: "Arabic", native: "العربية", flag: "🇦🇪",
+      voice: "ar-XA-Wavenet-A", sttProviders: ["Whisper"],
+      llmProviders: ["Ollama"], ttsProviders: ["ElevenLabs"], rtl: true,
+      samples: ["مرحباً!", "أهلاً بك في VoiceAI."],
+    },
+  ],
+  total: 8,
+};
 
 beforeEach(() => {
   Object.defineProperty(window, "speechSynthesis", {
@@ -83,6 +137,12 @@ beforeEach(() => {
     configurable: true,
   });
   vi.stubGlobal("SpeechSynthesisUtterance", mockUtterance);
+
+  // Mock fetch to return languages from API
+  globalThis.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve(mockLanguagesResponse),
+  });
 });
 
 afterEach(() => {
@@ -123,8 +183,8 @@ describe("Multilingual Demo Page", () => {
     const MultilingualDemoPage = (await import("@/app/(dashboard)/multilingual-demo/page")).default;
     render(<MultilingualDemoPage />);
 
-    // Verify English card is visible — appears in card title + banner, use getAllByText
-    const englishElements = screen.getAllByText("English");
+    // Wait for fetch to resolve and languages to render
+    const englishElements = await screen.findAllByText("English");
     expect(englishElements.length).toBeGreaterThanOrEqual(1);
 
     // Verify multiple languages are visible using native names (unique in the DOM)
@@ -138,13 +198,12 @@ describe("Multilingual Demo Page", () => {
     const MultilingualDemoPage = (await import("@/app/(dashboard)/multilingual-demo/page")).default;
     render(<MultilingualDemoPage />);
 
-    // The gradient banner displays "English (English)" — use AllBy to handle the fact
-    // that "English" also appears in the LanguageCard header
-    const englishElements = screen.getAllByText(/English/);
+    // Wait for fetch to resolve and languages to render
+    const englishElements = await screen.findAllByText(/English/);
     expect(englishElements.length).toBeGreaterThanOrEqual(1);
 
     // Active badge appears on the selected language
-    const activeBadges = screen.getAllByText("Active");
+    const activeBadges = await screen.findAllByText("Active");
     expect(activeBadges.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -230,8 +289,8 @@ describe("Multilingual Demo Page", () => {
     const MultilingualDemoPage = (await import("@/app/(dashboard)/multilingual-demo/page")).default;
     render(<MultilingualDemoPage />);
 
-    // Find play buttons on language cards using getAllByLabelText
-    const playButtons = screen.getAllByLabelText("Play sample");
+    // Wait for fetch to resolve and language cards to render
+    const playButtons = await screen.findAllByLabelText("Play sample");
     expect(playButtons.length).toBeGreaterThanOrEqual(1);
 
     // Click play on first language card
