@@ -300,6 +300,41 @@ async def prometheus_metrics():
     except Exception:
         pass
 
+    # Audio cache stats
+    try:
+        from app.services.audio_cache import get_audio_cache_service
+        cache = get_audio_cache_service()
+        if cache._initialized:
+            stats = cache.get_stats()
+            lines.extend([
+                "",
+                "# HELP voiceai_audio_cache_hits Total audio cache hits",
+                "# TYPE voiceai_audio_cache_hits counter",
+                f"voiceai_audio_cache_hits {stats['hits']}",
+                "",
+                "# HELP voiceai_audio_cache_misses Total audio cache misses",
+                "# TYPE voiceai_audio_cache_misses counter",
+                f"voiceai_audio_cache_misses {stats['misses']}",
+                "",
+                "# HELP voiceai_audio_cache_hit_rate Hit rate percentage",
+                "# TYPE voiceai_audio_cache_hit_rate gauge",
+                f"voiceai_audio_cache_hit_rate {stats['hit_rate_percent']}",
+                "",
+                "# HELP voiceai_audio_cache_stores Total cache store operations",
+                "# TYPE voiceai_audio_cache_stores counter",
+                f"voiceai_audio_cache_stores {stats['stores']}",
+                "",
+                "# HELP voiceai_audio_cache_memory_entries Current in-memory cache entries",
+                "# TYPE voiceai_audio_cache_memory_entries gauge",
+                f"voiceai_audio_cache_memory_entries {stats['memory_cache_size']}",
+                "",
+                "# HELP voiceai_audio_cache_warmed Number of warmed phrases",
+                "# TYPE voiceai_audio_cache_warmed gauge",
+                f"voiceai_audio_cache_warmed {stats['warmed_entries']}",
+            ])
+    except Exception:
+        pass
+
     lines.append("")
     return "\n".join(lines)
 

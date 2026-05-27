@@ -251,7 +251,10 @@ class VoicePipeline:
         voice_id: str | None = None,
         language: str | None = None,
     ) -> bytes:
-        """Synthesize text to speech audio.
+        """Synthesize text to speech audio with audio cache acceleration.
+
+        Checks the audio cache first for instant playback of repeated phrases.
+        On cache miss, synthesizes via TTS provider and stores result in cache.
 
         Args:
             text: Text to synthesize
@@ -261,13 +264,39 @@ class VoicePipeline:
         Returns:
             Audio bytes
         """
+        voice_id = voice_id or settings.DEFAULT_VOICE_ID
+        language = language or settings.DEFAULT_LANGUAGE
+
+        # Check audio cache first (accelerates repeated phrases)
+        cache_lookup = None
+        if settings.AUDIO_CACHE_ENABLED:
+            try:
+                from app.services.audio_cache import get_audio_cache_service
+                cache = get_audio_cache_service()
+                if cache.is_initialized:
+                    cache_lookup = cache
+                    cached = await cache.get(text, voice_id=voice_id, language=language)
+                    if cached is not None:
+                        return cached
+            except Exception:
+                pass  # Cache miss or error — fall through to synthesis
+
+        # Synthesize via TTS provider
         audio = await self.tts.synthesize(
             text=text,
-            voice_id=voice_id or settings.DEFAULT_VOICE_ID,
-            language=language or settings.DEFAULT_LANGUAGE,
+            voice_id=voice_id,
+            language=language,
             speaking_rate=settings.DEFAULT_SPEAKING_RATE,
             pitch=settings.DEFAULT_PITCH,
         )
+
+        # Store in cache for future requests
+        if cache_lookup is not None and audio and len(audio) > 100:
+            try:
+                await cache_lookup.set(text, audio, voice_id=voice_id, language=language)
+            except Exception:
+                pass
+
         return audio
 
     def _build_messages(

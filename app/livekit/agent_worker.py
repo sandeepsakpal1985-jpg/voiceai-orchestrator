@@ -1,33 +1,49 @@
 """
-LiveKit Agent Worker — Runs the voice pipeline inside a LiveKit room.
+⚠️⚠️⚠️  DEPRECATED MODULE  ⚠️⚠️⚠️
 
-The agent worker connects to a LiveKit room, receives audio from
-the participant, processes it through the STT→LLM→TTS pipeline,
-and publishes the response audio back to the room.
+LiveKit Agent Worker — Legacy manual audio processing in a LiveKit room.
 
-This is the core realtime voice loop for the platform.
+**DO NOT USE for new development.** Use `voice_agent.py` instead.
+
+The production VoiceAgent (app.livekit.voice_agent) uses:
+    - livekit.agents.voice.AgentSession for STT→LLM→TTS pipeline
+    - LiveKit's built-in turn detection, interruption handling
+    - Audio cache integration via TTS adapter
+    - Adaptive modules (state engine, emotion tracking, barge-in)
+    - MCP tool calling (CRM, RAG, external servers)
+
+This legacy worker manually buffers audio, runs the old pipeline,
+and publishes responses — duplicating what LiveKit's AgentSession
+handles natively. It has no adaptive features, no tool integration,
+and no audio cache.
+
+Migration path:
+    from app.livekit.voice_agent import run_worker
+    run_worker()
 """
 
 import asyncio
 import logging
-import time
 from typing import Any
 
 from app.config import settings
 from app.voice.pipeline import get_voice_pipeline
+from app.livekit.voice_agent import VoiceAgent
 
 logger = logging.getLogger("voiceai.livekit.agent_worker")
 
 
 class LiveKitAgentWorker:
-    """Voice agent worker that processes audio in a LiveKit room.
+    """Legacy voice agent worker — manual audio handling in a LiveKit room.
 
-    Connects to a LiveKit room, subscribes to participant audio tracks,
-    runs the STT→LLM→TTS pipeline, and publishes synthesized speech back.
-
-    Usage:
-        worker = LiveKitAgentWorker()
-        await worker.run(room_name="voiceai-abc123", participant_identity="user-1")
+    ⚠️  DEPRECATED: Use VoiceAgent (voice_agent.py) instead.
+    
+    This class bridges the old custom pipeline into LiveKit rooms.
+    Prefer the LiveKit Agents framework for new deployments:
+        from app.livekit import VoiceAgent, run_voice_agent_worker
+    
+    The VoiceAgent uses AgentSession which handles STT→LLM→TTS,
+    turn detection, barge-in, and interruption management natively.
     """
 
     def __init__(self):
@@ -35,6 +51,7 @@ class LiveKitAgentWorker:
         self._running = False
         self._conversation_id: str | None = None
         self._room_name: str | None = None
+        self._room: Any = None
 
     @property
     def is_running(self) -> bool:
@@ -50,13 +67,13 @@ class LiveKitAgentWorker:
         participant_identity: str,
         system_prompt: str | None = None,
     ) -> None:
-        """Run the agent in a LiveKit room.
+        """Run the legacy agent in a LiveKit room (manual audio handling).
 
-        This is the main entry point. It:
-        1. Connects to the LiveKit room
-        2. Subscribes to the participant's audio track
-        3. Processes audio through the voice pipeline
-        4. Publishes synthesized speech back to the room
+        ⚠️  DEPRECATED — Use VoiceAgent for production.
+        
+        Connects to a LiveKit room, subscribes to the participant's audio,
+        buffers audio frames, processes through the pipeline, and publishes
+        synthesized speech back to the room.
 
         Args:
             room_name: LiveKit room to join
@@ -66,15 +83,19 @@ class LiveKitAgentWorker:
         self._room_name = room_name
         self._running = True
 
+        logger.warning(
+            "Using legacy LiveKitAgentWorker (deprecated). "
+            "Use VoiceAgent for production: from app.livekit import VoiceAgent"
+        )
+
         try:
             from livekit.rtc import Room, RemoteTrackPublication, RemoteParticipant, TrackKind
 
-            # Connect to LiveKit
             room = Room()
             self._room = room
 
             logger.info(
-                "Agent connecting to LiveKit room '%s'...",
+                "Legacy agent connecting to LiveKit room '%s'...",
                 room_name,
             )
 
@@ -83,25 +104,18 @@ class LiveKitAgentWorker:
                 publication: RemoteTrackPublication,
                 participant: RemoteParticipant,
             ):
-                """Handle incoming audio tracks from the participant."""
                 if publication.kind != TrackKind.KIND_AUDIO:
                     return
                 if participant.identity != participant_identity:
                     return
-
                 logger.info(
-                    "Subscribing to audio from %s",
+                    "Legacy agent subscribing to audio from %s",
                     participant_identity,
                 )
                 asyncio.create_task(
-                    self._handle_audio_track(
-                        publication,
-                        participant,
-                        system_prompt,
-                    )
+                    self._handle_audio_track(publication, participant, system_prompt)
                 )
 
-            # Connect and join room
             await room.connect(
                 settings.LIVEKIT_URL,
                 settings.LIVEKIT_API_KEY,
@@ -110,25 +124,20 @@ class LiveKitAgentWorker:
             )
 
             logger.info(
-                "Agent connected to room '%s', listening for participant '%s'",
+                "Legacy agent connected to room '%s'",
                 room_name,
-                participant_identity,
             )
 
-            # Keep running until disconnected
             while self._running:
                 await asyncio.sleep(1)
 
         except ImportError:
-            logger.error(
-                "LiveKit Python SDK not installed. "
-                "Install with: pip install livekit"
-            )
+            logger.error("LiveKit Python SDK not installed. Install with: pip install livekit")
         except Exception as e:
-            logger.exception("LiveKit agent error: %s", e)
+            logger.exception("Legacy LiveKit agent error: %s", e)
         finally:
             self._running = False
-            logger.info("Agent disconnected from room '%s'", room_name)
+            logger.info("Legacy agent disconnected from room '%s'", room_name)
 
     async def _handle_audio_track(
         self,
@@ -136,13 +145,12 @@ class LiveKitAgentWorker:
         participant: Any,
         system_prompt: str | None,
     ) -> None:
-        """Process audio from a participant through the voice pipeline."""
+        """Process audio from a participant through the voice pipeline (legacy)."""
         try:
             import livekit as lk
 
             audio_stream = publication.subscribe()
 
-            # Create a conversation for this session
             from app.models.schemas import ConversationCreate
             from app.services.conversation import get_conversation_service
 
@@ -156,7 +164,6 @@ class LiveKitAgentWorker:
             )
             self._conversation_id = conv.id
 
-            # Buffer audio and process
             audio_buffer = bytearray()
             sample_rate = 16000
 
@@ -164,14 +171,11 @@ class LiveKitAgentWorker:
                 if not self._running:
                     break
 
-                # Collect audio data
                 if hasattr(frame, "data"):
                     audio_buffer.extend(frame.data.tobytes())
 
-                # Process when enough audio is buffered
-                if len(audio_buffer) >= sample_rate * 2:  # ~2 seconds
+                if len(audio_buffer) >= sample_rate * 2:
                     try:
-                        # Process through pipeline
                         result = await self._pipeline.process_audio(
                             audio_data=bytes(audio_buffer),
                             conversation_id=self._conversation_id,
@@ -179,36 +183,27 @@ class LiveKitAgentWorker:
                             system_prompt=system_prompt or None,
                         )
 
-                        # If there's a response, synthesize and publish
                         if result.get("response"):
                             audio = await self._pipeline.synthesize_response(
                                 text=result["response"],
                                 voice_id=settings.DEFAULT_VOICE_ID,
                                 language=settings.DEFAULT_LANGUAGE,
                             )
-                            # Publish synthesized audio back to room
                             if self._room:
-                                source = lk.AudioSource(
-                                    sample_rate=24000,
-                                    num_channels=1,
-                                )
-                                # Feed audio data to source
-                                # (simplified — real implementation uses proper buffering)
                                 logger.debug(
-                                    "Synthesized %d bytes of response audio",
+                                    "Synthesized %d bytes of response audio (legacy)",
                                     len(audio),
                                 )
 
                     except Exception as e:
-                        logger.warning("Pipeline error during LiveKit processing: %s", e)
+                        logger.warning("Legacy pipeline error: %s", e)
 
-                    # Reset buffer with overlap
                     audio_buffer.clear()
 
         except Exception as e:
-            logger.exception("Audio track handler error: %s", e)
+            logger.exception("Legacy audio track handler error: %s", e)
 
     def stop(self) -> None:
-        """Stop the agent worker."""
+        """Stop the legacy agent worker."""
         self._running = False
-        logger.info("Agent worker stopping")
+        logger.info("Legacy agent worker stopping")

@@ -4,6 +4,8 @@ Orchestrates embedding generation and vector store operations
 to enable semantic search across knowledge documents and conversation history.
 """
 
+import hashlib
+import json
 import logging
 import uuid
 from typing import Optional
@@ -20,7 +22,7 @@ class RAGService:
     """Retrieval-Augmented Generation service.
 
     Provides methods for indexing documents and searching
-    across them using semantic similarity.
+    across them using semantic similarity with Redis-backed cache.
     """
 
     def __init__(
@@ -28,11 +30,24 @@ class RAGService:
         vector_store: VectorStoreProvider | None = None,
         embeddings: EmbeddingProvider | None = None,
         collection_name: str = DEFAULT_COLLECTION,
+        use_semantic_cache: bool = True,
     ):
         self._vector_store = vector_store
         self._embeddings = embeddings
         self._collection_name = collection_name
         self._initialized = False
+        self._semantic_cache = None
+        self._use_semantic_cache = use_semantic_cache
+
+    async def _get_semantic_cache(self):
+        """Lazy-init the Redis-backed semantic cache."""
+        if self._semantic_cache is None and self._use_semantic_cache:
+            try:
+                from app.services.persistence import SemanticCache
+                self._semantic_cache = SemanticCache()
+            except Exception:
+                pass
+        return self._semantic_cache
 
     async def initialize(self) -> None:
         """Initialize the vector store collection."""
@@ -116,20 +131,26 @@ class RAGService:
         logger.info("Indexed %d chunks for document '%s'", len(chunks), document_id)
         return len(chunks)
 
+    # ── Semantic Cache (Redis-backed) ──
+
     async def search(
         self,
         query: str,
         top_k: int = 5,
         filter: dict | None = None,
         min_score: float = 0.0,
+        use_cache: bool = True,
     ) -> list[dict]:
         """Search the knowledge base for semantically relevant content.
+
+        Uses Redis-backed semantic cache to accelerate repeated queries.
 
         Args:
             query: Natural language query
             top_k: Maximum number of results
             filter: Optional metadata filter
             min_score: Minimum similarity score threshold
+            use_cache: Whether to check/save the Redis semantic cache
 
         Returns:
             List of result dicts with document, metadata, score
@@ -137,6 +158,23 @@ class RAGService:
         if not await self.is_available():
             logger.warning("RAG not available, returning empty results")
             return []
+
+        # Check semantic cache first
+        if use_cache:
+            try:
+                cache = await self._get_semantic_cache()
+                if cache:
+                    cache_key = hashlib.sha256(
+                        f"{query}:{top_k}:{min_score}".encode()
+                    ).hexdigest()
+                    cached = await cache.get(cache_key)
+                    if cached is not None:
+                        cached_results = json.loads(cached.decode("utf-8"))
+                        if isinstance(cached_results, list):
+                            logger.debug("RAG cache hit for query: %s", query[:50])
+                            return cached_results
+            except Exception:
+                pass
 
         query_embedding = await self._embeddings.embed(query)
         results = await self._vector_store.search(
@@ -149,6 +187,23 @@ class RAGService:
         # Filter by min_score
         if min_score > 0:
             results = [r for r in results if r.get("score", 0) <= min_score]
+
+        # Store in semantic cache
+        if use_cache and results:
+            try:
+                cache = await self._get_semantic_cache()
+                if cache:
+                    cache_key = hashlib.sha256(
+                        f"{query}:{top_k}:{min_score}".encode()
+                    ).hexdigest()
+                    await cache.set(
+                        cache_key,
+                        json.dumps(results, default=str).encode("utf-8"),
+                        ttl_sec=300,
+                    )
+                    logger.debug("RAG cached result for query: %s", query[:50])
+            except Exception:
+                pass
 
         return results
 

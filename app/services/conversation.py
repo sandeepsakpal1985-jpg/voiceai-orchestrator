@@ -144,7 +144,7 @@ class ConversationService:
         return len(expired_ids)
 
     def create(self, params: ConversationCreate) -> ConversationState:
-        """Create a new conversation."""
+        """Create a new conversation and optionally persist to Redis."""
         conv_id = str(uuid.uuid4())
         state = ConversationState(
             id=conv_id,
@@ -155,7 +155,35 @@ class ConversationService:
         )
         state.status = "in_progress"
         self._conversations[conv_id] = state
+
+        # Persist to Redis-backed store if available
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                asyncio.create_task(self._persist_conversation(state))
+        except RuntimeError:
+            pass  # No running event loop — skip Redis persistence
+        except Exception:
+            pass
+
         return state
+
+    async def _persist_conversation(self, state: ConversationState) -> None:
+        """Persist conversation to Redis-backed persistence store."""
+        try:
+            from app.services.persistence import get_persistence
+            store = await get_persistence()
+            await store.save_conversation(
+                state.id,
+                {
+                    "contact_phone": state.contact_phone,
+                    "contact_name": state.contact_name,
+                    "status": state.status,
+                    "started_at": state.started_at,
+                },
+            )
+        except Exception:
+            pass
 
     def get(self, conversation_id: str) -> ConversationState | None:
         """Get a conversation by ID."""
@@ -178,13 +206,30 @@ class ConversationService:
     def update_status(
         self, conversation_id: str, status: str
     ) -> None:
-        """Update conversation status."""
+        """Update conversation status and persist to Redis."""
         conv = self.get(conversation_id)
         if not conv:
             return
         conv.status = status
         if status in ("completed", "failed"):
             conv.ended_at = time.time()
+
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                asyncio.create_task(self._persist_status(conversation_id, status))
+        except RuntimeError:
+            pass  # No running event loop — skip Redis persistence
+        except Exception:
+            pass
+
+    async def _persist_status(self, conversation_id: str, status: str) -> None:
+        try:
+            from app.services.persistence import get_persistence
+            store = await get_persistence()
+            await store.update_conversation_status(conversation_id, status)
+        except Exception:
+            pass
 
     def update_sentiment(
         self, conversation_id: str, label: str, score: float

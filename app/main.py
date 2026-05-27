@@ -5,6 +5,7 @@ Provider-independent AI voice agent backend.
 Supports hot-swappable STT, LLM, and TTS providers.
 """
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -283,6 +284,27 @@ def register_tools():
     logger.info("Registered tools: %s", registry.list_tools())
 
 
+# ── Audio Cache Warm ────────────────────────────────────────────────
+
+
+async def _warm_audio_cache(cache) -> None:
+    """Warm the audio cache with common phrases (runs as background task).
+
+    Uses the currently active TTS provider to pre-synthesize common
+    phrases like greetings, confirmations, and FAQs.
+    """
+    try:
+        tts_provider = get_default_registry().get_tts(settings.TTS_PROVIDER)
+        warmed = await cache.warm(
+            tts_provider=tts_provider,
+            language=settings.DEFAULT_LANGUAGE,
+            voice_id=settings.AUDIO_CACHE_WARM_VOICE,
+        )
+        logger.info("Audio cache warm complete: %d phrases cached", warmed)
+    except Exception as e:
+        logger.warning("Audio cache warm skipped: %s", e)
+
+
 # ── App Lifespan ────────────────────────────────────────────────────
 
 
@@ -323,6 +345,23 @@ async def lifespan(app: FastAPI):
     conv_service = get_conversation_service()
     await conv_service.start_cleanup_task()
 
+    # Initialize audio cache (TTS output cache for latency reduction)
+    if settings.AUDIO_CACHE_ENABLED:
+        try:
+            from app.services.audio_cache import get_audio_cache_service
+            cache = get_audio_cache_service()
+            await cache.initialize()
+
+            # Warm cache with common phrases at startup (non-blocking background task)
+            if settings.AUDIO_CACHE_WARM:
+                asyncio.create_task(_warm_audio_cache(cache))
+
+            logger.info("Audio cache initialized (dir=%s, ttl=%ds, max_memory=%d)",
+                        settings.AUDIO_CACHE_DIR, settings.AUDIO_CACHE_TTL,
+                        settings.AUDIO_CACHE_MAX_MEMORY)
+        except Exception as e:
+            logger.warning("Failed to initialize audio cache: %s", e)
+
     logger.info("Startup complete. Listening on %s:%s", settings.HOST, settings.PORT)
     yield
 
@@ -342,6 +381,17 @@ async def lifespan(app: FastAPI):
                 logger.debug("Closed LLM provider: %s", llm_name)
         except Exception as e:
             logger.warning("Error closing LLM provider '%s': %s", llm_name, e)
+
+    # Close audio cache connections
+    if settings.AUDIO_CACHE_ENABLED:
+        try:
+            from app.services.audio_cache import get_audio_cache_service
+            cache = get_audio_cache_service()
+            if cache.is_initialized:
+                await cache.close()
+                logger.info("Audio cache closed")
+        except Exception as e:
+            logger.warning("Error closing audio cache: %s", e)
 
     reset_default_registry()
     logger.info("Shutdown complete.")
