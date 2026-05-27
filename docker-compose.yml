@@ -76,7 +76,7 @@ services:
 
   # ── LiveKit Server (Realtime Voice Transport) ─────────────────────
   livekit-server:
-    image: livekit/livekit-server:latest
+    image: livekit/livekit-server:v1.11.0
     container_name: voiceai-livekit
     restart: unless-stopped
     ports:
@@ -92,7 +92,7 @@ services:
     volumes:
       - ./livekit.yaml:/etc/livekit/config.yaml:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:7881/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:7880/"]
       interval: 15s
       timeout: 5s
       retries: 3

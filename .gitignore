@@ -36,6 +36,14 @@ audio/*.mp3
 audio/*.wav
 audio/*.ogg
 
+# Logs and temp files
+*.log
+backend.log
+dashboard/dashboard.log
+dashboard/progress.txt
+dashboard/status.txt
+structure.txt
+
 # Generated files
 *.egg-info/
 dist/
