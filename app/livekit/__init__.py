@@ -9,18 +9,17 @@ Architecture:
 
 Components:
     - room_manager.py: Room/session lifecycle management
-    - agent_worker.py: ⚠️ DEPRECATED — Legacy voice pipeline agent (manual audio handling)
     - voice_agent.py: ✅ PRODUCTION — LiveKit Agents v1.x VoiceAgent + AgentSession
     - adapters.py: Provider adapters (STT/TTS/LLM/VAD) wrapping our providers
     - audio_bridge.py: Audio transport between LiveKit and the voice pipeline
     - sip_dispatch.py: SIP trunk integration (PSTN → LiveKit)
+    - worker_server.py: Standalone FastAPI server for LiveKit worker management
 
 This package should be the ONLY realtime voice transport layer.
 The dashboard WebSocket server handles admin/analytics data only.
 """
 
 from .room_manager import LiveKitRoomManager, get_room_manager
-from .agent_worker import LiveKitAgentWorker
 from .audio_bridge import LiveKitAudioBridge
 from .sip_dispatch import (
     SipCallInfo,
@@ -47,8 +46,7 @@ __all__ = [
     # Room management
     "LiveKitRoomManager",
     "get_room_manager",
-    # Workers
-    "LiveKitAgentWorker",
+    # Workers (production: VoiceAgent, legacy agent_worker removed)
     "VoiceAgent",
     "get_voice_agent",
     "voice_agent_entrypoint",

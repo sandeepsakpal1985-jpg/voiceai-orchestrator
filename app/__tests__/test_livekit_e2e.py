@@ -354,3 +354,125 @@ class TestLiveKitErrorHandling:
         )
         # Should either succeed (with default name) or return validation error
         assert resp.status_code in (200, 400, 422)
+
+
+# ── Test: Worker Reconnection ────────────────────────────────────────
+
+
+@pytest.mark.livekit_e2e
+class TestLiveKitWorkerReconnection:
+    """Verify the worker server can handle reconnection scenarios.
+
+    These tests validate that:
+    1. The worker server FastAPI app can be instantiated
+    2. The worker server routes are properly configured
+    3. VoiceAgent can be created and stopped safely (idempotent)
+    4. Provider adapters load gracefully even with missing providers
+
+    Full WebRTC reconnection testing requires browser-level automation
+    (Playwright + LiveKit client SDK), but these tests verify the
+    server-side readiness for reconnection scenarios.
+    """
+
+    def test_worker_server_app_created(self):
+        """Worker server FastAPI app should be creatable."""
+        from app.livekit.worker_server import worker_app
+        assert worker_app.title == "VoiceAI LiveKit Worker"
+
+    def test_worker_server_routes(self):
+        """Worker server should expose expected routes."""
+        from app.livekit.worker_server import worker_app
+        routes = [r.path for r in worker_app.routes if hasattr(r, 'path')]
+        assert "/health" in routes
+        assert "/sessions/active" in routes
+        assert "/sessions/start" in routes
+
+    @pytest.mark.asyncio
+    async def test_voice_agent_stop_is_idempotent(self):
+        """VoiceAgent.stop() should be safe to call multiple times."""
+        from app.livekit.voice_agent import VoiceAgent
+
+        agent = VoiceAgent()
+        # Should not raise even with no session started
+        await agent.stop()
+        await agent.stop()  # Second call should also work
+
+    @pytest.mark.asyncio
+    async def test_voice_agent_close_is_idempotent(self):
+        """VoiceAgent.close() should be safe to call multiple times."""
+        from app.livekit.voice_agent import VoiceAgent
+
+        agent = VoiceAgent()
+        await agent.close()
+        await agent.close()  # Second call should also work
+
+    def test_load_provider_adapters_handles_missing_providers(self):
+        """Provider fallback should return None for missing providers."""
+        import os
+        from app.config import reload_settings
+
+        # Save original
+        orig_stt = os.environ.get("STT_PROVIDER", "")
+        orig_llm = os.environ.get("LLM_PROVIDER", "")
+        orig_tts = os.environ.get("TTS_PROVIDER", "")
+
+        try:
+            # Set all providers to nonexistent values
+            os.environ["STT_PROVIDER"] = "nonexistent_stt"
+            os.environ["LLM_PROVIDER"] = "nonexistent_llm"
+            os.environ["TTS_PROVIDER"] = "nonexistent_tts"
+            reload_settings()
+
+            from app.livekit.voice_agent import _load_provider_adapters
+
+            adapters = _load_provider_adapters()
+            # All adapters should be None due to missing providers
+            assert adapters["stt"] is None
+            assert adapters["llm"] is None
+            assert adapters["tts"] is None
+            assert adapters["vad"] is None
+            # Should not crash — all four keys must be present
+            assert set(adapters.keys()) == {"stt", "llm", "tts", "vad"}
+        finally:
+            # Restore originals
+            if orig_stt:
+                os.environ["STT_PROVIDER"] = orig_stt
+            else:
+                os.environ.pop("STT_PROVIDER", None)
+            if orig_llm:
+                os.environ["LLM_PROVIDER"] = orig_llm
+            else:
+                os.environ.pop("LLM_PROVIDER", None)
+            if orig_tts:
+                os.environ["TTS_PROVIDER"] = orig_tts
+            else:
+                os.environ.pop("TTS_PROVIDER", None)
+            reload_settings()
+
+    def test_load_provider_adapters_mixed_missing(self):
+        """Provider fallback should handle partial failures gracefully."""
+        import os
+        from app.config import reload_settings
+
+        # Save original
+        orig_llm = os.environ.get("LLM_PROVIDER", "")
+
+        try:
+            # Only LLM provider is missing — STT and TTS should still load
+            os.environ["LLM_PROVIDER"] = "nonexistent_llm"
+            reload_settings()
+
+            from app.livekit.voice_agent import _load_provider_adapters
+
+            adapters = _load_provider_adapters()
+            # LLM should be None, but STT and TTS should load
+            assert adapters["llm"] is None
+            # STT and TTS may or may not load depending on actual providers
+            # The key thing is we don't crash
+            assert set(adapters.keys()) == {"stt", "llm", "tts", "vad"}
+        finally:
+            if orig_llm:
+                os.environ["LLM_PROVIDER"] = orig_llm
+            else:
+                os.environ.pop("LLM_PROVIDER", None)
+            reload_settings()

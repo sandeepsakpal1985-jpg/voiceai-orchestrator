@@ -622,43 +622,54 @@ class TestLiveKitAudioBridge:
 
 
 # =============================================================================
-# LiveKit Agent Worker Tests
+# VoiceAgent Unit Tests
 # =============================================================================
 
 
-class TestLiveKitAgentWorker:
-    @pytest.fixture
-    def worker(self):
-        from app.livekit.agent_worker import LiveKitAgentWorker
-        return LiveKitAgentWorker()
+class TestVoiceAgent:
+    """Tests for the production VoiceAgent (replaces legacy LiveKitAgentWorker)."""
 
-    def test_initial_state(self, worker):
-        assert worker.is_running is False
-        assert worker.conversation_id is None
+    def test_voice_agent_singleton(self):
+        """get_voice_agent should return a VoiceAgent instance."""
+        from app.livekit.voice_agent import VoiceAgent, get_voice_agent
 
-    def test_stop(self, worker):
-        worker.stop()
-        assert worker.is_running is False
+        agent = get_voice_agent()
+        assert isinstance(agent, VoiceAgent)
+
+    def test_voice_agent_initial_state(self):
+        """VoiceAgent should start with no session or conversation."""
+        from app.livekit.voice_agent import VoiceAgent
+
+        agent = VoiceAgent()
+        assert agent._session is None
+        assert agent._conversation_id is None
+        assert agent._agent_instance is None
+
+    def test_load_provider_adapters_returns_dict(self):
+        """_load_provider_adapters should return all four adapter keys."""
+        from app.livekit.voice_agent import _load_provider_adapters
+
+        adapters = _load_provider_adapters()
+        assert "stt" in adapters
+        assert "tts" in adapters
+        assert "llm" in adapters
+        assert "vad" in adapters
 
     @pytest.mark.asyncio
-    async def test_run_import_error(self, worker):
-        """Should handle missing livekit package gracefully."""
-        with patch.dict('sys.modules', {'livekit.rtc': None}):
-            await worker.run(
-                room_name="test-room",
-                participant_identity="test-user",
-            )
-            assert worker.is_running is False
+    async def test_stop_without_session(self):
+        """stop() should not raise if no session was started."""
+        from app.livekit.voice_agent import VoiceAgent
+
+        agent = VoiceAgent()
+        await agent.stop()  # Should not raise
 
     @pytest.mark.asyncio
-    async def test_run_connection_error(self, worker):
-        """Should handle connection errors gracefully."""
-        with patch('builtins.__import__', side_effect=ImportError('no livekit')):
-            await worker.run(
-                room_name="test-room",
-                participant_identity="test-user",
-            )
-            assert worker.is_running is False
+    async def test_close_without_session(self):
+        """close() should not raise if no session was started."""
+        from app.livekit.voice_agent import VoiceAgent
+
+        agent = VoiceAgent()
+        await agent.close()  # Should not raise
 
 
 # =============================================================================

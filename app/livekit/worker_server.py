@@ -2,21 +2,22 @@
 LiveKit Agent Worker Server — Standalone entry point for LiveKit workers.
 
 This module provides a FastAPI app that runs alongside the main orchestrator
-to handle LiveKit agent worker functionality.
+to handle LiveKit agent worker functionality using the production VoiceAgent.
+
+The LiveKit worker (running via `cli.run_app()`) automatically picks up new
+jobs when a participant joins a room — the worker server just creates the
+room and returns session info for the dashboard.
 
 Run as a separate process:
     python -m app.livekit.worker_server
 """
 
-import json
 import logging
-import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.config import settings
-from app.livekit.agent_worker import LiveKitAgentWorker
 from app.livekit.room_manager import get_room_manager
 
 logger = logging.getLogger("voiceai.livekit.worker_server")
@@ -36,28 +37,21 @@ class StartSessionRequest(BaseModel):
 
 @worker_app.post("/sessions/start")
 async def start_session(req: StartSessionRequest):
-    """Start a new LiveKit agent session."""
+    """Create a LiveKit room for a new agent session.
+
+    The LiveKit worker (running via `cli.run_app()`) automatically
+    picks up new jobs when a participant joins the room.
+    """
     room_manager = get_room_manager()
     session = await room_manager.create_room(
         participant_identity=req.participant_identity,
         room_name=req.room_name,
     )
 
-    # Start agent worker in background
-    worker = LiveKitAgentWorker()
-    import asyncio
-    asyncio.create_task(
-        worker.run(
-            room_name=req.room_name,
-            participant_identity=req.participant_identity,
-            system_prompt=req.system_prompt,
-        )
-    )
-
     return {
         "session_id": session.session_id,
         "room_name": session.room_name,
-        "status": "started",
+        "status": "room_created",
     }
 
 
@@ -108,6 +102,7 @@ if __name__ == "__main__":
 
     port = settings.LIVEKIT_WORKER_PORT
     logger.info("Starting LiveKit worker server on port %d...", port)
+    logger.info("Using production VoiceAgent (LiveKit Agents v1.x)")
 
     uvicorn.run(
         "app.livekit.worker_server:worker_app",
