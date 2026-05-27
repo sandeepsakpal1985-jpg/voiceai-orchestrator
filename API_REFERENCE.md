@@ -1,717 +1,940 @@
 # VoiceAI Orchestrator — API Reference
 
-> **Base URL:** `http://localhost:8000`  
-> **Auth:** JWT Bearer token (`Authorization: Bearer <token>`)  
-> **Content-Type:** `application/json` (unless otherwise noted)
+> Complete curl-ready API documentation for all 87 routes.
+> Base URL: `http://localhost:8000`
 
 ---
 
 ## Table of Contents
 
 1. [System & Health](#1-system--health)
-2. [Voice Processing](#2-voice-processing)
-3. [WebSocket Voice](#3-websocket-voice)
+2. [Agents (CRUD + Social + Tools)](#2-agents)
+3. [Calls](#3-calls)
 4. [Conversations](#4-conversations)
-5. [Calls](#5-calls)
-6. [Agents](#6-agents)
-7. [Knowledge Base / RAG](#7-knowledge-base--rag)
-8. [SIP / Telephony](#8-sip--telephony)
-9. [Social Automation](#9-social-automation)
-10. [Voice Profiles](#10-voice-profiles)
-11. [Twilio Webhooks](#11-twilio-webhooks)
-12. [Monitoring & Metrics](#12-monitoring--metrics)
-13. [Runtime Status](#13-runtime-status)
+5. [Knowledge Base (RAG)](#5-knowledge-base)
+6. [Languages](#6-languages)
+7. [Monitoring & Metrics](#7-monitoring--metrics)
+8. [Providers](#8-providers)
+9. [Runtime Status](#9-runtime-status)
+10. [SIP / Telephony](#10-sip--telephony)
+11. [Social Automation](#11-social-automation)
+12. [Twilio Webhooks](#12-twilio-webhooks)
+13. [Voice Profiles](#13-voice-profiles)
+14. [Voice Processing (STT → LLM → TTS)](#14-voice-processing)
 
 ---
 
 ## 1. System & Health
 
-### `GET /health`
-Health check endpoint. Returns server status, version, uptime, and registered providers.
+### GET /health
+Basic health check — returns server status and version.
 
-**Response `200`:**
+```bash
+curl -s http://localhost:8000/health | jq .
+```
+
+**Response:** `200 OK`
 ```json
 {
   "status": "ok",
   "version": "0.1.0",
-  "uptime_seconds": 1234.5,
-  "providers": {
-    "stt": ["whisper", "deepgram", "assemblyai"],
-    "llm": ["ollama", "openai"],
-    "tts": ["kokoro", "elevenlabs"]
+  "timestamp": 1716500000.0
+}
+```
+
+### GET /health/liveness
+Kubernetes liveness probe — always returns 200 when alive.
+
+```bash
+curl -s http://localhost:8000/health/liveness
+```
+
+### GET /health/readiness
+Kubernetes readiness probe — returns 200 when ready to serve traffic.
+
+```bash
+curl -s http://localhost:8000/health/readiness
+```
+
+### GET /health/deep
+Deep health check — probes all dependencies (Postgres, ChromaDB, LiveKit, Ollama).
+
+```bash
+curl -s http://localhost:8000/health/deep | jq .
+```
+
+**Response:**
+```json
+{
+  "status": "degraded",
+  "services": {
+    "database": "ok",
+    "chromadb": "unavailable",
+    "livekit": "disabled",
+    "ollama": "ok"
+  },
+  "system": {
+    "memory": { "total_mb": 32000, "used_mb": 12000, "percent": 37.5 },
+    "disk":  { "total_gb": 200, "used_gb": 45, "percent": 22.5 }
   }
 }
 ```
 
-### `GET /providers`
+### GET /providers
 List all registered providers with capabilities.
 
-**Response `200`:**
-```json
-{
-  "stt_providers": [
-    { "name": "whisper", "supports_streaming": true, "is_available": true },
-    { "name": "deepgram", "supports_streaming": true, "is_available": true }
-  ],
-  "llm_providers": [...],
-  "tts_providers": [...],
-  "active_stt": "whisper",
-  "active_llm": "ollama",
-  "active_tts": "kokoro"
-}
+```bash
+curl -s http://localhost:8000/providers | jq .
 ```
 
-### `POST /providers/switch`
-Switch active providers at runtime without restarting.
+### POST /providers/switch
+Switch active providers at runtime without restart.
 
-**Request:**
-```json
-{
-  "stt": "deepgram",
-  "llm": "openai",
-  "tts": "elevenlabs"
-}
-```
-
-**Response `200`:**
-```json
-{
-  "message": "Providers updated",
-  "active_stt": "deepgram",
-  "active_llm": "openai",
-  "active_tts": "elevenlabs"
-}
+```bash
+curl -s -X POST http://localhost:8000/providers/switch \
+  -H "Content-Type: application/json" \
+  -d '{"stt": "whisper", "llm": "ollama", "tts": "kokoro"}' | jq .
 ```
 
 ---
 
-## 2. Voice Processing
+## 2. Agents
 
-### `POST /voice/transcribe`
-Transcribe base64-encoded audio to text.
+### GET /agents
+List all agents, optionally filtered.
 
-**Request:**
-```json
-{
-  "audio_base64": "UklGRiQAAABXQVZFZm10IBAAAAABAA...",
-  "language": "en"
-}
+```bash
+curl -s "http://localhost:8000/agents?active=true" | jq .
 ```
 
-**Response `200`:**
-```json
-{
-  "text": "Hello, this is a test recording.",
-  "provider": "whisper"
-}
+### POST /agents
+Create a new AI agent with provider bindings.
+
+```bash
+curl -s -X POST http://localhost:8000/agents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Sales Support Agent",
+    "system_prompt": "You are a friendly sales assistant...",
+    "language": "en",
+    "voice_id": "af_bella",
+    "stt_provider": "whisper",
+    "llm_provider": "ollama",
+    "tts_provider": "kokoro",
+    "metadata": {"department": "sales"}
+  }' | jq .
 ```
 
-### `POST /voice/complete`
-Send messages to the LLM for completion.
+### GET /agents/{agent_id}
+Get a single agent with tools and social accounts.
 
-**Request:**
-```json
-{
-  "messages": [
-    { "role": "system", "content": "You are a helpful assistant." },
-    { "role": "user", "content": "What is the weather like?" }
-  ],
-  "temperature": 0.7,
-  "max_tokens": 1024
-}
+```bash
+curl -s http://localhost:8000/agents/agent-123 | jq .
 ```
 
-**Response `200`:**
-```json
-{
-  "content": "I don't have real-time weather data, but you can check your local forecast.",
-  "provider": "ollama",
-  "model": "llama3.2"
-}
+### PUT /agents/{agent_id}
+Update an agent's configuration.
+
+```bash
+curl -s -X PUT http://localhost:8000/agents/agent-123 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated Agent Name", "language": "es"}' | jq .
 ```
 
-### `POST /voice/complete/stream`
-Streaming LLM completion via Server-Sent Events.
+### DELETE /agents/{agent_id}
+Delete an agent and all associated tools/social accounts.
 
-**Request:** Same as `/voice/complete`  
-**Response:** SSE stream with `chunk` and `done` events.
-
-```
-event: chunk
-data: I
-
-event: chunk
-data:  don't
-
-event: chunk
-data:  have
-
-event: done
-data:
+```bash
+curl -s -X DELETE http://localhost:8000/agents/agent-123 | jq .
 ```
 
-### `POST /voice/synthesize`
-Synthesize text to speech audio (returns base64-encoded WAV).
+### POST /agents/{agent_id}/activate
+Activate an agent (enables call/message reception).
 
-**Request:**
-```json
-{
-  "text": "Hello, how can I help you today?",
-  "voice_id": "kokoro-default",
-  "language": "en",
-  "speaking_rate": 1.0,
-  "pitch": 0.0
-}
+```bash
+curl -s -X POST http://localhost:8000/agents/agent-123/activate | jq .
 ```
 
-**Response `200`:**
-```json
-{
-  "audio_base64": "UklGRiQAAABXQVZFZm10IBAAAAABAA...",
-  "duration_seconds": 2.4,
-  "provider": "kokoro"
-}
+### POST /agents/{agent_id}/deactivate
+Deactivate an agent.
+
+```bash
+curl -s -X POST http://localhost:8000/agents/agent-123/deactivate | jq .
 ```
 
-### `POST /voice/process`
-Full pipeline: transcribe → detect intent → LLM response.
+### GET /agents/{agent_id}/tools
+List all tools configured for an agent.
 
-**Request:**
-```json
-{
-  "audio_base64": "UklGRiQAAABXQVZFZm10IBAAAAABAA...",
-  "conversation_id": null,
-  "language": "en",
-  "system_prompt": null
-}
+```bash
+curl -s http://localhost:8000/agents/agent-123/tools | jq .
 ```
 
-**Response `200`:**
-```json
-{
-  "transcription": "I'd like to check my account balance",
-  "response": "I'd be happy to help you check your account balance. Could you please verify your account number?",
-  "intent": { "name": "account_inquiry", "confidence": 0.89 },
-  "conversation_id": "conv_abc123",
-  "adaptive": {
-    "emotion": "neutral",
-    "trust": 5,
-    "patience": 5
-  },
-  "state": null,
-  "semantic": null
-}
+### POST /agents/{agent_id}/tools
+Add a tool to an agent (function call / webhook / workflow).
+
+```bash
+curl -s -X POST http://localhost:8000/agents/agent-123/tools \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "function",
+    "name": "lookup_order",
+    "description": "Look up order by ID",
+    "config": {"endpoint": "https://api.example.com/orders"}
+  }' | jq .
 ```
 
-### `POST /voice/intent`
-Detect intent from text.
+### DELETE /agents/{agent_id}/tools/{tool_id}
+Remove a tool from an agent.
 
-**Request:**
-```json
-{ "text": "I want to speak to a manager" }
+```bash
+curl -s -X DELETE http://localhost:8000/agents/agent-123/tools/tool-456 | jq .
 ```
 
-**Response `200`:**
-```json
-{
-  "intent": "escalation",
-  "confidence": 0.76,
-  "method": "llm",
-  "top_matches": ["escalation", "complaint", "support"]
-}
+### GET /agents/{agent_id}/social
+List social accounts connected to an agent.
+
+```bash
+curl -s http://localhost:8000/agents/agent-123/social | jq .
 ```
 
-### `GET /voice/livekit-token`
-Generate a LiveKit access token for browser clients.
+### POST /agents/{agent_id}/social
+Connect a social media account to an agent.
 
-**Query Params:**
-- `room_name` (optional): Specific room name (auto-generated if omitted)
+```bash
+curl -s -X POST http://localhost:8000/agents/agent-123/social \
+  -H "Content-Type: application/json" \
+  -d '{"platform": "facebook", "page_id": "123456", "access_token": "..."}' | jq .
+```
 
-**Response `200`:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "room_name": "voiceai-a1b2c3d4",
-  "url": "ws://localhost:7880"
-}
+### DELETE /agents/{agent_id}/social/{social_id}
+Disconnect a social account from an agent.
+
+```bash
+curl -s -X DELETE http://localhost:8000/agents/agent-123/social/social-789 | jq .
 ```
 
 ---
 
-## 3. WebSocket Voice
+## 3. Calls
 
-### `WS /ws/voice`
-Real-time voice chat with barge-in support and streaming transcription.
+### POST /calls
+Initiate a new AI voice call. Creates a conversation and generates initial greeting.
 
-**Protocol:**
+```bash
+curl -s -X POST http://localhost:8000/calls \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone_number": "+15551234567",
+    "agent_id": "agent-123",
+    "language": "en"
+  }' | jq .
+```
 
-| Direction | Type | Description |
-|-----------|------|-------------|
-| Client → | `binary` | Raw audio chunks (16kHz, 16-bit PCM) |
-| Client → | `{"type":"text","text":"..."}` | Text input fallback |
-| Client → | `{"type":"interrupt"}` | Explicit barge-in signal |
-| Client → | `{"type":"ping"}` | Keep-alive ping |
-| Client → | `{"type":"end_call"}` | End the conversation |
-| → Server | `{"type":"connected","conversation_id":"..."}` | Connection established |
-| → Server | `{"type":"transcription","text":"...","is_final":true}` | STT result |
-| → Server | `{"type":"response","text":"...","is_streaming":true}` | LLM chunk |
-| → Server | `{"type":"response_done"}` | LLM finished |
-| → Server | `{"type":"audio","base64":"..."}` | TTS audio chunk |
-| → Server | `{"type":"sentiment","emotion":"...","trust":5,"patience":5}` | Emotional state |
-| → Server | `{"type":"state","state":"...","transition_count":3}` | State engine update |
-| → Server | `{"type":"interrupt","message":"..."}` | Interrupt confirmation |
-| → Server | `{"type":"pong"}` | Pong response |
-| → Server | `{"type":"call_ended","summary":{...}}` | Call summary |
-| → Server | `{"type":"error","message":"..."}` | Error notification |
+### POST /calls/{conversation_id}/action
+Perform an action on an active call.
+
+```bash
+# Process speech input
+curl -s -X POST http://localhost:8000/calls/conv-123/action \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "process_input",
+    "data": {"text": "I need help with my order"}
+  }' | jq .
+
+# End call
+curl -s -X POST http://localhost:8000/calls/conv-123/action \
+  -H "Content-Type: application/json" \
+  -d '{"action": "end"}' | jq .
+
+# Pause/resume
+curl -s -X POST http://localhost:8000/calls/conv-123/action \
+  -H "Content-Type: application/json" \
+  -d '{"action": "pause"}' | jq .
+```
+
+### POST /calls/{conversation_id}/input
+Process text input (for testing or text-based channels).
+
+```bash
+curl -s -X POST http://localhost:8000/calls/conv-123/input \
+  -H "Content-Type: application/json" \
+  -d '{"text": "What are your business hours?", "language": "en"}' | jq .
+```
 
 ---
 
 ## 4. Conversations
 
-### `POST /conversations`
+### GET /conversations
+List all conversations, optionally filtered to active ones.
+
+```bash
+curl -s "http://localhost:8000/conversations?active_only=true" | jq .
+```
+
+### POST /conversations
 Create a new conversation.
 
-**Request:**
-```json
-{
-  "contact_phone": "+14155551234",
-  "contact_name": "John Doe",
-  "metadata": { "source": "web" }
-}
+```bash
+curl -s -X POST http://localhost:8000/conversations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contact_phone": "+15551234567",
+    "contact_name": "John Doe",
+    "metadata": {"source": "website"}
+  }' | jq .
 ```
 
-### `GET /conversations`
-List all conversations.
+### GET /conversations/{conversation_id}
+Get a conversation by ID.
 
-**Query Params:**
-- `active_only` (bool, default `false`)
+```bash
+curl -s http://localhost:8000/conversations/conv-123 | jq .
+```
 
-### `GET /conversations/{id}`
-Get a single conversation.
-
-### `POST /conversations/{id}/messages`
-Add a message to a conversation.
-
-### `GET /conversations/{id}/messages`
-Get recent messages.
-
-**Query Params:**
-- `limit` (int, default `10`)
-
-### `PATCH /conversations/{id}/status`
-Update conversation status.
-
-**Valid statuses:** `initializing`, `in_progress`, `paused`, `completed`, `failed`
-
-### `GET /conversations/{id}/summary`
-Generate a conversation summary.
-
-### `DELETE /conversations/{id}`
+### DELETE /conversations/{conversation_id}
 Delete a conversation.
 
----
-
-## 5. Calls
-
-### `POST /calls`
-Initiate a new AI voice call. Creates a conversation and generates an initial greeting.
-
-**Request:**
-```json
-{
-  "to": "+14155551234",
-  "from_": "+14155558888",
-  "contact_name": "Jane Smith",
-  "voice_id": "kokoro-default",
-  "language": "en",
-  "campaign_id": "camp_001",
-  "prompt": "You are calling about your recent support ticket.",
-  "metadata": {}
-}
+```bash
+curl -s -X DELETE http://localhost:8000/conversations/conv-123 | jq .
 ```
 
-### `POST /calls/{conversation_id}/action`
-Perform an action on an active call.
+### POST /conversations/{conversation_id}/messages
+Add a message to a conversation.
 
-**Actions:** `process_input`, `end`, `pause`, `resume`, `transfer`
-
-**Request (process_input):**
-```json
-{
-  "action": "process_input",
-  "user_input": "I need help with my order"
-}
+```bash
+curl -s -X POST http://localhost:8000/conversations/conv-123/messages \
+  -H "Content-Type: application/json" \
+  -d '{"role": "user", "content": "Hello!"}' | jq .
 ```
 
-### `POST /calls/{conversation_id}/input`
-Process a text input for an active call.
+### GET /conversations/{conversation_id}/messages
+Get recent messages from a conversation.
 
-**Query Params:** `text` (required)
+```bash
+curl -s "http://localhost:8000/conversations/conv-123/messages?limit=10" | jq .
+```
+
+### PATCH /conversations/{conversation_id}/status
+Update conversation status.
+
+```bash
+curl -s -X PATCH http://localhost:8000/conversations/conv-123/status \
+  -H "Content-Type: application/json" \
+  -d '{"status": "completed"}' | jq .
+```
+
+### GET /conversations/{conversation_id}/summary
+Get a summary of a conversation.
+
+```bash
+curl -s http://localhost:8000/conversations/conv-123/summary | jq .
+```
 
 ---
 
-## 6. Agents
+## 5. Knowledge Base
 
-### `GET /agents`
-List all AI agents.
+### GET /knowledge
+List all knowledge documents with optional filtering.
 
-**Query Params:**
-- `user_id` (optional): Filter by user
-- `active_only` (bool, default `false`)
-
-### `POST /agents`
-Create a new agent.
-
-**Request:**
-```json
-{
-  "name": "Support Agent Alpha",
-  "description": "Handles customer support inquiries",
-  "system_prompt": "You are a friendly support agent...",
-  "user_id": "user_001",
-  "language": "en-US",
-  "voice_id": "kokoro-default",
-  "stt_provider": "whisper",
-  "llm_provider": "ollama",
-  "tts_provider": "kokoro",
-  "temperature": 0.7,
-  "max_tokens": 1024,
-  "memory_enabled": true,
-  "memory_type": "conversation",
-  "tools_enabled": true
-}
+```bash
+curl -s "http://localhost:8000/knowledge?tag=support&page=1&per_page=20" | jq .
 ```
 
-### `GET /agents/{id}`
-Get agent with tools and social accounts.
+### POST /knowledge/upload
+Upload a document for indexing (PDF, DOCX, TXT, CSV).
 
-### `PUT /agents/{id}`
-Update an agent.
-
-### `DELETE /agents/{id}`
-Delete an agent.
-
-### Agent Tools
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/agents/{id}/tools` | GET | List tools |
-| `/agents/{id}/tools` | POST | Add tool |
-| `/agents/{id}/tools/{tool_id}` | DELETE | Remove tool |
-
-### Agent Social Accounts
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/agents/{id}/social` | GET | List social accounts |
-| `/agents/{id}/social` | POST | Connect social account |
-| `/agents/{id}/social/{social_id}` | DELETE | Disconnect social account |
-
-### Agent Activation
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/agents/{id}/activate` | POST | Activate agent |
-| `/agents/{id}/deactivate` | POST | Deactivate agent |
-
----
-
-## 7. Knowledge Base / RAG
-
-### `GET /knowledge`
-List all knowledge documents.
-
-**Query Params:**
-- `status` (optional): `indexed`, `processing`, `failed`
-- `search` (optional): Full-text search on document name
-
-### `GET /knowledge/{id}`
-Get a single document.
-
-### `POST /knowledge/upload`
-Upload a document (PDF, DOCX, TXT, CSV).
-
-**Request:** `multipart/form-data`
-- `file` (File, required)
-- `name` (string, optional)
-- `tags` (string, optional — comma-separated)
-
-### `POST /knowledge/index`
-Index plain text content directly.
-
-**Request:**
-```json
-{
-  "content": "Product documentation: Our API supports...",
-  "tags": ["docs", "product"]
-}
+```bash
+curl -s -X POST http://localhost:8000/knowledge/upload \
+  -F "file=@/path/to/document.pdf" \
+  -F "tags=support,frequently-asked" | jq .
 ```
 
-### `POST /knowledge/search`
-Semantic search across all indexed documents.
+### POST /knowledge/index
+Index plain text content directly (no file upload).
 
-**Request:**
-```json
-{
-  "query": "How do I reset my password?",
-  "top_k": 5,
-  "min_score": 0.0,
-  "filter": {}
-}
+```bash
+curl -s -X POST http://localhost:8000/knowledge/index \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Return Policy",
+    "content": "Our return policy allows returns within 30 days...",
+    "tags": ["policy", "returns"]
+  }' | jq .
 ```
 
-### `POST /knowledge/context`
-Build formatted context string for LLM prompts.
+### POST /knowledge/search
+Search the knowledge base using semantic (vector) search.
 
-**Query Params:**
-- `query` (string, required)
+```bash
+curl -s -X POST http://localhost:8000/knowledge/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is your return policy?", "top_k": 5}' | jq .
+```
 
-### `DELETE /knowledge/{id}`
-Delete a document and its vector index entries.
+### POST /knowledge/context
+Build a formatted context string from relevant knowledge for LLM prompts.
 
-### `POST /knowledge/{id}/reindex`
-Re-index a document.
+```bash
+curl -s -X POST http://localhost:8000/knowledge/context \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "shipping information",
+    "max_tokens": 2000
+  }' | jq .
+```
 
-### `GET /knowledge/rag/status`
+### GET /knowledge/rag/status
 Check RAG service availability and collection stats.
 
+```bash
+curl -s http://localhost:8000/knowledge/rag/status | jq .
+```
+
+### GET /knowledge/{document_id}
+Get a single document by ID.
+
+```bash
+curl -s http://localhost:8000/knowledge/doc-123 | jq .
+```
+
+### DELETE /knowledge/{document_id}
+Delete a document and its vector index entries.
+
+```bash
+curl -s -X DELETE http://localhost:8000/knowledge/doc-123 | jq .
+```
+
+### POST /knowledge/{document_id}/reindex
+Re-index a document (delete + re-embed all chunks).
+
+```bash
+curl -s -X POST http://localhost:8000/knowledge/doc-123/reindex | jq .
+```
+
 ---
 
-## 8. SIP / Telephony
+## 6. Languages
 
-### `GET /sip/calls`
-List active SIP calls.
+### GET /api/languages
+Get all supported languages with provider mappings.
 
-### `GET /sip/calls/{call_id}`
-Get a specific SIP call.
+```bash
+curl -s http://localhost:8000/api/languages | jq .
+```
 
-### `POST /sip/calls/{call_id}/end`
-End an active SIP call.
-
-### `GET /sip/config`
-Get SIP trunk configuration.
-
----
-
-## 9. Social Automation
-
-### `GET /social/connections`
-List all social connections.
-
-**Query Params:**
-- `platform` (optional): `instagram`, `facebook`, `whatsapp`
-- `status` (optional): `connected`, `disconnected`
-
-### `POST /social/connections`
-Connect a new social account.
-
-**Request:**
+**Response excerpt:**
 ```json
 {
-  "platform": "instagram",
-  "account_id": "business_account_123",
-  "account_name": "My Business",
-  "auto_reply": true,
-  "welcome_message": "Thanks for reaching out!"
+  "languages": [
+    {"code": "en", "name": "English", "stt": true, "llm": true, "tts": true},
+    {"code": "es", "name": "Spanish", "stt": true, "llm": true, "tts": true},
+    {"code": "fr", "name": "French", "stt": true, "llm": true, "tts": true},
+    {"code": "hi", "name": "Hindi", "stt": true, "llm": true, "tts": false}
+  ]
 }
 ```
 
-### Social Connection CRUD
+### GET /api/languages/{code}
+Get a single language by ISO code.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/social/connections/{id}` | GET | Get connection |
-| `/social/connections/{id}` | PUT | Update connection |
-| `/social/connections/{id}` | DELETE | Delete connection |
-
-### Auto-Reply
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/social/connections/{id}/auto-reply` | GET | Get auto-reply config |
-| `/social/connections/{id}/auto-reply` | PUT | Update auto-reply config |
-
-### Messages
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/social/connections/{id}/messages` | GET | List messages (query: `limit`, `unread_only`) |
-| `/social/connections/{id}/messages` | POST | Send message |
-| `/social/messages/inbox` | GET | Aggregated inbox (query: `limit`, `platform`) |
-
-### Platforms
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/social/platforms` | GET | List supported platforms |
-| `/social/sync/{connection_id}` | POST | Trigger manual sync |
-
----
-
-## 10. Voice Profiles
-
-### `GET /voice-profiles`
-List all voice profiles (system defaults + user-created clones).
-
-### `GET /voice-profiles/{id}`
-Get a single voice profile.
-
-### `POST /voice-profiles`
-Create a new voice profile with optional audio sample.
-
-**Request:** `multipart/form-data`
-- `name` (string, required)
-- `provider` (string, default: `openvoice`)
-- `language` (string, default: `en`)
-- `gender` (string, optional)
-- `description` (string, optional)
-- `speaking_rate` (float, optional)
-- `pitch` (float, optional)
-- `emotion` (string, optional)
-- `sample` (File, optional, max 10MB)
-
-### `PUT /voice-profiles/{id}`
-Update a voice profile.
-
-### `DELETE /voice-profiles/{id}`
-Delete a voice profile and its audio sample.
-
-### Voice Presets
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/voice-profiles/presets/emotions` | GET | List emotion presets |
-| `/voice-profiles/presets/providers` | GET | List TTS providers with capabilities |
-
----
-
-## 11. Twilio Webhooks
-
-All Twilio endpoints receive `POST` requests from Twilio's telephony infrastructure and return TwiML (`text/xml`).
-
-| Endpoint | Description |
-|----------|-------------|
-| `POST /twilio/incoming` | Incoming call handler — returns greeting TwiML with `<Gather>` |
-| `POST /twilio/gather` | Speech input handler — processes user speech through pipeline |
-| `POST /twilio/voice` | Fallback when `<Gather>` times out |
-| `POST /twilio/status` | Call status callback (completed, failed, etc.) |
-| `POST /twilio/outbound` | Generates TwiML for initiating outbound calls |
-
-**TwiML Example:**
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice">Hello! How can I help you today?</Say>
-  <Gather input="speech dtmf" timeout="5" speechTimeout="auto"
-          speechModel="phone_call" action="/twilio/gather" method="POST">
-    <Say>Please go ahead.</Say>
-  </Gather>
-  <Redirect method="POST">/twilio/voice</Redirect>
-</Response>
+```bash
+curl -s http://localhost:8000/api/languages/es | jq .
 ```
 
 ---
 
-## 12. Monitoring & Metrics
+## 7. Monitoring & Metrics
 
-### `GET /metrics`
+### GET /metrics
 Prometheus-formatted metrics endpoint.
 
-**Metrics exposed:**
-- `voiceai_uptime_seconds` — Application uptime
-- `voiceai_http_requests_total{method,path,status}` — Request counts
-- `voiceai_http_duration_ms{method,path}` — Cumulative duration
-- `voiceai_ws_connections_active` — Active WebSocket count
-- `voiceai_sip_calls_active` — Active SIP call count
-- `voiceai_twilio_calls_active` — Active Twilio call count
-- `voiceai_providers_registered{type,provider}` — Provider registrations
-- `voiceai_gpu_available` — GPU availability (1/0)
-
-### `GET /health/deep`
-Deep health check probing all dependencies.
-
-**Response `200` example:**
-```json
-{
-  "status": "healthy",
-  "uptime_seconds": 3600.0,
-  "version": "0.1.0",
-  "services": [
-    { "name": "postgres", "status": "healthy", "latency_ms": 2.3 },
-    { "name": "chromadb", "status": "healthy", "latency_ms": 1.1 },
-    { "name": "livekit", "status": "disabled" },
-    { "name": "ollama", "status": "healthy", "latency_ms": 45.0 }
-  ],
-  "system": {
-    "memory_rss_mb": 156.2,
-    "memory_percent": 3.5,
-    "system_memory_used_percent": 62.0,
-    "disk_used_percent": 45.0,
-    "disk_free_gb": 128.5,
-    "cpu_percent": 2.1
-  },
-  "gpu": { "available": false }
-}
+```bash
+curl -s http://localhost:8000/metrics
 ```
 
-### `GET /health/readiness`
-Kubernetes readiness probe.
+**Exposed metrics:**
+```
+voiceai_uptime_seconds{version="0.1.0"}
+voiceai_http_requests_total{method="GET",path="/health",status="200"}
+voiceai_http_duration_ms{method="GET",path="/health"}
+voiceai_ws_connections_active
+voiceai_sip_calls_active
+voiceai_twilio_calls_active
+voiceai_providers_registered{type="stt",provider="whisper"}
+voiceai_gpu_available{available="false"}
+```
 
-### `GET /health/liveness`
-Kubernetes liveness probe.
+### GET /logs/recent
+Get recent structured log entries from ring buffer.
 
-### `GET /logs/recent`
-Recent structured log entries from the ring buffer.
-
-**Query Params:**
-- `limit` (int, default `50`, max `200`)
+```bash
+curl -s "http://localhost:8000/logs/recent?limit=50" | jq .
+```
 
 ---
 
-## 13. Runtime Status
+## 8. Providers
 
-### `GET /runtime/livekit`
-LiveKit room status.
+### GET /providers
+List all registered providers with capabilities.
 
-### `GET /runtime/sip`
+```bash
+curl -s http://localhost:8000/providers | jq .
+```
+
+### POST /providers/switch
+Switch active providers at runtime.
+
+```bash
+curl -s -X POST http://localhost:8000/providers/switch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "stt": "whisper",
+    "llm": "openai",
+    "tts": "elevenlabs"
+  }' | jq .
+```
+
+---
+
+## 9. Runtime Status
+
+### GET /runtime/status
+Full aggregated runtime status (LiveKit + SIP + Providers combined).
+
+```bash
+curl -s http://localhost:8000/runtime/status | jq .
+```
+
+### GET /runtime/livekit
+LiveKit room status — active rooms, participants, connection info.
+
+```bash
+curl -s http://localhost:8000/runtime/livekit | jq .
+```
+
+### GET /runtime/providers
+Provider registration health — all registered STT/LLM/TTS providers.
+
+```bash
+curl -s http://localhost:8000/runtime/providers | jq .
+```
+
+### GET /runtime/sip
 Active SIP/PSTN call status.
 
-### `GET /runtime/providers`
-Provider registration health.
-
-### `GET /runtime/status`
-Aggregated runtime status (LiveKit + SIP + providers).
-
----
-
-## Error Codes
-
-| Code | Meaning |
-|------|---------|
-| `400` | Bad request — invalid input |
-| `401` | Unauthorized — missing or invalid JWT |
-| `404` | Resource not found |
-| `429` | Rate limit exceeded |
-| `500` | Internal server error |
-| `501` | Not implemented (e.g., stub provider) |
-
-**Error Response Format:**
-```json
-{
-  "detail": "STT provider 'deepgram' not available. Available: ['whisper']"
-}
+```bash
+curl -s http://localhost:8000/runtime/sip | jq .
 ```
 
 ---
 
-## Rate Limiting
+## 10. SIP / Telephony
 
-All API endpoints are rate-limited by IP/route using a token bucket algorithm (Redis-backed in production, in-memory fallback):
+### GET /sip/config
+Get current SIP trunk configuration.
 
-| Limit | Window | Scope |
-|-------|--------|-------|
-| 100 requests | 1 minute | Per-IP, per-route |
-| 10 requests | 1 minute | `/providers/switch` |
-| 20 requests | 1 minute | `/voice/process` |
+```bash
+curl -s http://localhost:8000/sip/config | jq .
+```
 
-Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+### GET /sip/calls
+List all active SIP calls.
+
+```bash
+curl -s http://localhost:8000/sip/calls | jq .
+```
+
+### GET /sip/calls/{call_id}
+Get a specific SIP call's details.
+
+```bash
+curl -s http://localhost:8000/sip/calls/sip-call-123 | jq .
+```
+
+### POST /sip/calls/{call_id}/end
+End an active SIP call.
+
+```bash
+curl -s -X POST http://localhost:8000/sip/calls/sip-call-123/end | jq .
+```
+
+---
+
+## 11. Social Automation
+
+### GET /social/platforms
+List all supported social platforms with status.
+
+```bash
+curl -s http://localhost:8000/social/platforms | jq .
+```
+
+### GET /social/connections
+List all social media connections with optional filtering.
+
+```bash
+curl -s "http://localhost:8000/social/connections?platform=facebook" | jq .
+```
+
+### POST /social/connections
+Connect a new social media account.
+
+```bash
+curl -s -X POST http://localhost:8000/social/connections \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "facebook",
+    "page_id": "123456",
+    "access_token": "EAA...",
+    "webhook_secret": "whsec_..."
+  }' | jq .
+```
+
+### GET /social/connections/{connection_id}
+Get a single social connection by ID.
+
+```bash
+curl -s http://localhost:8000/social/connections/conn-123 | jq .
+```
+
+### PUT /social/connections/{connection_id}
+Update a social connection's configuration.
+
+```bash
+curl -s -X PUT http://localhost:8000/social/connections/conn-123 \
+  -H "Content-Type: application/json" \
+  -d '{"auto_reply_enabled": true}' | jq .
+```
+
+### DELETE /social/connections/{connection_id}
+Disconnect and remove a social media account.
+
+```bash
+curl -s -X DELETE http://localhost:8000/social/connections/conn-123 | jq .
+```
+
+### GET /social/connections/{connection_id}/messages
+List recent messages from a social connection.
+
+```bash
+curl -s "http://localhost:8000/social/connections/conn-123/messages?limit=20" | jq .
+```
+
+### POST /social/connections/{connection_id}/messages
+Send a message through a social connection.
+
+```bash
+curl -s -X POST http://localhost:8000/social/connections/conn-123/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient_id": "user-456",
+    "text": "Hello! How can we help you today?"
+  }' | jq .
+```
+
+### GET /social/connections/{connection_id}/auto-reply
+Get auto-reply configuration.
+
+```bash
+curl -s http://localhost:8000/social/connections/conn-123/auto-reply | jq .
+```
+
+### PUT /social/connections/{connection_id}/auto-reply
+Update auto-reply settings.
+
+```bash
+curl -s -X PUT http://localhost:8000/social/connections/conn-123/auto-reply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": true,
+    "message": "Thanks for your message! We'll get back to you shortly.",
+    "keywords": ["help", "support", "question"]
+  }' | jq .
+```
+
+### POST /social/sync/{connection_id}
+Trigger a sync for a social connection.
+
+```bash
+curl -s -X POST http://localhost:8000/social/sync/conn-123 | jq .
+```
+
+### GET /social/messages/inbox
+Aggregated inbox across all connected social platforms.
+
+```bash
+curl -s "http://localhost:8000/social/messages/inbox?limit=50&unread_only=true" | jq .
+```
+
+---
+
+## 12. Twilio Webhooks
+
+### POST /twilio/incoming
+Handle incoming Twilio voice calls. Returns TwiML.
+
+```bash
+curl -s -X POST http://localhost:8000/twilio/incoming \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=CA123&From=%2B15551234567&To=%2B15557654321&CallStatus=ringing"
+```
+
+### POST /twilio/gather
+Handle gathered speech input from caller.
+
+```bash
+curl -s -X POST http://localhost:8000/twilio/gather \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=CA123&From=%2B15551234567&SpeechResult=I+need+help&Confidence=0.95"
+```
+
+### POST /twilio/voice
+Fallback handler when `<Gather>` times out.
+
+```bash
+curl -s -X POST http://localhost:8000/twilio/voice \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=CA123&From=%2B15551234567"
+```
+
+### POST /twilio/outbound
+Initiate an outbound call via Twilio. Returns TwiML.
+
+```bash
+curl -s -X POST http://localhost:8000/twilio/outbound \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "+15551234567",
+    "from": "+15557654321",
+    "agent_id": "agent-123"
+  }' | jq .
+```
+
+### POST /twilio/status
+Handle call status callbacks from Twilio.
+
+```bash
+curl -s -X POST http://localhost:8000/twilio/status \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "CallSid=CA123&CallStatus=completed&From=%2B15551234567&Duration=120"
+```
+
+---
+
+## 13. Voice Profiles
+
+### GET /voice-profiles
+List all voice profiles (system defaults + user-created).
+
+```bash
+curl -s http://localhost:8000/voice-profiles | jq .
+```
+
+### POST /voice-profiles
+Create a new voice profile with optional speaker sample for cloning.
+
+```bash
+curl -s -X POST http://localhost:8000/voice-profiles \
+  -F "name=My Cloned Voice" \
+  -F "provider=openvoice" \
+  -F "language=en" \
+  -F "gender=female" \
+  -F "description=Warm, friendly voice for customer support" \
+  -F "sample=@/path/to/speaker_sample.wav" | jq .
+```
+
+### GET /voice-profiles/presets/emotions
+List available emotion presets for TTS.
+
+```bash
+curl -s http://localhost:8000/voice-profiles/presets/emotions | jq .
+```
+
+### GET /voice-profiles/presets/providers
+List available TTS providers with capabilities.
+
+```bash
+curl -s http://localhost:8000/voice-profiles/presets/providers | jq .
+```
+
+### GET /voice-profiles/{profile_id}
+Get a single voice profile by ID.
+
+```bash
+curl -s http://localhost:8000/voice-profiles/profile-123 | jq .
+```
+
+### PUT /voice-profiles/{profile_id}
+Update an existing voice profile.
+
+```bash
+curl -s -X PUT http://localhost:8000/voice-profiles/profile-123 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated Name", "speaking_rate": 1.2}' | jq .
+```
+
+### DELETE /voice-profiles/{profile_id}
+Delete a voice profile and its audio sample.
+
+```bash
+curl -s -X DELETE http://localhost:8000/voice-profiles/profile-123 | jq .
+```
+
+---
+
+## 14. Voice Processing
+
+### POST /voice/transcribe
+Transcribe audio to text using configured STT provider.
+
+```bash
+# Base64-encoded audio
+curl -s -X POST http://localhost:8000/voice/transcribe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audio": "//uQxAAAAAANIAAAAAE...",
+    "language": "en",
+    "encoding": "wav"
+  }' | jq .
+```
+
+### POST /voice/process
+Full pipeline: STT → LLM → Intent analysis.
+
+```bash
+curl -s -X POST http://localhost:8000/voice/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audio": "//uQxAAAAAANIAAAAAE...",
+    "language": "en",
+    "conversation_id": "conv-123",
+    "system_prompt": "You are a helpful assistant..."
+  }' | jq .
+```
+
+**Response:**
+```json
+{
+  "transcription": "I need help with my order",
+  "response": "I'd be happy to help you with your order. Could you please provide your order number?",
+  "intent": {"name": "order_inquiry", "confidence": 0.92},
+  "conversation_id": "conv-123",
+  "adaptive": {
+    "emotion": "neutral",
+    "trust": 5,
+    "patience": 5
+  }
+}
+```
+
+### POST /voice/complete
+Send text through LLM completion only. Returns raw response text.
+
+```bash
+curl -s -X POST http://localhost:8000/voice/complete \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is your return policy?"}
+    ]
+  }'
+```
+
+### POST /voice/complete/stream
+Streaming LLM completion via SSE.
+
+```bash
+curl -s -N -X POST http://localhost:8000/voice/complete/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Tell me a story about AI."}
+    ]
+  }'
+```
+
+### POST /voice/synthesize
+Synthesize text to speech.
+
+```bash
+curl -s -X POST http://localhost:8000/voice/synthesize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello! Welcome to our support line. How can I help you today?",
+    "voice_id": "af_bella",
+    "language": "en",
+    "speaking_rate": 1.0,
+    "pitch": 0.0
+  }' --output output.wav
+```
+
+### POST /voice/intent
+Detect intent from text.
+
+```bash
+curl -s -X POST http://localhost:8000/voice/intent \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I want to cancel my subscription"}' | jq .
+```
+
+### GET /voice/livekit-token
+Generate a LiveKit access token for browser clients.
+
+```bash
+curl -s "http://localhost:8000/voice/livekit-token?room_name=my-room" | jq .
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "room_name": "voiceai-my-room",
+  "ws_url": "ws://localhost:7880"
+}
+```
+
+### WebSocket /ws/voice
+Real-time bidirectional voice WebSocket for browser voice chat.
+
+```
+ws://localhost:8000/ws/voice?token=<jwt-token>
+```
+
+---
+
+## Quick Reference: Common Patterns
+
+```bash
+# 1. Health check
+curl -s localhost:8000/health | jq .
+
+# 2. Create conversation + send message
+CONV_ID=$(curl -s -X POST localhost:8000/conversations \
+  -H "Content-Type: application/json" \
+  -d '{"contact_phone": "+15551234567", "contact_name": "Test"}' | jq -r '.id')
+
+curl -s -X POST "localhost:8000/conversations/$CONV_ID/messages" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "user", "content": "Hello!"}'
+
+curl -s "localhost:8000/conversations/$CONV_ID/messages" | jq .
+
+# 3. Process through LLM
+curl -s -X POST localhost:8000/voice/complete \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What services do you offer?"}]}' | jq -r '.choices[0].message.content'
+
+# 4. Synthesize speech
+curl -s -X POST localhost:8000/voice/synthesize \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Welcome to VoiceAI!", "language": "en"}' --output greeting.wav
+
+# 5. Deep health
+curl -s localhost:8000/health/deep | jq .
+```

@@ -2,6 +2,10 @@
 asyncio_mode = "auto"
 testpaths = ["app/__tests__"]
 python_files = ["test_*.py"]
+markers = [
+    "stress: Stress/load tests that require real provider backends (e.g. Ollama, LiveKit)",
+    "e2e: End-to-end tests that require external services (e.g. LiveKit server)",
+]
 
 [tool.coverage.run]
 source = ["app"]
