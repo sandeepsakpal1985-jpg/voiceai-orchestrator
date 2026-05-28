@@ -17,7 +17,7 @@ import logging
 import os
 from typing import Callable
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 

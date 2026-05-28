@@ -61,6 +61,7 @@ def get_usage(tenant_id: str) -> dict:
 # ── Plan Limits Configuration ──
 
 # Default plan limits when no subscription is found
+# Features are additive per tier — each tier includes all features from lower tiers
 DEFAULT_LIMITS = {
     "api_calls_per_month": 100,
     "call_minutes_per_month": 60,
@@ -70,13 +71,10 @@ DEFAULT_LIMITS = {
         "basic_analytics",
         "voice_chat",
         "text_processing",
-        "knowledge_base",
-        "agents",
-        "social_automation",
     ],
 }
 
-# Premium plan limits
+# Premium plan limits (business tier)
 PREMIUM_LIMITS = {
     "api_calls_per_month": 10000,
     "call_minutes_per_month": 1000,
@@ -84,15 +82,17 @@ PREMIUM_LIMITS = {
     "max_concurrent_calls": 10,
     "features": [
         "basic_analytics",
-        "advanced_analytics",
         "voice_chat",
         "text_processing",
-        "crm_integration",
         "custom_prompts",
         "knowledge_base",
+        "crm_integration",
         "team_members",
+        "advanced_analytics",
         "webhooks",
         "multilingual",
+        "agents",
+        "social_automation",
     ],
 }
 
@@ -104,15 +104,17 @@ ENTERPRISE_LIMITS = {
     "max_concurrent_calls": 50,
     "features": [
         "basic_analytics",
-        "advanced_analytics",
         "voice_chat",
         "text_processing",
-        "crm_integration",
         "custom_prompts",
         "knowledge_base",
+        "crm_integration",
         "team_members",
+        "advanced_analytics",
         "webhooks",
         "multilingual",
+        "agents",
+        "social_automation",
         "white_label",
         "api_access",
         "priority_support",
@@ -131,6 +133,7 @@ PLAN_LIMITS = {
             "voice_chat",
             "text_processing",
             "custom_prompts",
+            "knowledge_base",
         ],
     },
     "professional": {
@@ -140,13 +143,13 @@ PLAN_LIMITS = {
         "max_concurrent_calls": 5,
         "features": [
             "basic_analytics",
-            "advanced_analytics",
             "voice_chat",
             "text_processing",
-            "crm_integration",
             "custom_prompts",
             "knowledge_base",
+            "crm_integration",
             "team_members",
+            "advanced_analytics",
         ],
     },
     "business": PREMIUM_LIMITS,

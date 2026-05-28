@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { sendEmail, buildVerificationEmail } from "@/lib/email";
+import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
@@ -52,8 +54,40 @@ export async function POST(request: Request) {
       });
     }
 
+    // Send verification email (non-blocking — fire and forget)
+    try {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await prisma.verificationToken.create({
+        data: {
+          identifier: `verify:${user.id}`,
+          token,
+          expires: expiresAt,
+        },
+      });
+
+      const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
+      const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(user.email ?? "")}`;
+
+      const { html, text } = buildVerificationEmail({
+        userName: user.name ?? "",
+        verificationUrl,
+      });
+
+      await sendEmail({
+        to: user.email!,
+        subject: "Verify your VoiceAI email address",
+        html,
+        text,
+      });
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // Don't block registration — verification can be triggered later
+    }
+
     return NextResponse.json(
-      { message: "Account created successfully", userId: user.id },
+      { message: "Account created successfully. Please check your email to verify your account.", userId: user.id },
       { status: 201 }
     );
   } catch (error) {

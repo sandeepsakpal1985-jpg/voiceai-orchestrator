@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PhoneCall, Eye, EyeOff } from "lucide-react";
+import { PhoneCall, Eye, EyeOff, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,39 @@ import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
+
+  useEffect(() => {
+    if (searchParams.get("pendingVerification") === "true") {
+      setShowVerificationBanner(true);
+    }
+  }, [searchParams]);
+
+  const handleResendVerification = async () => {
+    if (!form.email) {
+      toast.error("Enter your email address first");
+      return;
+    }
+    try {
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Verification email sent!");
+      } else {
+        toast.error(data.error || "Failed to send verification");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +107,37 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Email verification reminder banner */}
+          {showVerificationBanner && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-4 space-y-2">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Verify your email
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    We sent a verification link to your email. Please verify before signing in.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                className="text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 underline underline-offset-2"
+              >
+                Resend verification email
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowVerificationBanner(false)}
+                className="text-xs text-amber-500 hover:text-amber-700 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -95,8 +156,8 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link
-                  href="#"
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  href="/forgot-password"
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
                 >
                   Forgot password?
                 </Link>
