@@ -207,7 +207,11 @@ class VoicePipeline:
             "intent": {"name": intent.intent, "confidence": intent.confidence},
             "conversation_id": conversation_id,
             "adaptive": {
-                "emotion": adaptive.customer_state.emotion.value if adaptive else "neutral",
+                "emotion": (
+    adaptive.customer_state.emotion.value
+    if hasattr(adaptive.customer_state.emotion, "value")
+    else str(adaptive.customer_state.emotion)
+	) if adaptive else "neutral",
                 "trust": adaptive.customer_state.trust if adaptive else 5,
                 "patience": adaptive.customer_state.patience if adaptive else 5,
             } if adaptive else None,

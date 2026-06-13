@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vasudeva Markets Terminal MVP</title>
+  <style>
+    :root {
+      --bg: #101318;
+      --panel: #171b22;
+      --panel-2: #1f2530;
+      --line: #303745;
+      --text: #eef2f7;
+      --muted: #9ba7b7;
+      --green: #30c781;
+      --red: #ef5d68;
+      --amber: #f0b84f;
+      --blue: #5e9cff;
+      --violet: #a78bfa;
+      --cyan: #58d5df;
+      --shadow: 0 16px 42px rgba(0, 0, 0, .28);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select {
+      font: inherit;
+      color: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px 1fr 340px;
+      grid-template-rows: 58px 1fr;
+      grid-template-areas:
+        "top top top"
+        "left main right";
+    }
+
+    header {
+      grid-area: top;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #12161d;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 750;
+      letter-spacing: .2px;
+    }
+
+    .mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      background: conic-gradient(from 220deg, var(--green), var(--cyan), var(--blue), var(--amber), var(--green));
+      box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset;
+    }
+
+    .top-actions, .tabs, .row, .score-row, .broker-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill, button, select, input {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 7px;
+      min-height: 34px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 10px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    button {
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--green);
+      border-color: transparent;
+      color: #07110d;
+      font-weight: 750;
+    }
+
+    button.ghost {
+      background: transparent;
+    }
+
+    button.icon {
+      width: 34px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+    }
+
+    aside, main {
+      min-width: 0;
+    }
+
+    .left {
+      grid-area: left;
+      border-right: 1px solid var(--line);
+      background: #11151b;
+      overflow: auto;
+    }
+
+    .right {
+      grid-area: right;
+      border-left: 1px solid var(--line);
+      background: #11151b;
+      overflow: auto;
+    }
+
+    main {
+      grid-area: main;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .section {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section h2, .panel h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    .watch {
+      display: grid;
+      gap: 7px;
+    }
+
+    .watch button {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 6px;
+      text-align: left;
+      background: transparent;
+    }
+
+    .watch button.active {
+      background: #223041;
+      border-color: #48617e;
+    }
+
+    .symbol {
+      font-weight: 800;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .warn { color: var(--amber); }
+    .info { color: var(--cyan); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(330px, .65fr);
+      gap: 14px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .chart-panel {
+      min-height: 420px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .price {
+      font-size: 30px;
+      font-weight: 850;
+      line-height: 1;
+      margin-top: 4px;
+    }
+
+    .chart {
+      height: 270px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #0d1117;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: #141922;
+      border-radius: 7px;
+      padding: 9px;
+      min-height: 64px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .metric .value {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .score {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .dial {
+      width: 96px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(var(--green) calc(var(--score) * 1%), #2a303b 0);
+      position: relative;
+    }
+
+    .dial:after {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      background: var(--panel);
+    }
+
+    .dial span {
+      position: relative;
+      z-index: 1;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .bar {
+      height: 9px;
+      background: #2a303b;
+      border-radius: 99px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      width: var(--w);
+      background: var(--c);
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 64px minmax(48px, 1fr) 28px;
+      gap: 7px;
+      margin: 8px 0;
+      color: var(--muted);
+      font-size: 12px;
+      align-items: center;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th, .table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .table th:first-child, .table td:first-child {
+      text-align: left;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .strategy {
+      display: grid;
+      gap: 8px;
+    }
+
+    .strategy button {
+      text-align: left;
+      background: #141922;
+    }
+
+    .strategy button.active {
+      border-color: var(--green);
+      background: #15261f;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 7px 9px;
+    }
+
+    .order-box {
+      display: grid;
+      gap: 10px;
+    }
+
+    .buy-sell {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .buy { background: #153526; border-color: #286848; color: var(--green); font-weight: 800; }
+    .sell { background: #3b1c23; border-color: #70313b; color: var(--red); font-weight: 800; }
+
+    .journal {
+      display: grid;
+      gap: 8px;
+    }
+
+    .journal-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #141922;
+    }
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .heat {
+      padding: 10px;
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,.08);
+      min-height: 58px;
+    }
+
+    .alert {
+      padding: 10px;
+      border-radius: 7px;
+      background: #1e2631;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .scanner {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .scan-card {
+      border: 1px solid var(--line);
+      background: #141922;
+      border-radius: 7px;
+      padding: 10px;
+      min-height: 118px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .scan-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      background: #263241;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .tag.green { color: var(--green); background: #153526; }
+    .tag.red { color: var(--red); background: #3b1c23; }
+    .tag.amber { color: var(--amber); background: #392d18; }
+
+    .pipeline {
+      display: grid;
+      gap: 8px;
+    }
+
+    .pipe-step {
+      display: grid;
+      grid-template-columns: 26px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #141922;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(48, 199, 129, .12);
+      margin: auto;
+    }
+
+    .dot.warn {
+      background: var(--amber);
+      box-shadow: 0 0 0 5px rgba(240, 184, 79, .12);
+    }
+
+    @media (max-width: 1180px) {
+      .app {
+        grid-template-columns: 220px 1fr;
+        grid-template-areas:
+          "top top"
+          "left main";
+      }
+      .right {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        display: block;
+      }
+      header {
+        position: static;
+        flex-wrap: wrap;
+        height: auto;
+        gap: 10px;
+        padding: 12px;
+      }
+      .left, .right {
+        display: block;
+        border: 0;
+      }
+      .watch {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .grid, .mini-grid {
+        grid-template-columns: 1fr;
+      }
+      .scanner {
+        grid-template-columns: 1fr;
+      }
+      .chart-head, .top-actions {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand"><div class="mark"></div><div>Vasudeva Markets Terminal</div></div>
+      <div class="top-actions">
+        <span class="pill">● Live mock feed</span>
+        <span class="pill" id="market-regime">Market: Risk-on</span>
+        <button class="ghost" id="refresh-btn" title="Refresh market simulation">↻</button>
+        <button class="primary" id="connect-btn">Connect Broker</button>
+      </div>
+    </header>
+
+    <aside class="left">
+      <section class="section">
+        <h2>Watchlist</h2>
+        <div class="watch" id="watchlist"></div>
+      </section>
+      <section class="section">
+        <h2>Strategy Templates</h2>
+        <div class="strategy" id="strategies"></div>
+      </section>
+      <section class="section">
+        <h2>Sector Heatmap</h2>
+        <div class="heatmap" id="heatmap"></div>
+      </section>
+    </aside>
+
+    <main>
+      <div class="grid">
+        <section class="panel chart-panel">
+          <div class="chart-head">
+            <div>
+              <div class="sub" id="stock-sector">NSE • Auto</div>
+              <div class="price" id="stock-title">TATAMOTORS</div>
+              <div><span id="stock-price">₹0.00</span> <span id="stock-change" class="pos">+0.00%</span></div>
+            </div>
+            <div class="tabs">
+              <button class="ghost">1D</button>
+              <button class="ghost">1W</button>
+              <button class="ghost">1M</button>
+              <button class="ghost">1Y</button>
+            </div>
+          </div>
+          <div class="chart"><canvas id="price-canvas"></canvas></div>
+          <div class="mini-grid" id="metrics"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Trade Confidence</h2>
+          <div class="score">
+            <div class="dial" id="score-dial" style="--score: 74"><span id="score-value">74</span></div>
+            <div>
+              <div id="score-label" class="pos" style="font-weight:800;font-size:18px;">Valid Setup</div>
+              <div class="sub" id="score-reason">Trend, sector and derivatives are aligned.</div>
+              <div id="score-breakdown"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid" style="margin-top:14px;">
+        <section class="panel">
+          <h2>F&O / Option Chain Intelligence</h2>
+          <table class="table">
+            <thead>
+              <tr><th>Signal</th><th>Value</th><th>Read</th></tr>
+            </thead>
+            <tbody id="fo-table"></tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h2>Risk Calculator</h2>
+          <div class="form-grid">
+            <label>Capital<input id="capital" type="number" value="250000"></label>
+            <label>Risk %<input id="riskpct" type="number" value="1" step="0.25"></label>
+            <label>Entry<input id="entry" type="number" value="0"></label>
+            <label>Stop<input id="stop" type="number" value="0"></label>
+          </div>
+          <div class="alert" id="risk-output" style="margin-top:10px;">Set entry and stop to calculate quantity.</div>
+        </section>
+      </div>
+
+      <section class="panel" style="margin-top:14px;">
+        <h2>Setup Scanner</h2>
+        <div class="scanner" id="scanner"></div>
+      </section>
+
+      <section class="panel" style="margin-top:14px;">
+        <h2>Build Pipeline</h2>
+        <div class="pipeline" id="pipeline"></div>
+      </section>
+    </main>
+
+    <aside class="right">
+      <section class="section">
+        <h2>Order Ticket</h2>
+        <div class="order-box">
+          <div class="broker-row"><span class="pill" id="broker-status">Broker: Not connected</span></div>
+          <div class="buy-sell">
+            <button class="buy" id="buy-btn">BUY</button>
+            <button class="sell" id="sell-btn">SELL</button>
+          </div>
+          <div class="form-grid">
+            <label>Qty<input id="qty" type="number" value="1"></label>
+            <label>Order<select id="order-type"><option>LIMIT</option><option>MARKET</option><option>SL</option></select></label>
+            <label>Price<input id="order-price" type="number" value="0"></label>
+            <label>Product<select><option>CNC</option><option>MIS</option><option>NRML</option></select></label>
+          </div>
+          <button class="primary" id="place-order">Place Mock Order</button>
+          <div class="alert">Execution is mocked in this MVP. The real build will route through broker APIs after compliance review.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Trade Journal</h2>
+        <div class="journal" id="journal"></div>
+      </section>
+
+      <section class="section">
+        <h2>Compliance Guardrails</h2>
+        <div class="alert">Analysis is decision support, not guaranteed advice. Auto-execution and public strategies require broker/exchange/legal review under SEBI algo rules.</div>
+      </section>
+
+      <section class="section">
+        <h2>API Integration Plan</h2>
+        <div class="pipeline" id="api-plan"></div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const stocks = [
+      { symbol: "TATAMOTORS", sector: "Auto", price: 986.4, change: 1.82, sectorMove: 1.18, indexMove: .62, oi: 7.6, pcr: 1.21, iv: 38, trend: 82, technical: 78, liquidity: 88, risk: 67 },
+      { symbol: "RELIANCE", sector: "Energy", price: 2914.2, change: -.42, sectorMove: -.16, indexMove: .62, oi: -2.1, pcr: .88, iv: 29, trend: 48, technical: 52, liquidity: 94, risk: 54 },
+      { symbol: "HDFCBANK", sector: "Banking", price: 1688.7, change: .68, sectorMove: .74, indexMove: .62, oi: 3.4, pcr: 1.05, iv: 24, trend: 66, technical: 69, liquidity: 96, risk: 72 },
+      { symbol: "INFY", sector: "IT", price: 1526.9, change: -1.12, sectorMove: -1.48, indexMove: .62, oi: 5.1, pcr: .72, iv: 32, trend: 39, technical: 44, liquidity: 86, risk: 46 },
+      { symbol: "LT", sector: "Infra", price: 3678.3, change: 1.04, sectorMove: .82, indexMove: .62, oi: 4.8, pcr: 1.14, iv: 27, trend: 76, technical: 73, liquidity: 82, risk: 70 }
+    ];
+
+    const strategies = [
+      { name: "Sector Momentum", desc: "Stock, sector and index trend aligned", boost: "sector" },
+      { name: "OI Long Buildup", desc: "Price up with futures OI expansion", boost: "fo" },
+      { name: "VWAP Pullback", desc: "Intraday trend continuation after VWAP retest", boost: "technical" },
+      { name: "Risk Defined Options", desc: "Use IV and OI support/resistance for spreads", boost: "options" }
+    ];
+
+    const sectors = [
+      ["Auto", 1.18], ["Banking", .74], ["Infra", .82], ["Energy", -.16], ["IT", -1.48], ["Pharma", .24]
+    ];
+
+    const pipeline = [
+      ["Market data", "Mock feed now; licensed NSE/BSE vendor feed later", "Ready"],
+      ["Analysis engine", "Rule-based scoring for stock, sector, index, F&O and risk", "Ready"],
+      ["Broker bridge", "Mock order ticket now; adapter layer for Zerodha/Upstox/Dhan", "Next"],
+      ["Compliance", "Manual execution first; algo IDs and approvals before automation", "Next"]
+    ];
+
+    const apiPlan = [
+      ["Data", "TrueData / Global Datafeeds / exchange feed"],
+      ["Broker", "OpenAlgo-style adapter with broker-specific auth"],
+      ["Mutual funds", "MFD/ARN or EOP route after legal review"],
+      ["Security", "Token vault, audit trail, rate limits"]
+    ];
+
+    let selected = stocks[0];
+    let selectedStrategy = strategies[0];
+    let journal = [];
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+    function fmt(n) { return n >= 0 ? "+" + n.toFixed(2) : n.toFixed(2); }
+    function cls(n) { return n >= 0 ? "pos" : "neg"; }
+
+    function confidence(stock) {
+      let score = 0;
+      score += stock.technical * .24;
+      score += stock.trend * .20;
+      score += clamp(50 + stock.sectorMove * 18, 0, 100) * .16;
+      score += clamp(50 + stock.indexMove * 18, 0, 100) * .10;
+      score += clamp(50 + stock.oi * 4, 0, 100) * .14;
+      score += clamp(stock.pcr * 55, 0, 100) * .08;
+      score += stock.liquidity * .05;
+      score += stock.risk * .03;
+      if (selectedStrategy.boost === "sector" && stock.sectorMove > .5) score += 4;
+      if (selectedStrategy.boost === "fo" && stock.oi > 3 && stock.change > 0) score += 5;
+      if (selectedStrategy.boost === "technical" && stock.technical > 70) score += 3;
+      if (selectedStrategy.boost === "options" && stock.pcr > 1 && stock.iv < 40) score += 3;
+      return Math.round(clamp(score, 0, 100));
+    }
+
+    function renderWatchlist() {
+      const box = document.getElementById("watchlist");
+      box.innerHTML = stocks.map(s => `
+        <button class="${s.symbol === selected.symbol ? "active" : ""}" data-symbol="${s.symbol}">
+          <span><span class="symbol">${s.symbol}</span><br><span class="sub">${s.sector} • OI ${fmt(s.oi)}%</span></span>
+          <span class="${cls(s.change)}">${fmt(s.change)}%</span>
+        </button>
+      `).join("");
+      box.querySelectorAll("button").forEach(btn => btn.onclick = () => {
+        selected = stocks.find(s => s.symbol === btn.dataset.symbol);
+        syncOrderDefaults();
+        render();
+      });
+    }
+
+    function renderStrategies() {
+      const box = document.getElementById("strategies");
+      box.innerHTML = strategies.map(s => `
+        <button class="${s.name === selectedStrategy.name ? "active" : ""}" data-name="${s.name}">
+          <b>${s.name}</b><br><span class="sub">${s.desc}</span>
+        </button>
+      `).join("");
+      box.querySelectorAll("button").forEach(btn => btn.onclick = () => {
+        selectedStrategy = strategies.find(s => s.name === btn.dataset.name);
+        render();
+      });
+    }
+
+    function renderHeatmap() {
+      document.getElementById("heatmap").innerHTML = sectors.map(([name, move]) => {
+        const alpha = clamp(Math.abs(move) / 2, .16, .78);
+        const bg = move >= 0 ? `rgba(48,199,129,${alpha})` : `rgba(239,93,104,${alpha})`;
+        return `<div class="heat" style="background:${bg}"><b>${name}</b><br><span>${fmt(move)}%</span></div>`;
+      }).join("");
+    }
+
+    function renderChart() {
+      const canvas = document.getElementById("price-canvas");
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+      const w = rect.width, h = rect.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = "#252c38";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, h * i / 5);
+        ctx.lineTo(w, h * i / 5);
+        ctx.stroke();
+      }
+      const bars = 56;
+      const bw = w / bars;
+      let base = selected.price / (1 + selected.change / 100);
+      let prev = base;
+      const candles = [];
+      for (let i = 0; i < bars; i++) {
+        const drift = selected.change / 100 / bars * selected.price;
+        const noise = (Math.sin(i * 1.7 + selected.symbol.length) + Math.cos(i * .55)) * selected.price * .0018;
+        const open = prev;
+        const close = open + drift + noise;
+        const high = Math.max(open, close) + selected.price * (.002 + (i % 5) * .0004);
+        const low = Math.min(open, close) - selected.price * (.002 + (i % 3) * .0005);
+        candles.push({ open, close, high, low });
+        prev = close;
+      }
+      const hi = Math.max(...candles.map(c => c.high));
+      const lo = Math.min(...candles.map(c => c.low));
+      const y = v => h - ((v - lo) / (hi - lo)) * (h - 24) - 12;
+      candles.forEach((c, i) => {
+        const x = i * bw + bw / 2;
+        const up = c.close >= c.open;
+        ctx.strokeStyle = up ? "#30c781" : "#ef5d68";
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.beginPath();
+        ctx.moveTo(x, y(c.high));
+        ctx.lineTo(x, y(c.low));
+        ctx.stroke();
+        const bodyY = Math.min(y(c.open), y(c.close));
+        const bodyH = Math.max(2, Math.abs(y(c.open) - y(c.close)));
+        ctx.fillRect(x - Math.max(2, bw * .28), bodyY, Math.max(4, bw * .56), bodyH);
+      });
+    }
+
+    function renderMetrics() {
+      const score = confidence(selected);
+      const metrics = [
+        ["Technical", selected.technical, selected.technical > 65 ? "pos" : "warn"],
+        ["Sector", fmt(selected.sectorMove) + "%", selected.sectorMove >= 0 ? "pos" : "neg"],
+        ["Index", fmt(selected.indexMove) + "%", selected.indexMove >= 0 ? "pos" : "neg"],
+        ["Liquidity", selected.liquidity, "info"]
+      ];
+      document.getElementById("metrics").innerHTML = metrics.map(m => `
+        <div class="metric"><div class="label">${m[0]}</div><div class="value ${m[2]}">${m[1]}</div></div>
+      `).join("");
+      document.getElementById("stock-title").textContent = selected.symbol;
+      document.getElementById("stock-sector").textContent = "NSE • " + selected.sector;
+      document.getElementById("stock-price").textContent = "₹" + selected.price.toFixed(2);
+      const ch = document.getElementById("stock-change");
+      ch.textContent = fmt(selected.change) + "%";
+      ch.className = cls(selected.change);
+      document.getElementById("score-dial").style.setProperty("--score", score);
+      document.getElementById("score-value").textContent = score;
+      const label = score >= 75 ? "High Conviction" : score >= 62 ? "Valid Setup" : score >= 50 ? "Watch Only" : "Avoid";
+      const labelClass = score >= 62 ? "pos" : score >= 50 ? "warn" : "neg";
+      document.getElementById("score-label").textContent = label;
+      document.getElementById("score-label").className = labelClass;
+      document.getElementById("score-reason").textContent = selectedStrategy.name + " selected. " + (
+        score >= 62 ? "Signals are sufficiently aligned for a planned trade." : "Wait for stronger confirmation before execution."
+      );
+      const rows = [
+        ["Stock TA", selected.technical, "#58d5df"],
+        ["Sector", clamp(50 + selected.sectorMove * 18, 0, 100), "#a78bfa"],
+        ["Index", clamp(50 + selected.indexMove * 18, 0, 100), "#5e9cff"],
+        ["F&O", clamp(50 + selected.oi * 4, 0, 100), "#f0b84f"],
+        ["Risk", selected.risk, "#30c781"]
+      ];
+      document.getElementById("score-breakdown").innerHTML = rows.map(([name, val, color]) => `
+        <div class="score-row"><span>${name}</span><span class="bar"><i style="--w:${val}%;--c:${color}"></i></span><b>${Math.round(val)}</b></div>
+      `).join("");
+    }
+
+    function renderFO() {
+      const rows = [
+        ["Futures OI", fmt(selected.oi) + "%", selected.oi > 3 && selected.change > 0 ? "Long buildup" : selected.oi > 3 ? "Short buildup risk" : "Neutral"],
+        ["PCR", selected.pcr.toFixed(2), selected.pcr > 1 ? "Put support visible" : "Call pressure visible"],
+        ["IV", selected.iv + "%", selected.iv > 35 ? "Premium rich" : "Normal volatility"],
+        ["Max Pain", "₹" + Math.round(selected.price * .99), "Nearby magnet"],
+        ["OI Support", "₹" + Math.round(selected.price * .97), "Watch breakdown"],
+        ["OI Resistance", "₹" + Math.round(selected.price * 1.03), "Watch breakout"]
+      ];
+      document.getElementById("fo-table").innerHTML = rows.map(r => `
+        <tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>
+      `).join("");
+    }
+
+    function scannerLabel(stock, score) {
+      if (score >= 75 && stock.change > 0 && stock.oi > 3) return ["Long Setup", "green"];
+      if (score >= 62 && stock.sectorMove > 0) return ["Watch Breakout", "amber"];
+      if (stock.change < 0 && stock.oi > 3) return ["Short Buildup Risk", "red"];
+      return ["Neutral", ""];
+    }
+
+    function renderScanner() {
+      const ranked = [...stocks]
+        .map(stock => ({ stock, score: confidence(stock) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6);
+      document.getElementById("scanner").innerHTML = ranked.map(({ stock, score }) => {
+        const [label, color] = scannerLabel(stock, score);
+        const why = [
+          stock.technical > 65 ? "TA aligned" : "TA mixed",
+          stock.sectorMove > 0 ? "sector supportive" : "sector weak",
+          stock.oi > 3 ? "OI expansion" : "OI neutral",
+          stock.pcr > 1 ? "put support" : "call pressure"
+        ].join(" • ");
+        return `
+          <button class="scan-card" data-symbol="${stock.symbol}">
+            <div class="scan-top">
+              <span><b>${stock.symbol}</b><br><span class="sub">${stock.sector} • Score ${score}</span></span>
+              <span class="tag ${color}">${label}</span>
+            </div>
+            <span class="sub">${why}</span>
+            <span class="${cls(stock.change)}">${fmt(stock.change)}% price • ${fmt(stock.oi)}% OI</span>
+          </button>
+        `;
+      }).join("");
+      document.querySelectorAll(".scan-card").forEach(btn => btn.onclick = () => {
+        selected = stocks.find(s => s.symbol === btn.dataset.symbol);
+        syncOrderDefaults();
+        render();
+      });
+    }
+
+    function renderPipeline() {
+      document.getElementById("pipeline").innerHTML = pipeline.map(([name, desc, status]) => `
+        <div class="pipe-step">
+          <span class="dot ${status === "Next" ? "warn" : ""}"></span>
+          <span><b>${name}</b><br><span class="sub">${desc}</span></span>
+          <span class="tag ${status === "Ready" ? "green" : "amber"}">${status}</span>
+        </div>
+      `).join("");
+      document.getElementById("api-plan").innerHTML = apiPlan.map(([name, desc]) => `
+        <div class="pipe-step">
+          <span class="dot warn"></span>
+          <span><b>${name}</b><br><span class="sub">${desc}</span></span>
+          <span class="tag amber">Planned</span>
+        </div>
+      `).join("");
+    }
+
+    function syncOrderDefaults() {
+      document.getElementById("entry").value = selected.price.toFixed(2);
+      document.getElementById("stop").value = (selected.price * .985).toFixed(2);
+      document.getElementById("order-price").value = selected.price.toFixed(2);
+      calculateRisk();
+    }
+
+    function calculateRisk() {
+      const capital = Number(document.getElementById("capital").value);
+      const riskpct = Number(document.getElementById("riskpct").value);
+      const entry = Number(document.getElementById("entry").value);
+      const stop = Number(document.getElementById("stop").value);
+      const riskPerShare = Math.abs(entry - stop);
+      const riskAmount = capital * riskpct / 100;
+      const qty = riskPerShare > 0 ? Math.floor(riskAmount / riskPerShare) : 0;
+      const out = document.getElementById("risk-output");
+      out.textContent = qty > 0
+        ? `Risk ₹${riskAmount.toFixed(0)}. Suggested quantity: ${qty}. Max loss near ₹${(qty * riskPerShare).toFixed(0)}.`
+        : "Set entry and stop to calculate quantity.";
+      document.getElementById("qty").value = Math.max(1, qty);
+    }
+
+    function renderJournal() {
+      const box = document.getElementById("journal");
+      box.innerHTML = journal.length ? journal.map(j => `
+        <div class="journal-item">
+          <span><b>${j.side} ${j.symbol}</b><br><span class="sub">${j.qty} @ ₹${j.price} • ${j.strategy}</span></span>
+          <span class="${j.side === "BUY" ? "pos" : "neg"}">${j.score}</span>
+        </div>
+      `).join("") : `<div class="alert">No trades yet. Mock orders will appear here.</div>`;
+    }
+
+    function place(side) {
+      const score = confidence(selected);
+      journal.unshift({
+        side,
+        symbol: selected.symbol,
+        qty: Number(document.getElementById("qty").value),
+        price: Number(document.getElementById("order-price").value).toFixed(2),
+        strategy: selectedStrategy.name,
+        score
+      });
+      renderJournal();
+    }
+
+    function mutateMarket() {
+      stocks.forEach(s => {
+        const delta = (Math.random() - .48) * .42;
+        s.change = clamp(s.change + delta, -4, 4);
+        s.price = Math.max(10, s.price * (1 + delta / 100));
+        s.technical = Math.round(clamp(s.technical + delta * 7, 10, 95));
+        s.oi = clamp(s.oi + (Math.random() - .5) * 1.8, -8, 12);
+      });
+      syncOrderDefaults();
+      render();
+    }
+
+    function render() {
+      renderWatchlist();
+      renderStrategies();
+      renderHeatmap();
+      renderMetrics();
+      renderFO();
+      renderScanner();
+      renderPipeline();
+      renderJournal();
+      requestAnimationFrame(renderChart);
+    }
+
+    document.getElementById("connect-btn").onclick = () => {
+      document.getElementById("broker-status").textContent = "Broker: Mock connected";
+      document.getElementById("connect-btn").textContent = "Broker Connected";
+    };
+    document.getElementById("refresh-btn").onclick = mutateMarket;
+    document.getElementById("buy-btn").onclick = () => place("BUY");
+    document.getElementById("sell-btn").onclick = () => place("SELL");
+    document.getElementById("place-order").onclick = () => place("BUY");
+    ["capital", "riskpct", "entry", "stop"].forEach(id => document.getElementById(id).addEventListener("input", calculateRisk));
+    window.addEventListener("resize", renderChart);
+    syncOrderDefaults();
+    render();
+    setInterval(mutateMarket, 7000);
+  </script>
+</body>
+</html>

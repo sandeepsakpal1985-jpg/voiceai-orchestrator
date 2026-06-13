@@ -1,0 +1,48 @@
+# ── Environment ──
+.env
+.env.local
+.env.*.local
+.env.prod
+
+# ── Dependencies ──
+node_modules/
+.pnpm-store/
+
+# ── Build Output ──
+dist/
+.next/
+build/
+*.tsbuildinfo
+
+# ── IDE / Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Logs ──
+*.log
+logs/
+
+# ── Test Output ──
+playwright-report/
+test-results/
+coverage/
+
+# ── Docker ──
+deploy/ssl/
+deploy/.env.prod
+
+# ── Temporary ──
+tmp/
+temp/
+*.tmp
+
+# ── OS Files ──
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

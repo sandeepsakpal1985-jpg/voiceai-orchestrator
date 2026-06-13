@@ -215,15 +215,25 @@ class AdaptiveConversationService:
     def customer_state(self) -> CustomerState:
         return self._customer_state
 
+
     @property
     def conversation_state(self) -> ConversationState:
         return self._conversation_state
 
     @conversation_state.setter
-    def conversation_state(self, value: ConversationState) -> None:
+    def conversation_state(self, value):
         prev = self._conversation_state
+
+        prev_name = prev.value if hasattr(prev, "value") else str(prev)
+        new_name = value.value if hasattr(value, "value") else str(value)
+
+        logger.debug(
+            "Conversation state: %s -> %s",
+            prev_name,
+            new_name
+        )
+
         self._conversation_state = value
-        logger.debug("Conversation state: %s → %s", prev.value, value.value)
 
     # ── Emotion Detection ─────────────────────────────────────────
 

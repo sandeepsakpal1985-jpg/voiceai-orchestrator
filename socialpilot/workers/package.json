@@ -1,0 +1,27 @@
+{
+  "name": "@socialpilot/workers",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start:comment": "node dist/workers/src/comment.worker.js",
+    "start:dm": "node dist/workers/src/dm.worker.js",
+    "start:reengagement": "node dist/workers/src/reengagement.worker.js",
+    "dev:comment": "tsx watch src/comment.worker.ts",
+    "dev:dm": "tsx watch src/dm.worker.ts",
+    "dev:reengagement": "tsx watch src/reengagement.worker.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@socialpilot/shared": "workspace:*",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.0",
+    "openai": "^4.47.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

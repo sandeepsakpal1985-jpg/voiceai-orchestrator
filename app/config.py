@@ -6,8 +6,10 @@ provider switching without code changes.
 """
 
 import os
+from dotenv import load_dotenv
 from typing import Literal
 
+load_dotenv()
 
 class Settings:
     """Application settings loaded from environment variables.
@@ -148,6 +150,11 @@ class Settings:
         self.WHISPER_MODEL_SIZE: str = os.getenv("WHISPER_MODEL_SIZE", "auto")
         self.XTTS_DEVICE: str = os.getenv("XTTS_DEVICE", "auto")
         self.EMBEDDING_DEVICE: str = os.getenv("EMBEDDING_DEVICE", "auto")
+
+        # ── Twilio (SMS + Voice) ──
+        self.TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
+        self.TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
+        self.TWILIO_PHONE_NUMBER: str = os.getenv("TWILIO_PHONE_NUMBER", "")
 
         # ── SIP / Telephony ──
         self.SIP_ENABLED: bool = (

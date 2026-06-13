@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  IPv6 SIP profile — DISABLED.
+  
+  Docker on Windows/Linux without native IPv6 support can't bind to
+  the auto-detected IPv6 address. This empty override prevents
+  FreeSWITCH from loading the internal-ipv6 profile.
+  
+  To re-enable, remove this file and uncomment the default in the image.
+-->
+<include>
+  <X-PRE-PROCESS cmd="remove"/>
+</include>

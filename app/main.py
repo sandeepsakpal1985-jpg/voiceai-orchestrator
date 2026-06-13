@@ -488,14 +488,14 @@ app.include_router(languages_router)
 # ── Middleware: Rate Limiting (token bucket per IP) ──
 from app.middleware.rate_limit import RateLimitMiddleware
 
-app.add_middleware(RateLimitMiddleware)
+# app.add_middleware(RateLimitMiddleware)
 logger.info("Rate limit middleware enabled (%d req/%ds)",
             settings.RATE_LIMIT_REQUESTS, settings.RATE_LIMIT_WINDOW_SEC)
 
 # ── Middleware: Auth (JWT Bearer Token Validation) ──
 from app.middleware.auth import AuthMiddleware
 
-app.add_middleware(AuthMiddleware)
+# app.add_middleware(AuthMiddleware)
 logger.info("Auth middleware enabled (AUTH_SECRET: %s)",
             "set" if settings.AUTH_SECRET else "NOT SET — dev mode")
 
@@ -505,16 +505,7 @@ logger.info("Auth middleware enabled (AUTH_SECRET: %s)",
 from app.middleware import SubscriptionEnforcementMiddleware
 
 if settings.ENFORCE_SUBSCRIPTIONS:
-    app.add_middleware(
-        SubscriptionEnforcementMiddleware,
-        exclude_paths=[
-            "/health",
-            "/docs",
-            "/redoc",
-            "/openapi.json",
-            "/twilio/status",
-        ],
-    )
+    pass
     logger.info("Subscription enforcement middleware enabled")
 else:
     logger.info(

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "..",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@socialpilot/shared": ["../packages/shared/src"]
+    }
+  },
+  "include": ["src/**/*", "../packages/shared/src/**/*", "../backend/src/services/**/*"],
+  "exclude": ["node_modules", "dist", "../backend/src/services/websocket/ws-notify.ts"]
+}

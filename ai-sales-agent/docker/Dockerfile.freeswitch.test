@@ -1,0 +1,55 @@
+# ==============================================================================
+# FreeSWITCH + AI Sales Agent — Custom Docker Image
+# ==============================================================================
+#
+# Overlays our custom AI Agent configs on top of the base safarov/freeswitch image.
+# The base image ships with default configs in /etc/freeswitch/. Our COPY commands
+# replace only the files we need to customize (dialplan, extensions, SIP profiles,
+# ESL config, vars, AI bridge config).
+#
+# IMPORTANT: If the base image's entrypoint regenerates configs at container start,
+# our custom files will be overwritten. To prevent this, we override the ENTRYPOINT
+# to start FreeSWITCH directly, bypassing any config regeneration.
+#
+# Usage:
+#   docker build -f docker/Dockerfile.freeswitch.test -t ai-freeswitch-custom .
+#   docker compose -f docker/freeswitch-docker-compose.yml up -d
+#
+# Or use the config injection script as an alternative / complement:
+#   .\scripts\setup_internal_fs.ps1
+# ==============================================================================
+
+FROM safarov/freeswitch:latest
+
+# 1. Overlay our custom AI Agent configs
+COPY telephony/configs/freeswitch/dialplan/default.xml \
+     /etc/freeswitch/dialplan/default.xml
+
+COPY telephony/configs/freeswitch/directory/default/1000.xml \
+     /etc/freeswitch/directory/default/1000.xml
+COPY telephony/configs/freeswitch/directory/default/1001.xml \
+     /etc/freeswitch/directory/default/1001.xml
+COPY telephony/configs/freeswitch/directory/default/1002.xml \
+     /etc/freeswitch/directory/default/1002.xml
+COPY telephony/configs/freeswitch/directory/default/1003.xml \
+     /etc/freeswitch/directory/default/1003.xml
+COPY telephony/configs/freeswitch/directory/default/1004.xml \
+     /etc/freeswitch/directory/default/1004.xml
+
+COPY telephony/configs/freeswitch/sip_profiles/internal.xml \
+     /etc/freeswitch/sip_profiles/internal.xml
+COPY telephony/configs/freeswitch/sip_profiles/external.xml \
+     /etc/freeswitch/sip_profiles/external.xml
+
+COPY telephony/configs/freeswitch/event_socket.conf.xml \
+     /etc/freeswitch/autoload_configs/event_socket.conf.xml
+COPY telephony/configs/freeswitch/ai_bridge.xml \
+     /etc/freeswitch/autoload_configs/ai_bridge.xml
+COPY telephony/configs/freeswitch/vars.xml \
+     /etc/freeswitch/vars.xml
+
+# 2. Override entrypoint: start FreeSWITCH directly, bypassing the
+#    original entrypoint's config regeneration at container start.
+#    Our custom configs are already in place from the COPY commands above.
+ENTRYPOINT ["freeswitch"]
+CMD ["-nonat"]

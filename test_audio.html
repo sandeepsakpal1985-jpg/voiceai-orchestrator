@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mic Recorder Test</title>
+</head>
+<body>
+
+<h2>Microphone Test</h2>
+
+<button id="start">Start Recording</button>
+<button id="stop">Stop Recording</button>
+
+<p id="status">Idle</p>
+
+<script>
+
+let recorder;
+let chunks = [];
+
+document.getElementById("start").onclick = async () => {
+
+    const stream =
+        await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
+
+    recorder = new MediaRecorder(stream);
+
+    chunks = [];
+
+    recorder.ondataavailable = (event) => {
+        if(event.data.size > 0){
+            chunks.push(event.data);
+        }
+    };
+
+    recorder.onstop = () => {
+
+        const blob = new Blob(chunks, {
+            type: "audio/webm"
+        });
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement("a");
+
+        a.href = url;
+        a.download = "recording.webm";
+        a.click();
+
+        document.getElementById("status").innerText =
+            "Recording saved";
+    };
+
+    recorder.start();
+
+    document.getElementById("status").innerText =
+        "Recording...";
+};
+
+document.getElementById("stop").onclick = () => {
+
+    if(recorder){
+        recorder.stop();
+    }
+
+};
+
+</script>
+
+</body>
+</html>

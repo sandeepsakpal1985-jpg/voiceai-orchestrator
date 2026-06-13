@@ -1,0 +1,50 @@
+# Docker Compose override for local development.
+# Provides hot-reload via tsx watch and source volume mounts.
+#
+# The override reuses the existing Dockerfiles (which include all deps),
+# then overrides the command and mounts source directories for live reload.
+# tsx (already installed as a devDependency) handles TypeScript on-the-fly.
+#
+# Usage:
+#   docker compose up -d              # Auto-detects this override
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# Production mode (ignore override):
+#   docker compose -f docker-compose.yml up -d
+
+services:
+  backend:
+    build:
+      dockerfile: Dockerfile.backend
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount source for hot-reload via tsx watch
+      - ./backend/src:/app/backend/src
+      - ./backend/prisma:/app/backend/prisma
+      - ./backend/tsconfig.json:/app/backend/tsconfig.json
+    command: ["pnpm", "--prefix", "backend", "dev"]
+
+  comment-worker:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./workers/src:/app/workers/src
+      - ./workers/tsconfig.json:/app/workers/tsconfig.json
+    command: ["pnpm", "tsx", "watch", "workers/src/comment.worker.ts"]
+
+  dm-worker:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./workers/src:/app/workers/src
+      - ./workers/tsconfig.json:/app/workers/tsconfig.json
+    command: ["pnpm", "tsx", "watch", "workers/src/dm.worker.ts"]
+
+  reengagement-worker:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./workers/src:/app/workers/src
+      - ./workers/tsconfig.json:/app/workers/tsconfig.json
+    command: ["pnpm", "tsx", "watch", "workers/src/reengagement.worker.ts"]

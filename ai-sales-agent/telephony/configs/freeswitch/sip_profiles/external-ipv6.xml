@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  IPv6 SIP profile — DISABLED.
+  
+  See internal-ipv6.xml for rationale.
+-->
+<include>
+  <X-PRE-PROCESS cmd="remove"/>
+</include>

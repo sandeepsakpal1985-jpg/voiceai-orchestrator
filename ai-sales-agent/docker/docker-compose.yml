@@ -1,0 +1,135 @@
+# ============================================================================
+# AI Sales Agent — Docker Compose (Production Deployment)
+# ============================================================================
+#
+# Services:
+#   backend    — FastAPI application (STT → LLM → TTS pipeline)
+#   ollama     — Local LLM inference (Qwen 2.5, Mistral, Llama, etc.)
+#   redis      — Caching, rate limiting, persistence
+#   livekit    — WebRTC realtime voice transport (optional, profile: full)
+#   frontend   — Dashboard web UI (optional, profile: full)
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml up -d
+#   docker compose -f docker/docker-compose.yml --profile full up -d
+#
+# GPU acceleration (requires nvidia-container-toolkit):
+#   docker compose -f docker/docker-compose.yml --profile gpu up -d
+# ============================================================================
+
+services:
+  # ── Backend (FastAPI) ────────────────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: ai-sales-agent-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      APP_NAME: "AI Sales Agent"
+      STT_PROVIDER: whisper
+      LLM_PROVIDER: ollama
+      TTS_PROVIDER: kokoro
+      OLLAMA_BASE_URL: http://ollama:11434
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGINS: "http://localhost:3000,http://frontend:3000"
+    volumes:
+      - ../backend:/app
+      - audio_cache:/app/data/audio
+      - chroma_data:/app/data/chroma
+    working_dir: /app
+    depends_on:
+      ollama:
+        condition: service_started
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    profiles:
+      - default
+      - full
+      - gpu
+
+  # ── Ollama (Local LLM Inference) ─────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-sales-agent-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_NUM_PARALLEL: 2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ── Redis (Caching & Persistence) ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ai-sales-agent-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+
+  # ── Frontend Dashboard ───────────────────────────────────────────
+  frontend:
+    image: nginx:alpine
+    container_name: ai-sales-agent-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ../frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    profiles:
+      - full
+
+  # ── LiveKit Server (Realtime Voice Transport) ────────────────────
+  livekit-server:
+    image: livekit/livekit-server:latest
+    container_name: ai-sales-agent-livekit
+    restart: unless-stopped
+    ports:
+      - "7880:7880"   # WebSocket
+      - "7881:7881"   # HTTP API
+      - "7882:7882/udp" # WebRTC ICE/UDP
+      - "5060:5060/udp" # SIP
+    command: >
+      --config /etc/livekit/config.yaml
+      --node-ip=0.0.0.0
+    volumes:
+      - ../livekit.yaml:/etc/livekit/config.yaml:ro
+    profiles:
+      - full
+
+volumes:
+  ollama_data:
+  redis_data:
+  audio_cache:
+  chroma_data:

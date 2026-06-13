@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "AI Voice Chat",
+  "version": "1.0.0",
+  "description": "Talk to your AI voice agent directly from your browser — real-time voice conversation with STT, LLM, and TTS.",
+  "permissions": [
+    "microphone",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "ws://*/*",
+    "wss://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI Voice Chat",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+V",
+        "mac": "Command+Shift+V"
+      },
+      "description": "Open AI Voice Chat"
+    }
+  }
+}

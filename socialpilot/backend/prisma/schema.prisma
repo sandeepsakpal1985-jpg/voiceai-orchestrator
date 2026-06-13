@@ -1,0 +1,636 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── User & Auth ──
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  avatar         String?
+  passwordHash   String?
+  googleId       String?  @unique
+  role           String   @default("owner")
+  onboardingStep String   @default("create_account")
+  onboardingDone Boolean  @default(false)
+  emailVerified  Boolean  @default(false)
+  verifyToken    String?
+  verifyTokenExpiresAt DateTime?
+  resetToken     String?
+  resetTokenExpiresAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  metaConnections   MetaConnection[]
+  leads             Lead[]
+  crmDeals          CRMDeal[]
+  dmConversations   DMConversation[]
+  comments          SocialComment[]
+  knowledgeDocs     KnowledgeDocument[]
+  ctaConfigs        CTAConfig[]
+  brandSettings     BrandSettings?
+  escalationTickets EscalationTicket[]
+  notifications     Notification[]
+  approvals         ApprovalRequest[]
+  insights          Insight[]
+  missedOpps        MissedOpportunity[]
+  auditLogs         AuditLogEntry[]
+  subscription      Subscription?
+  usageRecords      UsageRecord[]
+  invoices          Invoice[]
+  inboxItems        InboxItem[]
+  teamMembers       TeamMember[]
+  teamsManaging     TeamMember[] @relation("ManagedBy")
+  apiKeys           ApiKey[]
+  webhookConfigs    WebhookConfig[]
+  reportDeliveries  ReportDelivery[]
+  followerSnapshots FollowerSnapshot[]
+  activityLogs      ActivityLog[]
+  partnersManaged   Partner[]        // Admin who manages partners
+  referredByPartner String?          // If this user was referred by a partner
+  partnerRelation   Partner?         @relation("ReferredBy", fields: [referredByPartner], references: [id])
+  partnerAccount    Partner?         @relation("PartnerUser") // If this user is a partner, link to their Partner record
+}
+
+// ── Team ──
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  memberId  String
+  role      String   @default("sales_agent")
+  invitedAt DateTime @default(now())
+  joinedAt  DateTime?
+  status    String   @default("pending")
+
+  user     User   @relation(fields: [userId], references: [id])
+  member   User   @relation("ManagedBy", fields: [memberId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, memberId])
+}
+
+// ── Meta Integration ──
+model MetaConnection {
+  id                  String   @id @default(cuid())
+  userId              String
+  facebookPageId      String?
+  facebookPageName    String?
+  instagramAccountId  String?
+  instagramUsername   String?
+  accessToken         String
+  tokenExpiresAt      DateTime
+  connectedAt         DateTime @default(now())
+  status              String   @default("active")
+
+  user     User   @relation(fields: [userId], references: [id])
+  webhooks MetaWebhook[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MetaWebhook {
+  id          String   @id @default(cuid())
+  userId      String
+  connectionId String?
+  eventType   String
+  rawPayload  Json
+  processed   Boolean  @default(false)
+  processedAt DateTime?
+  error       String?
+
+  connection MetaConnection? @relation(fields: [connectionId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// ── Comments ──
+model SocialComment {
+  id            String   @id @default(cuid())
+  userId        String
+  platform      String
+  postId        String
+  authorId      String
+  authorName    String?
+  content       String
+  mediaUrls     Json?
+  category      String?
+  sentiment     Float?
+  leadScore     Int?
+  urgencyScore  Int?
+  escalationScore Int?
+  replyStatus   String   @default("pending")
+  replyContent  String?
+  repliedAt     DateTime?
+  replyDelay    Int?
+
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── DMs ──
+model DMConversation {
+  id                  String   @id @default(cuid())
+  userId              String
+  customerId          String
+  platform            String
+  status              String   @default("active")
+  intent              String?
+  leadScore           Int?
+  purchaseProbability Float?
+  urgencyScore        Int?
+  lastActivityAt      DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  messages DMMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DMMessage {
+  id              String   @id @default(cuid())
+  conversationId  String
+  senderId        String
+  content         String
+  mediaUrls       Json?
+  role            String
+  metadata        Json?
+
+  conversation DMConversation @relation(fields: [conversationId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+// ── Leads ──
+model Lead {
+  id                  String   @id @default(cuid())
+  userId              String
+  name                String?
+  socialHandle        String
+  platform            String
+  phone               String?
+  email               String?
+  company             String?
+  city                String?
+  requirement         String?
+  budget              String?
+  category            String   @default("cold")
+  leadScore           Int      @default(0)
+  sentiment           Float?
+  source              String
+  ctaClicks           Int      @default(0)
+  lastContactAt       DateTime @default(now())
+  conversationSummary String?
+  recommendedAction   String?
+  tags                String[]
+
+  user       User      @relation(fields: [userId], references: [id])
+  crmDeal    CRMDeal?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// ── CRM ──
+model CRMDeal {
+  id                String   @id @default(cuid())
+  userId            String
+  leadId            String?  @unique
+  title             String
+  value             Float?
+  revenue           Float?
+  currency          String   @default("USD")
+  stage             String   @default("new_lead")
+  dealStatus        String   @default("open")
+  assignedTo        String?
+  notes             String?
+  aiSummary         String?
+  leadScore         Int?
+  sentiment         Float?
+  recommendedAction String?
+  followUpAt        DateTime?
+
+  user     User     @relation(fields: [userId], references: [id])
+  lead     Lead?    @relation(fields: [leadId], references: [id])
+  activities CRMActivity[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CRMActivity {
+  id        String   @id @default(cuid())
+  dealId    String
+  type      String
+  content   String
+  createdBy String
+
+  deal     CRMDeal  @relation(fields: [dealId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ── Knowledge ──
+model KnowledgeDocument {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  type      String
+  content   String
+  fileUrl   String?
+  fileType  String?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── CTA Config ──
+model CTAConfig {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  label       String
+  url         String
+  isDefault   Boolean  @default(false)
+  minLeadScore Int?
+  afterMessages Int?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Brand Settings ──
+model BrandSettings {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  businessName        String
+  industry            String?
+  website             String?
+  toneInstructions    String?
+  customInstructions  String?
+  automationEnabled   Boolean @default(true)
+  approvalMode        Boolean @default(false)
+  approvalModeType    String  @default("fully_automatic")
+  timezone            String  @default("UTC")
+  operatingHours      Json?
+  defaultPersonality  String  @default("friendly")
+  // White-label / Branding
+  logo                String?
+  favicon             String?
+  primaryColor        String  @default("#6366f1")
+  customDomain        String?
+  customCss           String?
+  hideBranding        Boolean @default(false)
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Escalation ──
+model EscalationTicket {
+  id              String   @id @default(cuid())
+  userId          String
+  customerId      String
+  reason          String
+  severity        String   @default("medium")
+  context         String?
+  aiPaused        Boolean  @default(true)
+  status          String   @default("open")
+  assignedTo      String?
+  resolution      String?
+  resolvedAt      DateTime?
+  reputationAlert Boolean  @default(false)
+  alertReason     String?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Customer Memory ──
+model CustomerMemory {
+  id                    String   @id @default(cuid())
+  userId                String
+  socialHandle          String
+  platform              String
+  name                  String?
+  email                 String?
+  phone                 String?
+  company               String?
+  previousConversations Int      @default(0)
+  previousPurchases     Int      @default(0)
+  maxLeadScore          Int      @default(0)
+  recentSentiment       Float?
+  tags                  String[]
+  journey               String[]
+  relationshipStatus    String   @default("new")
+  metadata              Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, socialHandle, platform])
+}
+
+// ── Insights ──
+model Insight {
+  id          String   @id @default(cuid())
+  userId      String
+  category    String
+  title       String
+  description String
+  value       Int      @default(0)
+  trend       String   @default("stable")
+  period      String   @default("weekly")
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Notifications ──
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ── Approval Requests ──
+model ApprovalRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  customerId      String
+  customerName    String?
+  customerHandle  String?
+  platform        String
+  draftContent    String
+  originalMessage String?
+  confidenceScore Float?
+  status          String   @default("pending")
+  reviewedBy      String?
+  reviewNote      String?
+  expiresAt       DateTime?
+  reviewedAt      DateTime?
+  // Original comment/post IDs for Meta publishing
+  commentId       String?  // The social comment ID this approval is for
+  postId          String?  // The Instagram/Facebook post ID
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ── Missed Opportunities ──
+model MissedOpportunity {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  description       String
+  customerHandle    String?
+  customerName      String?
+  platform          String?
+  message           String?
+  potentialValue    Float?
+  recommendedAction String?
+  status            String   @default("open")
+  resolvedAt        DateTime?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ── Audit Log ──
+model AuditLogEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  actorId      String
+  action       String
+  resourceType String
+  resourceId   String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ── Subscription & Billing ──
+model Subscription {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  plan                  String    @default("free")
+  status                String    @default("active")
+  features              String[]
+  maxConnections        Int       @default(1)
+  maxLeads              Int       @default(100)
+  maxCrmDeals           Int       @default(50)
+  maxTeamMembers        Int       @default(1)
+  aiResponseLimit       Int       @default(500)
+  currentPeriodStart    DateTime  @default(now())
+  currentPeriodEnd      DateTime?
+  canceledAt            DateTime?
+  // Razorpay fields
+  razorpayCustomerId    String?
+  razorpaySubscriptionId String?
+  razorpayOrderId       String?
+  gracePeriodEnd        DateTime?
+  trialEnd              DateTime?
+
+  user     User     @relation(fields: [userId], references: [id])
+  invoices Invoice[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Invoices / Billing History ──
+model Invoice {
+  id                 String   @id @default(cuid())
+  userId             String
+  subscriptionId     String?
+  razorpayPaymentId  String?
+  razorpayOrderId    String?
+  razorpaySignature  String?
+  amount             Int      // in paise (1 INR = 100 paise)
+  currency           String   @default("INR")
+  status             String   @default("paid") // paid | failed | refunded
+  plan               String
+  periodStart        DateTime?
+  periodEnd          DateTime?
+  invoiceUrl         String?
+  paidAt             DateTime?
+
+  user         User         @relation(fields: [userId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+// ── Usage Tracking ──
+model UsageRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  metric    String
+  count     Int      @default(0)
+  date      DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, metric, date])
+}
+
+// ── API Keys (for programmatic access) ──
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  keyHash   String   @unique
+  prefix    String   // first 8 chars for identification
+  scopes    String[] @default([])
+  lastUsedAt DateTime?
+  expiresAt DateTime?
+  active    Boolean  @default(true)
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Webhook Configurations ──
+model WebhookConfig {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  url       String
+  events    String[] // event types to subscribe to
+  active    Boolean  @default(true)
+  secret    String?  // for HMAC signature verification
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Activity Log (Team Activity Feed) ──
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  actorId   String
+  action    String
+  resource  String
+  details   Json?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+// ── Partner Distribution System ──
+model Partner {
+  id              String   @id @default(cuid())
+  userId          String   // Admin who created/owns this partner
+  partnerUserId   String?  @unique // The partner's own user account (for portal login)
+  name            String
+  email           String
+  phone           String?
+  city            String?
+  territory       String?
+  commissionRate  Float    @default(10) // percentage
+  status          String   @default("active")
+
+  customers       User[]   @relation("ReferredBy")
+  commissionRecords CommissionRecord[]
+  manager         User     @relation(fields: [userId], references: [id])
+  partnerUser     User?    @relation("PartnerUser", fields: [partnerUserId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CommissionRecord {
+  id        String   @id @default(cuid())
+  partnerId String
+  month     DateTime // First day of the month
+  amount    Int      // Commission amount in paise
+  mrr       Int      // MRR in paise for this month
+  customerCount Int  @default(0)
+  paid      Boolean  @default(false)
+  paidAt    DateTime?
+
+  partner   Partner  @relation(fields: [partnerId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([partnerId, month])
+}
+
+// ── Report Delivery History ──
+model ReportDelivery {
+  id              String   @id @default(cuid())
+  userId          String
+  type            String   @default("scheduled") // scheduled | manual
+  status          String   @default("pending")   // pending | sent | failed
+  metrics         Json?
+  emailTo         String?
+  errorMessage    String?
+  deliveredAt     DateTime?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ── Follower Snapshot (for growth tracking) ──
+model FollowerSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  platform        String   // instagram | facebook
+  followers       Int      @default(0)
+  follows         Int      @default(0)
+  snapshotDate    DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, platform, snapshotDate])
+}
+
+model ReEngagementRule {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  enabled         Boolean  @default(true)
+  stages          Json     @default("[{\"delay\":\"24h\",\"messageTemplate\":\"Hi {{name}}, we noticed you were interested in {{product}}. Want to continue our conversation?\"}]")  
+  onlyDormant     Boolean  @default(true)
+  excludeCustomers Boolean @default(false)
+  minLeadScore    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Inbox ──
+model InboxItem {
+  id              String   @id @default(cuid())
+  userId          String
+  platform        String
+  type            String
+  customerHandle  String
+  customerName    String?
+  content         String
+  status          String   @default("unread")
+  priority        String   @default("normal")
+  assignedTo      String?
+  aiSuggestedReply String?
+  internalNote    String?
+  conversationId  String?
+  leadId          String?
+
+  user     User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

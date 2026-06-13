@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Voice Chat</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="status-dot" id="status-dot"></div>
+      <span class="status-label" id="status-label">Disconnected</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="btn-new-chat" title="New conversation" aria-label="Start new conversation">✚</button>
+      <button class="icon-btn" id="btn-settings" title="Settings" aria-label="Open settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- ── Chat Messages ── -->
+  <div class="chat-container" id="chat-container">
+    <div class="message system" id="welcome-msg">
+      <div class="msg-content">
+        Press <strong>🎤 Talk</strong> or type a message to start a voice conversation with AI.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Input Area ── -->
+  <div class="input-area">
+    <div class="status-bar" id="status-bar">
+      <span id="status-text">Ready</span>
+      <div class="speaking-visualizer" id="speaking-visualizer" aria-hidden="true">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+    </div>
+    <div class="input-row">
+      <button class="mic-btn" id="btn-mic" title="Hold to talk (Space)" aria-label="Record voice message">
+        <span class="mic-icon">🎤</span>
+      </button>
+      <div class="recording-visualizer" id="recording-visualizer" aria-hidden="true">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+      <div class="text-input-wrap">
+        <input
+          type="text"
+          id="txt-input"
+          class="text-input"
+          placeholder="Type a message..."
+          autocomplete="off"
+        />
+      </div>
+      <button class="send-btn" id="btn-send" title="Send message (Enter)" aria-label="Send text message">➤</button>
+    </div>
+  </div>
+
+  <!-- ── Settings Panel ── -->
+  <div class="settings-overlay" id="settings-overlay" hidden>
+    <div class="settings-panel">
+      <div class="settings-header">
+        <h3>Settings</h3>
+        <button class="icon-btn" id="btn-close-settings">✕</button>
+      </div>
+      <div class="settings-body">
+        <label class="setting-row">
+          <span>Backend URL</span>
+          <input type="text" id="setting-api-url" value="http://localhost:8000" />
+        </label>
+        <label class="setting-row">
+          <span>WebSocket URL</span>
+          <input type="text" id="setting-ws-url" value="ws://localhost:8000" />
+        </label>
+        <label class="setting-row checkbox-row">
+          <input type="checkbox" id="setting-auto-reconnect" checked />
+          <span>Auto-reconnect</span>
+        </label>
+        <label class="setting-row checkbox-row">
+          <input type="checkbox" id="setting-play-audio" checked />
+          <span>Play AI voice responses</span>
+        </label>
+        <div class="setting-hint">
+          For remote backends (ngrok, cloud), use <strong>https://</strong> / <strong>wss://</strong> URLs.
+          WebSocket protocol is auto-detected: <code>http</code> → <code>ws</code>, <code>https</code> → <code>wss</code>.
+        </div>
+        <button class="action-btn" id="btn-save-settings">Save & Reconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

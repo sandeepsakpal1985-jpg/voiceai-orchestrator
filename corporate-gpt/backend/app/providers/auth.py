@@ -1,0 +1,113 @@
+"""
+Authentication Provider — FastAPI Users
+Thin wrapper around FastAPI Users library for JWT auth, registration,
+email verification, password reset, and OAuth.
+
+Libraries: fastapi-users[sqlalchemy], python-jose, passlib[bcrypt]
+"""
+from typing import Optional
+
+from fastapi import Depends, Request
+from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin, models
+from fastapi_users.authentication import (
+    AuthenticationBackend,
+    BearerTransport,
+    JWTStrategy,
+)
+from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.core.database import get_db
+from app.models.user import User
+
+
+# ── Transport: Bearer token in Authorization header ──
+bearer_transport = BearerTransport(tokenUrl="auth/login")
+
+
+# ── JWT Strategy ──
+def get_jwt_strategy() -> JWTStrategy:
+    return JWTStrategy(
+        secret=settings.JWT_SECRET_KEY,
+        lifetime_seconds=settings.JWT_ACCESS_TOKEN_EXPIRE_SECONDS,
+    )
+
+
+jwt_strategy = JWTStrategy(
+    secret=settings.JWT_SECRET_KEY,
+    lifetime_seconds=settings.JWT_ACCESS_TOKEN_EXPIRE_SECONDS,
+)
+
+
+# ── Auth Backend ──
+auth_backend = AuthenticationBackend(
+    name="jwt",
+    transport=bearer_transport,
+    get_strategy=get_jwt_strategy,
+)
+
+
+# ── User Manager ──
+class UserManager(BaseUserManager[models.UP, models.ID]):
+    reset_password_token_secret = settings.JWT_SECRET_KEY
+    verification_token_secret = settings.JWT_SECRET_KEY
+
+    async def on_after_register(
+        self, user: models.UP, request: Optional[Request] = None
+    ):
+        print(f"User {user.id} registered.")
+
+    async def on_after_forgot_password(
+        self, user: models.UP, token: str, request: Optional[Request] = None
+    ):
+        print(f"User {user.id} forgot password. Token: {token}")
+
+    async def on_after_request_verify(
+        self, user: models.UP, token: str, request: Optional[Request] = None
+    ):
+        print(f"Verification requested for user {user.id}. Token: {token}")
+
+
+async def get_user_db(db: AsyncSession = Depends(get_db)) -> SQLAlchemyUserDatabase:
+    yield SQLAlchemyUserDatabase(db, User)
+
+
+async def get_user_manager(
+    user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
+) -> UserManager:
+    yield UserManager(user_db)
+
+
+fastapi_users = FastAPIUsers[User, int](
+    get_user_manager,
+    [auth_backend],
+)
+
+current_active_user = fastapi_users.current_user(active=True)
+current_superuser = fastapi_users.current_user(active=True, superuser=True)
+
+
+class AuthProvider:
+    """Thin wrapper around FastAPI Users for use in services."""
+    
+    @staticmethod
+    def get_router():
+        from fastapi_users import models as fu_models
+        return fastapi_users.get_auth_router(auth_backend)
+    
+    @staticmethod
+    def get_register_router():
+        return fastapi_users.get_register_router()
+    
+    @staticmethod
+    def get_verify_router():
+        return fastapi_users.get_verify_router()
+    
+    @staticmethod
+    def get_reset_password_router():
+        return fastapi_users.get_reset_password_router()
+    
+    @staticmethod
+    def get_users_router():
+        return fastapi_users.get_users_router()

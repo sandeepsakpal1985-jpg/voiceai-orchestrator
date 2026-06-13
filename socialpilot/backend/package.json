@@ -1,0 +1,51 @@
+{
+  "name": "@socialpilot/backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@fastify/jwt": "^8.0.0",
+    "@fastify/multipart": "^10.0.0",
+    "@fastify/rate-limit": "^9.0.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/swagger-ui": "^3.0.0",
+    "@fastify/websocket": "^10.0.0",
+    "@mastra/core": "^1.37.1",
+    "@prisma/client": "^5.12.0",
+    "@sentry/node": "^10.55.0",
+    "@socialpilot/shared": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.0.0",
+    "dotenv": "^16.4.0",
+    "fastify": "^4.26.0",
+    "fastify-plugin": "^4.5.0",
+    "google-auth-library": "^9.6.0",
+    "ioredis": "^5.4.0",
+    "mastra": "^1.10.2",
+    "mem0ai": "^3.0.5",
+    "openai": "^4.47.0",
+    "posthog-node": "^5.35.6",
+    "razorpay": "^2.9.6",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "@types/ws": "^8.18.1",
+    "prisma": "^5.12.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
+  }
+}

@@ -1,0 +1,132 @@
+version: "3.9"
+
+x-shared-env: &shared-env
+  POSTGRES_SERVER: postgres
+  POSTGRES_USER: ${POSTGRES_USER:-corpgpt}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-corpgpt_dev}
+  POSTGRES_DB: ${POSTGRES_DB:-corpgpt}
+  REDIS_URL: redis://redis:6379/0
+  QDRANT_URL: http://qdrant:6333
+  SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-too}
+  ENVIRONMENT: ${ENVIRONMENT:-production}
+  # Air-gapped: use Ollama for both LLM and embeddings
+  OPENAI_API_KEY: ollama
+  OPENAI_BASE_URL: http://ollama:11434/v1
+  LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+  STORAGE_LOCAL_PATH: /app/storage
+  CORS_ORIGINS: https://knowledge.company.com
+  LOG_LEVEL: WARNING
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-corpgpt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-corpgpt_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-corpgpt}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corpgpt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    # In air-gapped mode, models must be pre-loaded
+    # Run: docker exec -it corpgpt-ollama-1 ollama pull llama3.2:3b
+    # Run: docker exec -it corpgpt-ollama-1 ollama pull nomic-embed-text
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *shared-env
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-corpgpt}:${POSTGRES_PASSWORD:-corpgpt_dev}@postgres:5432/${POSTGRES_DB:-corpgpt}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.workers.celery_app worker --loglevel=warning
+    environment:
+      <<: *shared-env
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-corpgpt}:${POSTGRES_PASSWORD:-corpgpt_dev}@postgres:5432/${POSTGRES_DB:-corpgpt}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  ollama_data:

@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["backend", "."]
+# PYTHONPATH is set to include backend/ (for app module) and . (for telephony module)
+
+[tool.coverage.run]
+source = ["backend/app"]
+
+[tool.mypy]
+python_version = 3.12
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests/*"]
+ignore_errors = true

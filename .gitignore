@@ -72,3 +72,5 @@ yarn-error.log*
 pnpm-debug.log*
 *.pem
 .husky/_
+.aider*
+.env

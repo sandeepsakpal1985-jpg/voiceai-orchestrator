@@ -1,0 +1,238 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: socialpilot_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: socialpilot/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: socialpilot
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+        working-directory: socialpilot/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/socialpilot_test
+
+      - name: Push database schema
+        run: pnpm db:push
+        working-directory: socialpilot/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/socialpilot_test
+
+      - name: Typecheck backend
+        run: pnpm typecheck
+        working-directory: socialpilot/backend
+
+      - name: Typecheck frontend
+        run: pnpm typecheck
+        working-directory: socialpilot/frontend
+
+      - name: Typecheck workers
+        run: pnpm typecheck
+        working-directory: socialpilot/workers
+
+      - name: Lint frontend
+        run: pnpm lint
+        working-directory: socialpilot/frontend
+        continue-on-error: true  # lint warnings shouldn't block CI
+
+  test-backend:
+    name: Backend Tests
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: socialpilot_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: socialpilot/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: socialpilot
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+        working-directory: socialpilot/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/socialpilot_test
+
+      - name: Push database schema
+        run: pnpm db:push
+        working-directory: socialpilot/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/socialpilot_test
+
+      - name: Run backend tests
+        run: pnpm test
+        working-directory: socialpilot/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/socialpilot_test
+          REDIS_URL: redis://localhost:6379
+          QDRANT_URL: http://localhost:6333
+          JWT_SECRET: ci-test-secret
+          NODE_ENV: test
+
+  test-frontend:
+    name: Frontend Tests
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: socialpilot/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: socialpilot
+
+      - name: Run frontend tests
+        run: pnpm test
+        working-directory: socialpilot/frontend
+        env:
+          NODE_ENV: test
+
+  docker-build:
+    name: Docker Build
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: socialpilot
+          file: socialpilot/Dockerfile.backend
+          push: false
+          tags: socialpilot/backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: socialpilot
+          file: socialpilot/Dockerfile.worker
+          push: false
+          tags: socialpilot/worker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Optional: Deploy to VPS ──
+  # Uncomment and configure secrets to enable deployment
+  # deploy:
+  #   name: Deploy
+  #   needs: docker-build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/master'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy via SSH
+  #       uses: appleboy/ssh-action@v1.0.0
+  #       with:
+  #         host: ${{ secrets.VPS_HOST }}
+  #         username: ${{ secrets.VPS_USER }}
+  #         key: ${{ secrets.VPS_SSH_KEY }}
+  #         script: |
+  #           cd /opt/socialpilot
+  #           git pull
+  #           docker compose pull
+  #           docker compose up -d --force-recreate

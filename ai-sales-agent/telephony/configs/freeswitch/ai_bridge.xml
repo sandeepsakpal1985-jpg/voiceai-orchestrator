@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AI Bridge Configuration — FreeSWITCH AI Sales Agent Integration.
+
+  This file configures the connection between FreeSWITCH
+  and the AI voice backend via the Event Socket Library (ESL).
+
+  Installation:
+    Copy or symlink this file to:
+      /usr/local/freeswitch/conf/autoload_configs/ai_bridge.xml
+      (or your FreeSWITCH config directory)
+
+  The AI bridge service connects to FreeSWITCH ESL as a client.
+  FreeSWITCH must have mod_event_socket loaded and listening.
+-->
+
+<configuration name="ai_bridge.conf" description="AI Sales Agent Bridge">
+
+  <!-- Event Socket Configuration -->
+  <settings>
+    <!-- ESL server settings (FreeSWITCH side) -->
+    <param name="esl-host" value="127.0.0.1"/>
+    <param name="esl-port" value="8021"/>
+    <param name="esl-password" value="ClueCon"/>
+
+    <!-- AI Backend Connection -->
+    <param name="ai-backend-host" value="127.0.0.1"/>
+    <param name="ai-backend-port" value="8000"/>
+    <param name="ai-backend-http-url" value="http://127.0.0.1:8000"/>
+
+    <!-- Call Settings -->
+    <param name="greeting" value="Hello! Thank you for calling. This is your AI sales assistant. How can I help you today?"/>
+    <param name="max-call-duration" value="600"/>
+    <param name="max-turns" value="50"/>
+    <param name="record-limit" value="10"/>
+    <param name="silence-threshold" value="200"/>
+
+    <!-- Audio Paths -->
+    <param name="audio-directory" value="/tmp/fs_audio"/>
+    <param name="audio-format" value="wav"/>
+  </settings>
+
+  <!-- Dialplan Context (must match dialplan/default.xml) -->
+  <dialplan>
+    <param name="inbound-context" value="ai-sales-agent"/>
+    <param name="outbound-context" value="ai-sales-agent"/>
+  </dialplan>
+
+</configuration>

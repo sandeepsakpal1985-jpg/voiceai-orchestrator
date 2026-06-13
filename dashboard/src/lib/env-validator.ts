@@ -34,6 +34,10 @@ const ENV_VARS: EnvVar[] = [
   { key: "ELEVENLABS_API_KEY", required: false, description: "ElevenLabs API key for TTS voice synthesis", secret: true },
   { key: "DEEPGRAM_API_KEY", required: false, description: "Deepgram API key for STT transcription", secret: true },
 
+  // Resend (optional — transactional emails)
+  { key: "RESEND_API_KEY", required: false, description: "Resend API key for transactional email sending", secret: true },
+  { key: "EMAIL_FROM", required: false, description: "Sender email address for transactional emails", secret: false },
+
   // Twilio (optional — call functionality without it won't connect real calls)
   { key: "TWILIO_ACCOUNT_SID", required: false, description: "Twilio account SID for PSTN/SIP calling", secret: true },
   { key: "TWILIO_AUTH_TOKEN", required: false, description: "Twilio auth token", secret: true },

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>AI Voice Agent Test</title>
+</head>
+<body>
+    <h2>AI Voice Agent Test</h2>
+
+```
+<button onclick="connectWS()">Connect</button>
+<button onclick="startMic()">Start Mic</button>
+
+<pre id="log"></pre>
+```
+
+<script>
+
+let ws;
+let recognition;
+
+function log(msg){
+    document.getElementById("log").textContent += msg + "\n";
+}
+
+function connectWS(){
+
+    ws = new WebSocket("ws://127.0.0.1:8000/ws/voice");
+
+    ws.onopen = () => {
+        log("CONNECTED");
+    };
+
+    ws.onmessage = (event) => {
+        log("SERVER: " + event.data);
+    };
+
+    ws.onerror = (e) => {
+        log("ERROR");
+        console.log(e);
+    };
+
+    ws.onclose = () => {
+        log("CLOSED");
+    };
+}
+
+function startMic(){
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+    recognition = new SpeechRecognition();
+
+    recognition.lang = "en-US";
+
+    recognition.continuous = true;
+
+    recognition.interimResults = false;
+
+    recognition.onresult = function(event){
+
+        const text =
+            event.results[event.results.length-1][0].transcript;
+
+        log("YOU: " + text);
+
+        ws.send(JSON.stringify({
+            type:"text",
+            text:text
+        }));
+    };
+
+    recognition.start();
+
+    log("MIC STARTED");
+}
+
+</script>
+
+</body>
+</html>

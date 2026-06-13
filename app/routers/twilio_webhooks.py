@@ -14,12 +14,14 @@ Architecture:
   - Uses proper URL joining for callback routes
 """
 
+import asyncio
 import logging
 import time
 from urllib.parse import urljoin
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
+from twilio.rest import Client
 
 from app.config import settings
 from app.models.schemas import ConversationCreate, Message
@@ -29,6 +31,17 @@ from app.voice import get_voice_pipeline
 logger = logging.getLogger("voiceai.twilio_webhooks")
 
 router = APIRouter(prefix="/twilio", tags=["Twilio Webhooks"])
+
+# ── Constants ────────────────────────────────────────────────────────
+
+# Static greeting avoids LLM cold-start latency on first Twilio call
+DEFAULT_GREETING = (
+    "Hello! Thank you for reaching out. "
+    "This is your AI voice assistant speaking. How can I help you today?"
+)
+
+# Maximum time to wait for an LLM response before falling back
+LLM_TIMEOUT_SECONDS: int = 15
 
 # ── In-memory call → conversation mapping ──
 _call_map: dict[str, str] = {}  # call_sid → conversation_id
@@ -166,15 +179,8 @@ async def twilio_incoming(request: Request):
         },
     ]
 
-    try:
-        greeting = await pipeline.llm.complete(
-            greeting_messages, temperature=0.7, max_tokens=100
-        )
-    except Exception:
-        greeting = (
-            "Hello! Thank you for calling. "
-            "This is your AI voice assistant speaking. How can I help you today?"
-        )
+    # Use static greeting for fast response (avoids Ollama CPU latency on cold start)
+    greeting = DEFAULT_GREETING
 
     conv_service.add_message(
         conv.id,
@@ -238,16 +244,24 @@ async def twilio_gather(request: Request):
         )
         return HTMLResponse(content=twiml, media_type="text/xml")
 
-    # Process through shared pipeline
+    # Process through shared pipeline with timeout
     try:
         conv_service = get_conversation_service()
-        result = await conv_service.process_llm_turn(
-            conversation_id=conversation_id,
-            user_input=user_input,
-            system_prompt=DEFAULT_SYSTEM_PROMPT,
-            store_conversation=True,
+        result = await asyncio.wait_for(
+            conv_service.process_llm_turn(
+                conversation_id=conversation_id,
+                user_input=user_input,
+                system_prompt=DEFAULT_SYSTEM_PROMPT,
+                store_conversation=True,
+            ),
+            timeout=LLM_TIMEOUT_SECONDS,
         )
         agent_message = result["response"]
+    except asyncio.TimeoutError:
+        logger.warning("LLM timeout for call %s — using fallback response", call_sid)
+        agent_message = (
+            "I'm still thinking about that. Could you please repeat yourself?"
+        )
     except Exception:
         logger.exception("Pipeline processing error for call %s", call_sid)
         agent_message = (
@@ -366,3 +380,197 @@ async def initiate_outbound_call(
         "twiml_url": f"http://{base_url}/twilio/incoming",
         "twiml": twiml,
     }
+
+
+# ── SMS → Voice Callback Demo ────────────────────────────────────────
+
+
+@router.post("/sms")
+async def twilio_sms_webhook(request: Request):
+    """Handle incoming SMS and trigger a voice call back to the sender.
+
+    Flow:
+      1. User texts the Twilio number
+      2. Twilio POSTs here with the message
+      3. We process the text through the LLM
+      4. We initiate a Twilio call back to the sender
+      5. When they answer, /twilio/sms-voice speaks the AI response
+
+    Configure in Twilio Console:
+      Phone Number → Messaging → A message comes in → https://your-domain.com/twilio/sms
+    """
+    form_data = await request.form()
+    from_number = form_data.get("From", "")
+    body = form_data.get("Body", "")
+    sms_sid = form_data.get("SmsSid", "")
+
+    logger.info(
+        "📱 SMS received — from: %s, body: '%s' (SID: %s)",
+        from_number, body[:80], sms_sid,
+    )
+
+    if not from_number or not body:
+        return PlainTextResponse("OK")
+
+    # Create a conversation for this SMS exchange
+    conv_service = get_conversation_service()
+    conv = conv_service.create(
+        ConversationCreate(
+            contact_phone=from_number,
+            contact_name=from_number,
+            metadata={
+                "source": "twilio_sms",
+                "sms_sid": sms_sid,
+            },
+        )
+    )
+
+    # Store the mapping so the voice callback can find this conversation
+    # (via conv_id query param in the TwiML URL)
+
+    # Get the public base URL for Twilio to call back to
+    base_url = str(request.base_url).rstrip("/")
+
+    # Process the SMS text through LLM
+    user_sms_prompt = (
+        "You are a helpful AI assistant. A user sent you a text message. "
+        "Respond in a concise, friendly, conversational way suitable for "
+        "being read aloud over a phone call. Keep it under 3 sentences. "
+        "Start with a brief greeting, answer their question or acknowledge "
+        "their message, and ask if there's anything else you can help with."
+    )
+
+    try:
+        result = await asyncio.wait_for(
+            conv_service.process_llm_turn(
+                conversation_id=conv.id,
+                user_input=body,
+                system_prompt=user_sms_prompt,
+                store_conversation=True,
+            ),
+            timeout=LLM_TIMEOUT_SECONDS,
+        )
+        agent_message = result["response"]
+    except asyncio.TimeoutError:
+        agent_message = (
+            "Thanks for your message! Give me a moment while I think about that. "
+            "I'll call you right back."
+        )
+    except Exception:
+        logger.exception("LLM processing error for SMS from %s", from_number)
+        agent_message = (
+            "Thanks for reaching out! I'm having trouble processing your message "
+            "right now, but let me call you back so we can chat."
+        )
+
+    # Initiate a Twilio call back to the sender
+    # The TwiML URL includes the conversation_id so sms-voice can look up the response
+    twilio_account_sid = settings.TWILIO_ACCOUNT_SID
+    twilio_auth_token = settings.TWILIO_AUTH_TOKEN
+    twilio_phone = settings.TWILIO_PHONE_NUMBER
+
+    call_initiated = False
+    call_sid_out = None
+    if twilio_account_sid and twilio_auth_token and twilio_phone:
+        try:
+            client = Client(twilio_account_sid, twilio_auth_token)
+
+            # Build the TwiML URL with conversation_id as query param
+            voice_url = urljoin(base_url + "/", f"twilio/sms-voice?conv_id={conv.id}")
+
+            twilio_call = client.calls.create(
+                to=from_number,
+                from_=twilio_phone,
+                url=voice_url,
+                status_callback=urljoin(base_url + "/", "twilio/status"),
+                status_callback_event=["completed", "failed", "busy", "no-answer"],
+                timeout=30,
+            )
+            call_sid_out = twilio_call.sid
+            call_initiated = True
+            logger.info(
+                "📞 Outbound call initiated — to: %s (SID: %s, conv: %s)",
+                from_number, call_sid_out, conv.id,
+            )
+
+            # Store the call mapping for status callbacks
+            _call_map[call_sid_out] = conv.id
+            _active_twilio_calls.add(call_sid_out)
+        except Exception as e:
+            logger.error("Failed to initiate call back to %s: %s", from_number, e)
+    else:
+        logger.warning(
+            "Twilio credentials not fully configured — cannot initiate call back. "
+            "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER."
+        )
+
+    # Return TwiML that acknowledges the SMS (Twilio expects a response)
+    if call_initiated:
+        sms_reply_body = (
+            f"Thanks for texting! I'll give you a call right back at {from_number}. "
+            f"Please pick up to hear my response. 🙌"
+        )
+    else:
+        sms_reply_body = (
+            "Thanks for your message! I'm processing it now. "
+            "I'll get back to you shortly."
+        )
+
+    twiml = _build_sms_twiml(sms_reply_body)
+    return HTMLResponse(content=twiml, media_type="text/xml")
+
+
+@router.api_route("/sms-voice", methods=["GET", "POST"])
+async def twilio_sms_voice(request: Request):
+    """Serve TwiML for the SMS-triggered voice callback.
+
+    Called by Twilio when the user answers the outbound call.
+    Looks up the AI response from the conversation and speaks it aloud.
+    Then gathers further speech for a natural continued conversation.
+    """
+    conv_id = request.query_params.get("conv_id", "")
+    form_data = {}
+    call_sid = ""
+    from_number = ""
+
+    if request.method == "POST":
+        form_data = await request.form()
+        call_sid = form_data.get("CallSid", "")
+        from_number = form_data.get("From", "")
+    else:
+        call_sid = request.query_params.get("CallSid", "")
+        from_number = request.query_params.get("From", "")
+
+    logger.info(
+        "🔊 SMS-voice callback — conv: %s, call: %s, from: %s",
+        conv_id, call_sid, from_number,
+    )
+
+    # Look up the conversation to get the AI response
+    conv_service = get_conversation_service()
+    response_text = DEFAULT_GREETING
+
+    if conv_id:
+        conv = conv_service.get(conv_id)
+        if conv and conv.messages:
+            # Find the last agent message
+            for msg in reversed(conv.messages):
+                if msg.role == "agent":
+                    response_text = msg.content
+                    break
+
+    base_url = str(request.base_url).rstrip("/")
+    # Build the TwiML: speak the response, then gather for more input
+    twiml = _build_twiml(response_text, gather=True, base_url=base_url)
+    return HTMLResponse(content=twiml, media_type="text/xml")
+
+
+def _build_sms_twiml(message: str) -> str:
+    """Build a TwiML response for SMS webhook acknowledgment."""
+    escaped = _escape_xml(message)
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        f"<Message>{escaped}</Message>"
+        "</Response>"
+    )

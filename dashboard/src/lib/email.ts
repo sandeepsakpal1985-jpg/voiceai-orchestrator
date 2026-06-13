@@ -1,10 +1,12 @@
 /**
  * VoiceAI Dashboard — Email Utility
  *
- * Handles sending transactional emails (verification, password reset, etc.).
+ * Handles sending transactional emails (verification, password reset, etc.)
+ * using Resend (https://resend.com).
  * In development mode, emails are logged to console instead of being sent.
- * In production, plug in a real email provider (Resend, SendGrid, SES, etc.).
  */
+
+import { Resend } from "resend";
 
 const FROM_NAME = "VoiceAI";
 const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@voiceai.com";
@@ -16,9 +18,26 @@ interface SendEmailParams {
   text?: string;
 }
 
+let _resendClient: Resend | null = null;
+
+/**
+ * Get or create a Resend client instance.
+ * Lazily initialized so it doesn't throw at import time if RESEND_API_KEY is unset.
+ */
+function getResendClient(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+  if (!_resendClient) {
+    _resendClient = new Resend(apiKey);
+  }
+  return _resendClient;
+}
+
 /**
  * Send an email. In development, logs to console.
- * In production, uses the configured email provider.
+ * In production, sends via Resend.
  */
 export async function sendEmail({ to, subject, html, text }: SendEmailParams) {
   const isDev = process.env.NODE_ENV === "development";
@@ -33,13 +52,33 @@ export async function sendEmail({ to, subject, html, text }: SendEmailParams) {
     return { success: true, dev: true };
   }
 
-  try {
-    // Production email sending — plug in your provider here
-    // Example: Resend, SendGrid, AWS SES, etc.
-    // await resend.emails.send({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to, subject, html, text });
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — falling back to console log");
+    console.log(`[Email] Would send to ${to}: ${subject}`);
+    return { success: true, fallback: true };
+  }
 
-    console.log(`[Email] Sent to ${to}: ${subject}`);
-    return { success: true };
+  try {
+    const payload: Parameters<typeof resend.emails.send>[0] = {
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to,
+      subject,
+      html,
+    };
+    if (text) {
+      payload.text = text;
+    }
+
+    const { data, error } = await resend.emails.send(payload);
+
+    if (error) {
+      console.error(`[Email] Resend API error for ${to}:`, error);
+      throw new Error(`Resend API error: ${error.message}`);
+    }
+
+    console.log(`[Email] Sent to ${to}: ${subject} (id: ${data?.id})`);
+    return { success: true, id: data?.id };
   } catch (error) {
     console.error(`[Email] Failed to send to ${to}:`, error);
     throw error;

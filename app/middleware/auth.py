@@ -123,62 +123,75 @@ class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next: Callable):
-        path = request.url.path
+async def dispatch(self, request: Request, call_next: Callable):
+    path = request.url.path
 
-        # ── AUTH_BYPASS: skip all auth (testing/development) ──
-        if os.getenv("AUTH_BYPASS", "").lower() in ("true", "1", "yes"):
-            request.state.user = {"id": "dev-user", "role": "admin"}
-            logger.debug("AUTH_BYPASS enabled — skipping auth for %s", path)
+    # ── AUTH_BYPASS: skip all auth (testing/development) ──
+    if os.getenv("AUTH_BYPASS", "").lower() in ("true", "1", "yes"):
+        request.state.user = {"id": "dev-user", "role": "admin"}
+        logger.debug("AUTH_BYPASS enabled — skipping auth for %s", path)
+        return await call_next(request)
+
+    # ── Skip auth for excluded paths ──
+    for prefix in AUTH_EXCLUDED_PREFIXES:
+        if path.startswith(prefix):
+            request.state.user = None
             return await call_next(request)
 
-        # ── Skip auth for excluded paths ──
-        for prefix in AUTH_EXCLUDED_PREFIXES:
-            if path.startswith(prefix):
-                request.state.user = None
-                return await call_next(request)
+    # ── Development Mode ──
+    # If AUTH_SECRET is not loaded, skip authentication completely.
+    if not os.getenv("AUTH_SECRET", ""):
+        logger.warning(
+            "AUTH_SECRET not loaded — skipping authentication for %s",
+            path,
+        )
+        request.state.user = {"id": "dev-user", "role": "admin"}
+        return await call_next(request)
 
-        # ── Extract Bearer token ──
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            logger.debug("Missing or malformed Authorization header on %s", path)
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "error": "Unauthorized",
-                    "detail": (
-                        "Authentication required. "
-                        "Provide a Bearer token in the Authorization header."
-                    ),
-                    "documentation": "/docs",
-                },
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+    # ── Extract Bearer token ──
+    auth_header = request.headers.get("Authorization", "")
 
-        token = auth_header.removeprefix("Bearer ").strip()
+    if not auth_header.startswith("Bearer "):
+        logger.debug("Missing or malformed Authorization header on %s", path)
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "Unauthorized",
+                "detail": (
+                    "Authentication required. "
+                    "Provide a Bearer token in the Authorization header."
+                ),
+                "documentation": "/docs",
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-        # ── Verify token ──
-        payload = verify_token(token)
-        if payload is None:
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "error": "Invalid or expired token",
-                    "detail": "Your session token is invalid or has expired. Please sign in again.",
-                },
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+    token = auth_header.removeprefix("Bearer ").strip()
 
-        # ── Set request state ──
-        request.state.user = {
-            "id": payload.get("sub", "unknown"),
-            "role": payload.get("role", "user"),
-        }
+    # ── Verify token ──
+    payload = verify_token(token)
+    if payload is None:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "Invalid or expired token",
+                "detail": (
+                    "Your session token is invalid or has expired. "
+                    "Please sign in again."
+                ),
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-        # ── Proceed ──
-        response = await call_next(request)
-        return response
+    # ── Set request state ──
+    request.state.user = {
+        "id": payload.get("sub", "unknown"),
+        "role": payload.get("role", "user"),
+    }
 
+    # ── Proceed ──
+    response = await call_next(request)
+    return response
 
 # ── Dependency for Route-Level Auth ──────────────────────────────────
 

@@ -1,0 +1,153 @@
+# ============================================================================
+# FreeSWITCH + AI Sales Agent — Docker Compose
+# ============================================================================
+#
+# Services:
+#   freeswitch — FreeSWITCH media server with ESL + SIP
+#   backend    — FastAPI application (STT → LLM → TTS pipeline)
+#   ollama     — Local LLM inference (Qwen 2.5)
+#   redis      — Caching, rate limiting, persistence
+#
+# Usage:
+#   docker compose -f docker/freeswitch-docker-compose.yml up -d
+#
+# Required .env variables:
+#   STT_PROVIDER, LLM_PROVIDER, TTS_PROVIDER, OLLAMA_BASE_URL
+#
+# FreeSWITCH ESL access:
+#   Host: localhost, Port: 8021, Password: ClueCon
+#
+# FreeSWITCH SIP access:
+#   Host: localhost, Port: 5060 (TCP/UDP), Transport: UDP
+#
+# AI Backend API:
+#   http://localhost:8000/health
+#   http://localhost:8000/fs/health
+# ============================================================================
+
+services:
+  # ── FreeSWITCH Media Server ──────────────────────────────────────
+  #
+  # Uses the custom Dockerfile.freeswitch.test by default, which bakes in
+  # our AI Agent configs (dialplan, extensions, SIP profiles, ESL config).
+  #
+  # The custom entrypoint (entrypoint-override.sh) runs the original image's
+  # entrypoint to generate default configs, then copies our custom configs over.
+  # Configs persist across container restarts without re-injection.
+  #
+  # To build and run:
+  #   docker compose -f docker/freeswitch-docker-compose.yml build freeswitch
+  #   docker compose -f docker/freeswitch-docker-compose.yml up -d
+  #
+  freeswitch:
+    image: ai-freeswitch-custom:latest
+    container_name: ai-freeswitch
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_PTRACE
+      - SYS_RAWIO
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "8021:8021"
+      - "8081:8081"
+      - "64535-65535:64535-65535/udp"
+    volumes:
+      - fs_audio:/tmp/fs_audio
+    environment:
+      - TZ=UTC
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "fs_cli", "-x", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Backend (FastAPI) ────────────────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: ai-fs-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      APP_NAME: "AI Sales Agent (FreeSWITCH)"
+      STT_PROVIDER: ${STT_PROVIDER:-whisper}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      TTS_PROVIDER: ${TTS_PROVIDER:-kokoro}
+      OLLAMA_BASE_URL: http://ai-fs-ollama:11434
+      REDIS_URL: redis://ai-fs-redis:6379
+      FREESWITCH_BRIDGE_ENABLED: "true"
+      FREESWITCH_ESL_HOST: "ai-freeswitch"
+      FREESWITCH_ESL_PORT: "8021"
+      FREESWITCH_ESL_PASSWORD: "ClueCon"
+      FREESWITCH_AUDIO_DIR: "/tmp/fs_audio"
+      FREESWITCH_RECORD_TIMEOUT: "10"
+      FREESWITCH_MAX_CALL_DURATION: "600"
+      FREESWITCH_MAX_TURNS: "50"
+      FREESWITCH_LLM_TIMEOUT: "15"
+      FREESWITCH_BRIDGE_RECONNECT_DELAY: "5"
+      FREESWITCH_BRIDGE_MAX_RETRIES: "10"
+      LIVEKIT_ENABLED: "false"
+      SIP_ENABLED: "false"
+      TWILIO_ACCOUNT_SID: ""
+    volumes:
+      - ../backend:/app
+      - fs_audio:/tmp/fs_audio
+    working_dir: /app
+    depends_on:
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+  # ── Ollama (Local LLM Inference) ─────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-fs-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_NUM_PARALLEL: 1
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Redis (Caching & Persistence) ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ai-fs-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+
+volumes:
+  ollama_data:
+  redis_data:
+  fs_audio:

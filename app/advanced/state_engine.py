@@ -182,7 +182,7 @@ class ConversationStateEngine:
         elif detected_emotion == CustomerEmotion.POSITIVE:
             return "REASSURANCE"
         elif detected_emotion == CustomerEmotion.WRONG_NUMBER:
-            return "CLOSING"
+    	    return "QUESTION"
         elif detected_emotion == CustomerEmotion.EMOTIONAL:
             return "EMPATHY"
 

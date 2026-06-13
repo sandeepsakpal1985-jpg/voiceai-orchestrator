@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Sales Agent Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">📞</span>
+          <span class="logo-text">AI Sales Agent</span>
+        </div>
+      </div>
+      <div class="sidebar-nav">
+        <button class="nav-item active" data-section="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-section="calls">
+          <span class="nav-icon">📞</span>
+          <span>Active Calls</span>
+          <span class="badge" id="active-call-count">0</span>
+        </button>
+        <button class="nav-item" data-section="conversations">
+          <span class="nav-icon">💬</span>
+          <span>Conversations</span>
+        </button>
+        <button class="nav-item" data-section="voice-chat">
+          <span class="nav-icon">🎙️</span>
+          <span>Voice Chat</span>
+        </button>
+        <button class="nav-item" data-section="agents">
+          <span class="nav-icon">🤖</span>
+          <span>Agents</span>
+        </button>
+        <button class="nav-item" data-section="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </button>
+      </div>
+      <div class="sidebar-footer">
+        <div class="status-indicator" id="server-status">
+          <span class="status-dot offline"></span>
+          <span>Disconnected</span>
+        </div>
+        <div class="version">v1.0.0</div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Dashboard Section -->
+      <section id="section-dashboard" class="section active">
+        <div class="section-header">
+          <h1>Dashboard</h1>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshDashboard()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon">📞</div>
+            <div class="metric-info">
+              <span class="metric-value" id="metric-total-calls">—</span>
+              <span class="metric-label">Total Calls</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">🟢</div>
+            <div class="metric-info">
+              <span class="metric-value" id="metric-active-calls">—</span>
+              <span class="metric-label">Active Calls</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">💬</div>
+            <div class="metric-info">
+              <span class="metric-value" id="metric-conversations">—</span>
+              <span class="metric-label">Conversations</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">⚡</div>
+            <div class="metric-info">
+              <span class="metric-value" id="metric-uptime">—</span>
+              <span class="metric-label">Uptime</span>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-panels">
+          <div class="panel">
+            <h3>Provider Status</h3>
+            <div class="provider-list" id="provider-status">
+              <div class="loading">Loading providers...</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Recent Conversations</h3>
+            <div class="recent-conversations" id="recent-conversations">
+              <div class="loading">Loading conversations...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Voice Chat Section -->
+      <section id="section-voice-chat" class="section">
+        <div class="section-header">
+          <h1>Voice Chat</h1>
+          <div class="header-actions">
+            <select id="voice-provider-select" class="select-small">
+              <option value="kokoro">Kokoro (Local)</option>
+              <option value="elevenlabs">ElevenLabs</option>
+            </select>
+            <select id="tts-voice-select" class="select-small">
+              <option value="af_bella">Bella</option>
+              <option value="af_nicole">Nicole</option>
+              <option value="am_adam">Adam</option>
+            </select>
+          </div>
+        </div>
+        <div class="voice-chat-container">
+          <div class="chat-messages" id="chat-messages">
+            <div class="message system">
+              <div class="message-content">Welcome to the AI Sales Agent. Start a conversation below.</div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <div class="chat-status-bar" id="chat-status">
+              <span class="status-text">Ready</span>
+            </div>
+            <div class="chat-input-row">
+              <input type="text" id="chat-input" class="chat-input" placeholder="Type your message..." disabled>
+              <button class="btn btn-primary" id="btn-send" disabled onclick="sendChatMessage()">Send</button>
+              <button class="btn btn-secondary" id="btn-start-chat" onclick="startVoiceChat()">🎤 Start Chat</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calls Section -->
+      <section id="section-calls" class="section">
+        <div class="section-header">
+          <h1>Active Calls</h1>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshCalls()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div class="calls-table-container">
+          <table class="calls-table">
+            <thead>
+              <tr>
+                <th>Call SID</th>
+                <th>From</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="calls-table-body">
+              <tr><td colspan="5" class="empty-state">No active calls</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Conversations Section -->
+      <section id="section-conversations" class="section">
+        <div class="section-header">
+          <h1>Conversations</h1>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick="refreshConversations()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div class="conversations-list" id="conversations-list">
+          <div class="loading">Loading conversations...</div>
+        </div>
+      </section>
+
+      <!-- Agents Section -->
+      <section id="section-agents" class="section">
+        <div class="section-header">
+          <h1>Agent Configuration</h1>
+        </div>
+        <div class="agent-config">
+          <div class="config-card">
+            <h3>STT Provider</h3>
+            <select id="config-stt" class="select-full">
+              <option value="whisper">Whisper (Local)</option>
+              <option value="deepgram">Deepgram (Cloud)</option>
+            </select>
+          </div>
+          <div class="config-card">
+            <h3>LLM Provider</h3>
+            <select id="config-llm" class="select-full">
+              <option value="ollama">Ollama (Local)</option>
+              <option value="openai">OpenAI (Cloud)</option>
+              <option value="gemini">Gemini (Cloud)</option>
+              <option value="openrouter">OpenRouter (Cloud)</option>
+            </select>
+          </div>
+          <div class="config-card">
+            <h3>TTS Provider</h3>
+            <select id="config-tts" class="select-full">
+              <option value="kokoro">Kokoro (Local)</option>
+              <option value="elevenlabs">ElevenLabs (Cloud)</option>
+            </select>
+          </div>
+          <div class="config-card">
+            <h3>System Prompt</h3>
+            <select id="config-prompt" class="select-full">
+              <option value="sales">Sales Call</option>
+              <option value="support">Customer Support</option>
+              <option value="booking">Appointment Booking</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Section -->
+      <section id="section-settings" class="section">
+        <div class="section-header">
+          <h1>Settings</h1>
+        </div>
+        <div class="settings-panel">
+          <div class="setting-row">
+            <label>API Base URL</label>
+            <input type="text" id="setting-api-url" value="http://localhost:8000" class="input-full">
+          </div>
+          <div class="setting-row">
+            <label>WebSocket URL</label>
+            <input type="text" id="setting-ws-url" value="ws://localhost:8000" class="input-full">
+          </div>
+          <div class="setting-row">
+            <label>Auto-refresh (seconds)</label>
+            <input type="number" id="setting-refresh" value="15" min="5" max="120" class="input-small">
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

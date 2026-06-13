@@ -1,0 +1,56 @@
+# ============================================================================
+# AI Sales Agent — Python Dependencies
+# ============================================================================
+# Core Runtime (Required)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+httpx>=0.27.0
+python-multipart>=0.0.9
+sse-starlette>=2.0.0
+websockets>=12.0
+aiofiles>=24.0.0
+python-dotenv>=1.0.0
+
+# Audio Processing
+sounddevice>=0.5.0
+soundfile>=0.12.0
+numpy>=1.24.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
+
+# Redis (optional, for rate limiting)
+redis>=5.0.0
+
+# ============================================================================
+# LOCAL AI PROVIDERS (Default — Required for self-hosted operation)
+# ============================================================================
+# STT
+faster-whisper>=1.0.0
+
+# TTS
+kokoro>=0.1.0
+
+# LLM - Ollama (connected via HTTP API, no pip package needed)
+
+# Local Embeddings
+sentence-transformers>=3.0.0
+
+# Vector Store
+chromadb>=0.5.0
+
+# PyTorch (CPU: pip install torch --index-url https://download.pytorch.org/whl/cpu)
+torch>=2.0.0
+
+# ============================================================================
+# OPTIONAL CLOUD PROVIDERS
+# ============================================================================
+# google-genai>=1.0.0  # Uncomment for Gemini support
+
+# ============================================================================
+# DEV / TESTING
+# ============================================================================
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+coverage>=7.0.0

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FreeSWITCH External SIP Profile — Any SIP Trunk Provider
+
+  This profile handles SIP traffic from any VoIP provider (Twilio, Telnyx,
+  Flowroute, AWS Chime, direct carrier peering, etc.).
+  The provider sends calls to port 5080 (external profile).
+
+  Replace placeholders in vars.xml:
+    - external_sip_ip: Your public IP address or FQDN
+    - external_rtp_ip: Your public RTP IP (usually same as SIP IP)
+    - external_sip_port: 5080
+
+  Then add a gateway for your provider (see "Gateway Template" below).
+
+  Firewall: Open UDP ports 5080 (SIP) and 16384-32768 (RTP).
+-->
+
+<include>
+  <profile name="external">
+    <param name="debug" value="0"/>
+    <param name="sip-port" value="$${external_sip_port}"/>
+    <param name="dialplan" value="XML"/>
+    <param name="context" value="ai-sales-agent"/>
+    <param name="dtmf-duration" value="100"/>
+
+    <!-- Network -->
+    <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
+    <param name="ext-sip-ip" value="$${external_sip_ip}"/>
+    <param name="rtp-ip" value="$${external_rtp_ip}"/>
+    <param name="sip-ip" value="$${external_sip_ip}"/>
+
+    <!-- Codecs (PCMU/PCMA for PSTN compatibility, G722/Opus for quality) -->
+    <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
+    <param name="outbound-codec-prefs" value="$${global_codec_prefs}"/>
+    <param name="inbound-late-negotiation" value="true"/>
+    <param name="inbound-bypass-media" value="false"/>
+    <param name="inbound-proxy-media" value="false"/>
+
+    <!-- NAT / STUN (applied once; ext-*-ip already set in Network section) -->
+    <param name="apply-nat-acl" value="rfc1918"/>
+    <param name="aggressive-nat-detection" value="true"/>
+
+    <!-- Security -->
+    <param name="auth-calls" value="$${external_auth_calls}"/>
+    <param name="log-auth-failures" value="true"/>
+    <param name="accept-blind-uc" value="$${external_accept_blind}"/>
+    <param name="accept-blind-reg" value="true"/>
+    <param name="challenge-realm" value="auto_from"/>
+    <param name="sip-ip" value="$${external_sip_ip}"/>
+
+    <!-- Media -->
+    <param name="rtp-ip" value="$${external_rtp_ip}"/>
+    <param name="rtp-timeout-sec" value="300"/>
+    <param name="rtp-hold-timeout-sec" value="1800"/>
+    <param name="enable-soa" value="true"/>
+    <param name="enable-timer" value="false"/>
+    <param name="session-timeout" value="1800"/>
+
+    <!-- Audio quality -->
+    <param name="write-codec-prefs" value="$${outbound_codec_prefs}"/>
+    <param name="sustain-rtp-status" value="true"/>
+    <param name="enable-rtp-repair" value="true"/>
+
+    <!-- Provider-specific optimizations (example: compact headers for Twilio) -->
+    <param name="enable-compact-headers" value="true"/>
+    <param name="rfc2833-pt" value="101"/>
+  </profile>
+
+  <!-- ================================================================
+       Gateway Templates — Uncomment and fill credentials for your provider.
+
+       India-market providers (recommended for AI voice agent):
+       - Plivo (Zentrunk):       realm = zen.sip.plivo.com,  elastic scaling, pay-as-you-go
+       - Exotel (vSIP):          realm = sip.exotel.com,     200 CPM default, enterprise
+       - CloudConnect:           realm = sip.cloud-connect.in, channel-based, multi-carrier
+
+       International providers:
+       - Twilio:                 realm = your-domain.sip.us1.twilio.com
+       - Telnyx:                 realm = sip.telnyx.com
+       - Flowroute:              realm = flowroute.com
+       - AWS Chime:              realm = chime.sipaws.com
+       ================================================================ -->
+
+  <!-- Plivo (Zentrunk) ~~~
+       Pay-as-you-go approx Rs.0.60/min. Unlimited concurrent calls (elastic).
+       Sign up: console.plivo.com -> SIP endpoints -> create Zentrunk trunk.
+  -->
+  <!--
+  <gateway name="plivo">
+    <param name="username" value="PLIVO_SIP_ENDPOINT_USERNAME"/>
+    <param name="password" value="PLIVO_SIP_ENDPOINT_PASSWORD"/>
+    <param name="realm" value="zen.sip.plivo.com"/>
+    <param name="register" value="true"/>
+    <param name="register-transport" value="udp"/>
+    <param name="caller-id-in-from" value="false"/>
+    <param name="extension" value="YOUR_DID_NUMBER"/>
+    <param name="proxy" value="zen.sip.plivo.com"/>
+  </gateway>
+  -->
+
+  <!-- Exotel (vSIP) ~~~
+       Enterprise custom pricing. 200 CPM default (can be raised).
+       Contact: exotel.com -> request vSIP demo.
+  -->
+  <!--
+  <gateway name="exotel">
+    <param name="username" value="EXOTEL_SIP_USERNAME"/>
+    <param name="password" value="EXOTEL_AUTH_TOKEN"/>
+    <param name="realm" value="sip.exotel.com"/>
+    <param name="register" value="true"/>
+    <param name="register-transport" value="udp"/>
+    <param name="caller-id-in-from" value="false"/>
+    <param name="extension" value="YOUR_EXOTEL_NUMBER"/>
+    <param name="proxy" value="sip.exotel.com"/>
+  </gateway>
+  -->
+
+  <!-- CloudConnect ~~~
+       Channel-based packages (10 to thousands of channels). Multi-carrier.
+       Contact: cloud-connect.in | +91 82328 23823 | info@cloud-connect.in
+  -->
+  <!--
+  <gateway name="cloudconnect">
+    <param name="username" value="CLOUDCONNECT_SIP_USER"/>
+    <param name="password" value="CLOUDCONNECT_PASSWORD"/>
+    <param name="realm" value="sip.cloud-connect.in"/>
+    <param name="register" value="true"/>
+    <param name="register-transport" value="udp"/>
+    <param name="caller-id-in-from" value="false"/>
+    <param name="extension" value="YOUR_DID_NUMBER"/>
+    <param name="proxy" value="sip.cloud-connect.in"/>
+  </gateway>
+  -->
+
+  <!-- Generic Template ~~~
+       Copy and adapt for any other SIP trunk provider.
+  -->
+  <!--
+  <gateway name="my-provider">
+    <param name="username" value="YOUR_SIP_USERNAME"/>
+    <param name="password" value="YOUR_SIP_PASSWORD"/>
+    <param name="realm" value="YOUR_PROVIDER_SIP_DOMAIN"/>
+    <param name="register" value="true"/>
+    <param name="register-transport" value="udp"/>
+    <param name="caller-id-in-from" value="false"/>
+    <param name="extension" value="YOUR_DID_NUMBER"/>
+    <param name="proxy" value="YOUR_PROVIDER_SIP_DOMAIN"/>
+  </gateway>
+  -->
+
+</include>

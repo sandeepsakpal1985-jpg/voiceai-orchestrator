@@ -72,11 +72,23 @@ def _init_registry():
     reset_default_registry()
     registry = get_default_registry()
 
+    # Resolve "auto" model size ("auto" -> actual model based on GPU/CPU)
+    whisper_model = settings.WHISPER_MODEL_SIZE
+    whisper_device = settings.WHISPER_DEVICE
+    whisper_compute = settings.WHISPER_COMPUTE_TYPE
+    if whisper_model == "auto":
+        from app.providers.gpu import detect_gpu_config
+        gpu = detect_gpu_config()
+        whisper_model = gpu.recommended_whisper_model
+        whisper_device = gpu.recommended_device
+        whisper_compute = gpu.recommended_compute_type
+
     # Register STT providers
     registry.register_stt("whisper", WhisperSTTProvider(
-        model_size=settings.WHISPER_MODEL_SIZE,
-        device=settings.WHISPER_DEVICE,
-        compute_type=settings.WHISPER_COMPUTE_TYPE,
+        model_size=whisper_model,
+        device=whisper_device,
+        compute_type=whisper_compute,
+        cpu_threads=settings.WHISPER_CPU_THREADS,
     ))
 
     # Try to register Deepgram if API key is available
