@@ -662,14 +662,17 @@ async function startRecording() {
     return false;
   }
 
-  // STEP 4: Create ScriptProcessor
-  console.log('STEP 4: audioCtx.createScriptProcessor(4096, 1, 1)');
+  // STEP 4: Load AudioWorklet module + create AudioWorkletNode
+  // AudioWorkletProcessor runs on a dedicated audio thread (non-blocking, modern API)
+  console.log('STEP 4: Loading AudioWorklet module (audio-processor.js)...');
   let recorder;
   try {
-    recorder = audioCtx.createScriptProcessor(4096, 1, 1);
-    console.log('STEP 4 OK: ScriptProcessor created');
+    await audioCtx.audioWorklet.addModule('/frontend/audio-processor.js');
+    console.log('STEP 4a: AudioWorklet module loaded successfully');
+    recorder = new AudioWorkletNode(audioCtx, 'pcm-capture-processor');
+    console.log('STEP 4b: AudioWorkletNode created (pcm-capture-processor)');
   } catch (e) {
-    console.error('STEP 4 FAILED: createScriptProcessor error:', e.name, e.message);
+    console.error('STEP 4 FAILED: AudioWorklet error:', e.name, e.message);
     try { await audioCtx.close(); } catch {}
     mediaStream.getTracks().forEach(function(t) { t.stop(); });
     mediaStream = null;
@@ -696,29 +699,28 @@ async function startRecording() {
   mediaRecorder = { source: source, recorder: recorder, audioCtx: audioCtx, chunks: chunks, stream: mediaStream };
   console.log('STEP 6 OK: mediaRecorder assigned:', !!mediaRecorder);
 
-  // STEP 7: Set up onaudioprocess callback
-  console.log('STEP 7: Setting up recorder.onaudioprocess callback');
+  // STEP 7: Set up AudioWorklet port message handler
+  // AudioWorkletProcessor sends Int16 PCM data + RMS via port.postMessage
+  // VAD logic stays on main thread (cleaner separation of concerns)
+  console.log('STEP 7: Setting up AudioWorklet port.onmessage handler');
   try {
-    recorder.onaudioprocess = function(e) {
+    recorder.port.onmessage = function(event) {
       try {
-        const input = e.inputBuffer.getChannelData(0);
-        const pcm = new Int16Array(input.length);
-        let sumSq = 0;
-        for (let i = 0; i < input.length; i++) {
-          const s = Math.max(-1, Math.min(1, input[i]));
-          pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-          sumSq += s * s;
-        }
+        const msg = event.data;
+        if (msg.type !== 'pcm') return;
+
+        // Reconstruct Int16Array from transferred ArrayBuffer
+        const pcm = new Int16Array(msg.pcm);
         chunks.push(pcm);
 
         // VAD: detect silence to auto-stop
-        const rms = Math.sqrt(sumSq / input.length);
+        // msg.rms is already calculated in the worklet (Float32→Int16 conversion + RMS)
         const elapsed = (Date.now() - recordingStartTime) / 1000;
         if (elapsed > VAD_MIN_DURATION) {
-          if (rms < VAD_THRESHOLD) {
+          if (msg.rms < VAD_THRESHOLD) {
             silenceFrameCount++;
             if (silenceFrameCount === 1 || silenceFrameCount === VAD_SILENCE_FRAMES) {
-              console.log('VAD: silence frame ' + silenceFrameCount + '/' + VAD_SILENCE_FRAMES + '  rms:', rms.toFixed(5));
+              console.log('VAD: silence frame ' + silenceFrameCount + '/' + VAD_SILENCE_FRAMES + '  rms:', msg.rms.toFixed(5));
             }
             if (silenceFrameCount >= VAD_SILENCE_FRAMES) {
               console.log('VAD: trigger stopRecording (silence threshold reached)');
@@ -727,18 +729,18 @@ async function startRecording() {
             }
           } else {
             if (silenceFrameCount > 0) {
-              console.log('VAD: sound detected, resetting silence counter. rms:', rms.toFixed(5));
+              console.log('VAD: sound detected, resetting silence counter. rms:', msg.rms.toFixed(5));
             }
             silenceFrameCount = 0;
           }
         }
       } catch (e) {
-        console.error('onaudioprocess ERROR:', e.name, e.message);
+        console.error('AudioWorklet message handler ERROR:', e.name, e.message);
       }
     };
-    console.log('STEP 7 OK: onaudioprocess callback set');
+    console.log('STEP 7 OK: AudioWorklet port.onmessage handler set');
   } catch (e) {
-    console.error('STEP 7 FAILED: onaudioprocess setup error:', e.name, e.message);
+    console.error('STEP 7 FAILED: AudioWorklet message handler setup error:', e.name, e.message);
     try { await audioCtx.close(); } catch {}
     mediaStream.getTracks().forEach(function(t) { t.stop(); });
     mediaStream = null;
@@ -858,7 +860,11 @@ async function stopRecording() {
   try {
     console.log('Disconnecting audio graph...');
     src.disconnect();
-    recNode.disconnect();
+    // AudioWorkletNode disconnect + port cleanup
+    if (recNode.disconnect) recNode.disconnect();
+    if (recNode.port) {
+      try { recNode.port.close(); } catch {}
+    }
     console.log('Audio nodes disconnected');
   } catch (e) {
     console.warn('Disconnect warning:', e.name, e.message);
