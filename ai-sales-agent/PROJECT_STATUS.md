@@ -1,133 +1,142 @@
-# PROJECT_STATUS.md — Voice Chat Recording Bug Fix
+# PROJECT_STATUS.md — Voice Chat Recording: AudioWorkletProcessor Upgrade
 
-## Root Cause Analysis
+## Completed Changes
 
-### Bug 1 (Critical): `source.disconnect()` tears down the audio graph
+### Phase 1: Bug Fixes (ScriptProcessorNode)
 
-**Location:** `frontend/voice-chat.html`, inside `startRecording()`
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| `mediaStream.active` becomes false | `source.disconnect()` tore down audio graph | **Parallel connections** — `source.connect(recorder)` + `source.connect(analyserNode)`, no disconnect |
+| `state.isRecording` stays false | VAD called `stopRecording()` before `mediaRecorder` was assigned | **Early `mediaRecorder` assignment** at STEP 6, before audio connections at STEP 8 |
+| No error messages | Single monolithic try/catch | **Individual try/catch per step** with precise messages and partial cleanup |
+| Impossible to debug | Zero console.log statements | **STEP 1-11 logging** at every major step + VAD logging |
 
-**Details:**
-The code connected the microphone source to the ScriptProcessor recorder:
-```javascript
-source.connect(recorder);       // OK: audio flows source → recorder
-```
-Then later:
-```javascript
-source.disconnect();            // 🔴 BUG: Disconnects ALL outputs from source
-source.connect(analyserNode);   // Reconnects source → analyser
-analyserNode.connect(recorder); // Connects analyser → recorder
-```
+### Phase 2: AudioWorkletProcessor Upgrade (Current)
 
-`source.disconnect()` removes the `source → recorder` connection. The reconnection through `analyserNode` (`source → analyser → recorder`) relies on AnalyserNode passing audio through to its output. While the spec says it should, some browser implementations have issues with AnalyserNode → ScriptProcessorNode chaining, especially since ScriptProcessorNode is deprecated in favor of AudioWorklet.
+| Change | Before | After |
+|--------|--------|-------|
+| Audio capture API | `createScriptProcessor(4096, 1, 1)` (deprecated) | `AudioWorkletNode` (modern, dedicated audio thread) |
+| Audio processing thread | Main thread (blocks UI) | **Separate audio thread** (no UI blocking) |
+| Data transfer | Callback (`onaudioprocess`) | **Message-based** (`port.onmessage` + transferable ArrayBuffer) |
+| PCM conversion | On main thread | In **AudioWorkletProcessor** (zero-cost, on audio thread) |
+| RMS/VAD calculation | On main thread, recalculated from Int16 | **In worklet** during Int16 conversion, sent with message |
 
-**Fix:** Connect source to BOTH recorder and analyser in parallel. AudioNodes support multiple output connections:
-```javascript
-source.connect(recorder);       // Audio flows to recorder for VAD/chunks
-source.connect(analyserNode);   // Audio flows to analyser for visualizer
-// No disconnect. No analyser→recorder chain.
-```
+### New Files
 
-### Bug 2 (Critical): VAD race condition — `stopRecording()` fires before `mediaRecorder` assigned
+| File | Description |
+|------|-------------|
+| `frontend/audio-processor.js` | AudioWorkletProcessor: accumulates 128-frame chunks to 4096-sample buffers, converts Float32→Int16, calculates RMS, sends via `port.postMessage()` with transferable ArrayBuffer (zero-copy) |
 
-**Location:** `frontend/voice-chat.html`, `startRecording()` — timing between `source.connect(recorder)` and `mediaRecorder = {...}`
+### Modified Files
 
-**Details:**
-`onaudioprocess` fires as soon as `source.connect(recorder)` is called. The VAD logic inside the callback can accumulate 5 silent frames (~1.28s) and call `stopRecording()`. But `stopRecording()` guards with:
-```javascript
-if (!mediaRecorder || !state.isRecording) return;
-```
-Since `mediaRecorder` was still `null` (assigned much later), `stopRecording()` became a silent no-op. The user sees:
-- Mic shows recording state
-- But no audio is ever processed/sent
-- After 5+ silent frames, `stopRecording()` is called again — this time `mediaRecorder` IS set, so it runs
-- `state.isRecording` was set to `true` early, so the guard passes
-- Audio is collected until VAD fires... but by this point, the user may have been waiting a long time
+| File | Changes |
+|------|---------|
+| `frontend/voice-chat.html` | STEP 4: load `audioCtx.audioWorklet.addModule('/frontend/audio-processor.js')` + `new AudioWorkletNode(...)`. STEP 7: `port.onmessage` handler replaces `onaudioprocess`. STEP 8: source connects to AudioWorkletNode. stopRecording: added `port.close()` cleanup. |
 
-**Fix:** Assign `mediaRecorder` EARLY (as a placeholder object) BEFORE connecting any audio nodes. This way, if VAD fires, `stopRecording()` has a valid `mediaRecorder` to operate on.
+### Files Changed (All Phases)
 
-### Bug 3 (Medium): Single monolithic try/catch
-
-**Details:** The entire `startRecording()` was wrapped in one try/catch. Any failure at any step would log "Mic access denied", which is misleading if the actual error was an AudioContext creation failure or analyser setup failure.
-
-**Fix:** Each major step has its own try/catch with precise error messages and proper partial cleanup (close AudioContext, stop tracks, etc.).
-
-### Bug 4 (Low): Zero console logging
-
-**Details:** There were no console.log statements in `startRecording()`, making it impossible to diagnose where the function was failing.
-
-**Fix:** Added `console.log("STEP 1")` through `console.log("STEP 11")` at every major step, plus detailed logging for VAD state, audio duration, and WAV encoding.
-
----
-
-## Files Changed
-
-| File | Change |
+| File | Status |
 |------|--------|
-| `frontend/voice-chat.html` | Rewrote `startRecording()` with 11 STEP logs, individual try/catch per step, parallel audio graph connections, early `mediaRecorder` assignment |
-| `frontend/voice-chat.html` | Rewrote `stopRecording()` with detailed logging and safer cleanup |
-| `frontend/voice-chat.html` | Added debug banner (CSS + HTML + update function) showing WS status, mediaStream.active, isRecording, mediaRecorder. Toggle with double-click on header. |
-| `PROJECT_STATUS.md` | This file |
+| `frontend/voice-chat.html` | ✅ Modified |
+| `frontend/audio-processor.js` | ✅ New |
+| `PROJECT_STATUS.md` | ✅ New |
+
+### Commits
+
+```
+1. "Fix voice-chat startRecording(): parallel audio graph, VAD race fix, STEP logging, debug banner"
+2. "Upgrade to AudioWorkletProcessor: replace deprecated ScriptProcessorNode with modern AudioWorklet API"
+```
 
 ---
 
 ## Test Instructions
 
 ### Prerequisites
-1. Backend running at `http://localhost:8000`
-2. Chrome browser (mic permission for localhost:8000 must be allowed)
+1. Backend running at `http://localhost:8000` (health check: `curl localhost:8000/health`)
+2. Chrome browser with **microphone permission granted** for `localhost:8000`
+   - Go to `chrome://settings/content/microphone`
+   - Ensure `http://localhost:8000` is NOT in the "Block" list
+   - The first time you click mic, Chrome will ask — click **Allow**
 
-### Test Steps
+### Step-by-Step Test
 
-1. **Open the app:**
-   ```
-   http://localhost:8000/frontend/voice-chat.html
-   ```
-
-2. **Verify WebSocket connects:**
-   - Green dot appears in header
-   - Status says "Connected"
-   - Chat shows "✅ Connected"
-
-3. **Toggle debug banner (double-click header):**
-   - See debug banner at bottom of screen
-   - Verify: WS: Connected, micStream.active: null, isRecording: false, mediaRecorder: null
-
-4. **Click mic button:**
-   - ✅ Mic turns red and pulses
-   - ✅ Status shows "🎤 Listening..."
-   - ✅ Debug banner shows: isRecording: true
-   - ✅ Console shows STEP 1 through STEP 11 all OK
-   - ✅ Debug banner eventually shows: micStream.active: true
-
-5. **Speak into mic:**
-   - ✅ Visualizer bars should move
-   - Console shows VAD: sound detected messages
-
-6. **Stop speaking (or wait for VAD):**
-   - ✅ Auto-stops after ~1.5s of silence
+1. **Open:** `http://localhost:8000/frontend/voice-chat.html`
+2. **Verify:** Green dot + "Connected" status appears
+3. **Open DevTools:** F12 → Console tab
+4. **Toggle debug banner:** Double-click the header (top bar) — debug banner shows at bottom
+5. **Click mic button (🎤):**
+   - ✅ Console shows STEP 1 through STEP 11
+   - ✅ Look for: `STEP 4a: AudioWorklet module loaded successfully`
+   - ✅ Look for: `STEP 4b: AudioWorkletNode created (pcm-capture-processor)`
+   - ✅ Look for: `=== startRecording() COMPLETE ===`
+   - ✅ Mic button turns RED and pulses
+   - ✅ Debug banner shows `isRecording: true`, `mediaRecorder: set`
+6. **Speak into mic:**
+   - ✅ Visualizer bars animate (below the mic button)
+   - ✅ Console shows VAD: messages if speaking
+7. **Stop speaking (wait 2-3 seconds):**
+   - ✅ VAD auto-triggers: `VAD: trigger stopRecording`
+   - ✅ Console shows: `Encoding X chunks, N samples total`, `Audio duration: X.Y seconds`
    - ✅ Status shows "🔊 Processing..."
    - ✅ Transcription appears in chat
-   - ✅ AI responds with speech
+   - ✅ AI responds with synthesized speech
 
-### Debug Mode
+### Expected Console Output
 
-Double-click the **header** (where it says "AI Voice Chat" / status dot) to toggle the debug banner.
+```
+=== startRecording() ===
+STEP 1: getUserMedia(...)
+STEP 1 OK: mediaStream obtained. active: true
+STEP 2: Creating AudioContext(...)
+STEP 2 OK: AudioContext created. state: running
+STEP 3: audioCtx.createMediaStreamSource(mediaStream)
+STEP 3 OK: MediaStreamSource created
+STEP 4: Loading AudioWorklet module (audio-processor.js)...
+STEP 4a: AudioWorklet module loaded successfully
+STEP 4b: AudioWorkletNode created (pcm-capture-processor)
+STEP 5: audioCtx.createAnalyser()
+STEP 5 OK: AnalyserNode created. fftSize: 32 binCount: 16
+STEP 6: Assigning mediaRecorder EARLY (before connecting audio)
+STEP 6 OK: mediaRecorder assigned: true
+STEP 7: Setting up AudioWorklet port.onmessage handler
+STEP 7 OK: AudioWorklet port.onmessage handler set
+STEP 8: Connecting audio graph (parallel connections — no disconnect)
+STEP 8a: source.connect(recorder) OK
+STEP 8b: source.connect(analyserNode) OK (parallel connection)
+STEP 9: Setting state.isRecording = true
+STEP 9 OK: isRecording: true mediaStream.active: true
+STEP 10: Starting recording visualizer
+STEP 10 OK: Visualizer animation started
+=== startRecording() COMPLETE ===
+isRecording: true mediaRecorder: true mediaStream.active: true
+```
 
-The debug banner shows live values:
-- `WS`: WebSocket connection state
-- `micStream.active`: Whether the microphone stream is alive
-- `isRecording`: Current recording state
-- `mediaRecorder`: Whether the mediaRecorder object exists
+### Debug Banner (double-click header)
+
+```
+WS: Connected | micStream.active: true | isRecording: true | mediaRecorder: set
+```
 
 ---
 
-## Next Debugging Step (if recording still fails)
+## If Recording Still Fails
 
-1. Open Chrome DevTools (F12) → Console
-2. Look for any `STEP N FAILED` messages — that tells you exactly which step broke
-3. Look for `ERROR` messages with stack traces
-4. Check debug banner at bottom of screen
+1. **Chrome mic blocked:**
+   - Go to `chrome://settings/content/microphone`
+   - Find `http://localhost:8000` in "Block" list → Remove it
+   - Refresh page and try again
 
-### Known edge cases:
-- **Chrome blocks mic on HTTP:** Must be `localhost` or HTTPS
-- **AudioContext suspended:** Chrome may suspend AudioContext on page load. If `audioCtx.state` is "suspended", call `audioCtx.resume()`
+2. **STEP 4 FAILED (AudioWorklet 404):**
+   - Check `curl http://localhost:8000/frontend/audio-processor.js` returns 200
+   - If 404, file may not be in the correct directory
+
+3. **STEP 2 AudioContext suspended:**
+   - Chrome suspends AudioContext until user interaction
+   - Clicking the mic button should resume it
+   - If not, call `audioCtx.resume()` manually from console
+
+4. **No VAD trigger:**
+   - `VAD_THRESHOLD` may be too low (0.008)
+   - Or `VAD_SILENCE_FRAMES` may be too high (5)
+   - Adjust constants and reload

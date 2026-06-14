@@ -639,6 +639,7 @@ async function startRecording() {
   try {
     audioCtx = new AudioContext({ sampleRate: 16000 });
     console.log('STEP 2 OK: AudioContext created. state:', audioCtx.state);
+    console.log('ACTUAL AUDIO SAMPLE RATE:', audioCtx.sampleRate);
   } catch (e) {
     console.error('STEP 2 FAILED: AudioContext error:', e.name, e.message);
     mediaStream.getTracks().forEach(function(t) { t.stop(); });
