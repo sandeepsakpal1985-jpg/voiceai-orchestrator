@@ -34,7 +34,7 @@ export function validateEnv(): void {
 
     if (isProd) {
       console.error(message);
-      console.error('❌ Cannot start MetaPilot AI in production — set these variables and restart.');
+      console.error('❌ Cannot start KluConnect (MetaPilot) in production — set these variables and restart.');
       process.exit(1);
     } else {
       console.warn(message);
@@ -52,7 +52,7 @@ export const config = {
   },
   
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL || 'redis://localhost:6380',
   },
   
   jwt: {
@@ -116,3 +116,4 @@ export const config = {
 };
 
 export type Config = typeof config;
+

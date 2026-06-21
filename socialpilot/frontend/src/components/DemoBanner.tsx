@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Beaker, RefreshCw, Loader2, CheckCircle, X } from 'lucide-react';
+import { Beaker, RefreshCw, Loader2, CheckCircle, X, Link2 } from 'lucide-react';
 
 export default function DemoBanner() {
+  const router = useRouter();
   const [isDemo, setIsDemo] = useState(false);
-  const [companyName, setCompanyName] = useState('');
   const [regenerating, setRegenerating] = useState(false);
   const [done, setDone] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -15,7 +16,6 @@ export default function DemoBanner() {
     api.get<any>('/api/demo/status').then((res) => {
       if (res.success && res.data?.demo) {
         setIsDemo(true);
-        setCompanyName(res.data.companyName || 'Elite Dental Clinic');
       }
     }).catch(() => {});
   }, []);
@@ -25,7 +25,10 @@ export default function DemoBanner() {
     const res = await api.post('/api/demo/regenerate');
     if (res.success) {
       setDone(true);
-      setTimeout(() => setDone(false), 3000);
+      setTimeout(() => {
+        setDone(false);
+        window.location.reload();
+      }, 1500);
     }
     setRegenerating(false);
   };
@@ -34,17 +37,21 @@ export default function DemoBanner() {
 
   return (
     <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-b border-amber-200/50">
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Beaker size={14} className="text-amber-600" />
-          <span className="text-xs text-amber-800 font-medium">
-            🧪 Demo Mode — {companyName}
-          </span>
-          <span className="text-[10px] text-amber-600 ml-1">
-            Data resets automatically
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Beaker size={14} className="text-amber-600 shrink-0" />
+          <span className="text-xs text-amber-800 font-medium truncate">
+            You are viewing a demo workspace.
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => router.push('/onboarding')}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-700 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Link2 size={12} />
+            Connect My Meta Accounts
+          </button>
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
@@ -57,7 +64,9 @@ export default function DemoBanner() {
             ) : (
               <RefreshCw size={12} />
             )}
-            {regenerating ? 'Regenerating...' : done ? 'Regenerated!' : 'Regenerate Demo Data'}
+            <span className="hidden sm:inline">
+              {regenerating ? 'Regenerating...' : done ? 'Done!' : 'Regenerate Data'}
+            </span>
           </button>
           <button onClick={() => setDismissed(true)} className="text-amber-400 hover:text-amber-600">
             <X size={14} />

@@ -1,13 +1,12 @@
 'use client';
 
-'use client';
-
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Save, Loader2, Bell, Shield, Palette, Smartphone, Key, Webhook } from 'lucide-react';
 import BrandEditor from '@/components/BrandEditor';
 import ApiKeyManager from '@/components/ApiKeyManager';
 import WebhookManager from '@/components/WebhookManager';
+import MetaConnectedAccountCard from '@/components/MetaConnectedAccountCard';
 
 interface SettingsState {
   businessName: string;
@@ -95,6 +94,22 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500 mt-1">Configure your AI sales agent</p>
+      </div>
+
+      {/* Meta Connections */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Smartphone size={18} className="text-primary" />
+          <h2 className="font-semibold text-gray-900">Meta Accounts</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">Manage your connected Instagram and Facebook accounts.</p>
+        <MetaConnectedAccountCard />
+        <a
+          href="/onboarding"
+          className="inline-flex mt-4 text-sm text-primary font-medium hover:underline"
+        >
+          Connect another account →
+        </a>
       </div>
 
       {/* Brand Information */}

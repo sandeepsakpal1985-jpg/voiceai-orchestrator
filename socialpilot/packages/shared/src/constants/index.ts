@@ -1,10 +1,11 @@
 // ──────────────────────────────────────────────
-// MetaPilot AI — Shared Constants
+// KluConnect — Shared Constants (MetaPilot = internal codename)
 // ──────────────────────────────────────────────
 
-export const APP_NAME = 'MetaPilot AI';
-export const APP_TAGLINE = 'AI Social Sales Agent';
-export const APP_DESCRIPTION = 'Hire an AI sales employee in 5 minutes.';
+export const APP_NAME = 'KluConnect';
+export const APP_TAGLINE = 'Turn Every Comment Into A Customer';
+export const APP_TAGLINE_ALT = 'Your AI Social Sales Employee';
+export const APP_DESCRIPTION = 'AI-powered Instagram & Facebook comment and DM replies that capture leads and close sales.';
 
 export const ONBOARDING_STEPS = [
   'create_account',

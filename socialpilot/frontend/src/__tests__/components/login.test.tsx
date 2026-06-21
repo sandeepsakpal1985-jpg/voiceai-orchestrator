@@ -8,6 +8,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+vi.mock('next/image', () => ({
+  default: ({ alt, ...props }: any) => <img alt={alt} {...props} />,
+}));
+
 // Mock next/link
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => (
@@ -38,7 +42,7 @@ describe('Login Page', () => {
 
     // Check heading and subtitle
     expect(screen.getByText('Welcome back')).toBeTruthy();
-    expect(screen.getByText('Sign in to MetaPilot AI')).toBeTruthy();
+    expect(screen.getByText('Sign in to KluConnect')).toBeTruthy();
 
     // Check Google OAuth button
     expect(screen.getByText('Continue with Google')).toBeTruthy();

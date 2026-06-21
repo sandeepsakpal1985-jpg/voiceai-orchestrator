@@ -6,8 +6,10 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import UsageBadge from '@/components/UsageBadge';
 import DemoBanner from '@/components/DemoBanner';
-import OnboardingHealthScore from '@/components/OnboardingHealthScore';
+import DemoScenarioPanel from '@/components/DemoScenarioPanel';
+import { useDemo } from '@/lib/demo-context';
 import { cn } from '@/lib/utils';
+import Logo from '@/components/Logo';
 import {
   LayoutDashboard, MessageSquare, Users, TrendingUp,
   BarChart3, Settings, BookOpen, UserCog, Lightbulb,
@@ -46,6 +48,7 @@ export default function DashboardShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { isDemo, loading: demoLoading } = useDemo();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [brandConfig, setBrandConfig] = useState<{
@@ -62,7 +65,7 @@ export default function DashboardShell({
     ]).then(([meRes, settingsRes]: [any, any]) => {
       if (meRes.success) {
         setUser(meRes.data);
-        if (!meRes.data.onboardingDone && pathname !== '/onboarding') {
+        if (!meRes.data.onboardingDone && pathname !== '/onboarding' && !demoLoading && !isDemo) {
           router.push('/onboarding');
         }
       } else {
@@ -73,11 +76,11 @@ export default function DashboardShell({
           primaryColor: settingsRes.data.primaryColor || '#6366f1',
           logo: settingsRes.data.logo || null,
           hideBranding: settingsRes.data.hideBranding || false,
-          businessName: settingsRes.data.businessName || 'MetaPilot',
+          businessName: settingsRes.data.businessName || 'KluConnect',
         });
       }
     });
-  }, [router, pathname]);
+  }, [router, pathname, isDemo, demoLoading]);
 
   const handleLogout = () => {
     api.setToken(null);
@@ -106,17 +109,19 @@ export default function DashboardShell({
                   (e.target as HTMLImageElement).style.display = 'none';
                   (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                 }} />
-              ) : (
+              ) : brandConfig?.hideBranding ? (
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: brandConfig?.primaryColor || '#6366f1' }}>
+                  style={{ backgroundColor: brandConfig?.primaryColor || '#2563eb' }}>
                   <span className="text-white font-bold text-sm">
-                    {(brandConfig?.businessName || 'S').charAt(0)}
+                    {(brandConfig?.businessName || 'K').charAt(0)}
                   </span>
                 </div>
+              ) : (
+                <Logo variant="mark" size="sm" />
               )}
               <div>
-                <p className="font-semibold text-gray-900">{brandConfig?.businessName || 'MetaPilot'}</p>
-                <p className="text-xs text-gray-500">AI Sales Agent</p>
+                <p className="font-semibold text-gray-900">{brandConfig?.businessName || 'KluConnect'}</p>
+                <p className="text-xs text-gray-500">Turn Every Comment Into A Customer</p>
               </div>
             </Link>
           </div>
@@ -182,6 +187,7 @@ export default function DashboardShell({
         <div className="p-6 lg:p-8 pt-16 lg:pt-8">
           {children}
         </div>
+        <DemoScenarioPanel />
       </main>
     </div>
   );

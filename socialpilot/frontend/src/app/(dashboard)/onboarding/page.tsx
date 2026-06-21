@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api, API_BASE } from '@/lib/api';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import MetaConnectedAccountCard from '@/components/MetaConnectedAccountCard';
 import {
   Check, ArrowRight, ArrowLeft, Instagram, Facebook,
   Upload, Link2, Bot, Zap, Sparkles,
@@ -66,6 +68,9 @@ const CTA_TYPES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDemoTour = searchParams.get('demo') === '1';
+  const [isDemoAccount, setIsDemoAccount] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -79,6 +84,7 @@ export default function OnboardingPage() {
   const [ctaType, setCtaType] = useState('website');
   const [ctaUrl, setCtaUrl] = useState('');
   const [ctaLabel, setCtaLabel] = useState('');
+  const [oauthWaiting, setOauthWaiting] = useState<string | null>(null);
 
   // ── Read URL params for Meta OAuth callback ──
   useEffect(() => {
@@ -102,11 +108,17 @@ export default function OnboardingPage() {
   }, []);
 
   useEffect(() => {
+    api.get('/api/demo/status').then((res: any) => {
+      if (res.success && res.data?.demo) setIsDemoAccount(true);
+    });
+  }, []);
+
+  useEffect(() => {
     // Check current onboarding state
     api.get('/api/auth/me').then((res: any) => {
       if (res.success && res.data) {
-        if (res.data.onboardingDone) {
-          router.push('/');
+        if (res.data.onboardingDone && !isDemoTour && !isDemoAccount) {
+          router.push('/dashboard');
           return;
         }
         const stepMap: Record<string, number> = {
@@ -125,9 +137,19 @@ export default function OnboardingPage() {
       }
       setLoading(false);
     });
-  }, [router]);
+  }, [router, isDemoTour, isDemoAccount]);
 
-  const [oauthWaiting, setOauthWaiting] = useState<string | null>(null);
+  const demoSimulateStep = (platform: 'instagram' | 'facebook') => {
+    if (platform === 'instagram') setInstagramConnected(true);
+    else setFacebookConnected(true);
+    toast.success(`${platform === 'instagram' ? 'Instagram' : 'Facebook'} connected!`, {
+      description: 'Meta account linked successfully (simulated)',
+    });
+  };
+
+  const demoCompleteStep = (label: string) => {
+    toast.success(`${label} complete!`, { description: 'Demo setup step simulated' });
+  };
 
   const handleConnect = (platform: 'instagram' | 'facebook') => {
     setError('');
@@ -173,11 +195,7 @@ export default function OnboardingPage() {
   const handleSimulateConnect = (e: React.MouseEvent, platform: 'instagram' | 'facebook') => {
     e.stopPropagation();
     setOauthWaiting(null);
-    if (platform === 'instagram') {
-      setInstagramConnected(true);
-    } else {
-      setFacebookConnected(true);
-    }
+    demoSimulateStep(platform);
     setError('');
   };
 
@@ -251,10 +269,24 @@ export default function OnboardingPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-8">
+      {(isDemoTour || isDemoAccount) && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+          <p className="text-sm font-semibold text-amber-900">🧪 Demo Setup Walkthrough</p>
+          <p className="text-xs text-amber-700 mt-1">
+            Click each step&apos;s simulate buttons to see success animations. Your demo data is already loaded.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="mt-2 text-xs text-amber-800 underline hover:text-amber-950"
+          >
+            Skip to Dashboard →
+          </button>
+        </div>
+      )}
       {/* Progress bar */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-gray-900">Set up your AI Sales Agent</h1>
+          <h1 className="text-xl font-bold text-gray-900">Set up KluConnect</h1>
           <span className="text-sm text-gray-500">
             Step {currentStep + 1} of {STEPS.length}
           </span>
@@ -348,13 +380,16 @@ export default function OnboardingPage() {
                 Need an Instagram Business account?{' '}
                 <a href="#" className="text-primary hover:underline">Convert your account</a>
               </p>
-              {process.env.NODE_ENV !== 'production' && !instagramConnected && oauthWaiting !== 'instagram' && (
+              {(isDemoTour || isDemoAccount || process.env.NODE_ENV !== 'production') && !instagramConnected && oauthWaiting !== 'instagram' && (
                 <button
                   onClick={(e) => handleSimulateConnect(e, 'instagram')}
-                  className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors border border-dashed border-gray-200 rounded-lg"
+                  className="w-full py-2 text-sm text-amber-700 hover:text-amber-900 transition-colors border border-dashed border-amber-200 rounded-lg bg-amber-50/50"
                 >
-                  Simulate Connect (development mode)
+                  ✓ Simulate Connect Instagram (Demo)
                 </button>
+              )}
+              {(instagramConnected || facebookConnected) && (
+                <MetaConnectedAccountCard />
               )}
             </div>
           )}
@@ -362,6 +397,9 @@ export default function OnboardingPage() {
           {/* Step 1: Connect Facebook */}
           {currentStep === 1 && (
             <div className="space-y-4">
+              {(instagramConnected || facebookConnected) && (
+                <MetaConnectedAccountCard />
+              )}
               <div
                 onClick={() => handleConnect('facebook')}
                 className={cn(
@@ -404,12 +442,12 @@ export default function OnboardingPage() {
                   </div>
                 )}
               </div>
-              {process.env.NODE_ENV !== 'production' && !facebookConnected && oauthWaiting !== 'facebook' && (
+              {(isDemoTour || isDemoAccount || process.env.NODE_ENV !== 'production') && !facebookConnected && oauthWaiting !== 'facebook' && (
                 <button
                   onClick={(e) => handleSimulateConnect(e, 'facebook')}
-                  className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors border border-dashed border-gray-200 rounded-lg"
+                  className="w-full py-2 text-sm text-amber-700 hover:text-amber-900 transition-colors border border-dashed border-amber-200 rounded-lg bg-amber-50/50"
                 >
-                  Simulate Connect (development mode)
+                  ✓ Simulate Connect Facebook (Demo)
                 </button>
               )}
             </div>

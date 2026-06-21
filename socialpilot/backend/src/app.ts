@@ -8,6 +8,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config';
 import prismaPlugin from './plugins/prisma';
 import authPlugin from './plugins/auth';
+import partnerAuthPlugin from './plugins/partner-auth';
 import usagePlugin from './plugins/usage';
 import websocket from '@fastify/websocket';
 import { initSentry, setupFastifyErrorHandler, captureException, flushSentry } from './services/sentry/sentry';
@@ -53,6 +54,7 @@ import activityRoutes from './modules/activity/routes';
 import metaHealthRoutes from './modules/meta-health/routes';
 import reportRoutes from './modules/reports/routes';
 import partnerRoutes from './modules/partners/routes';
+import partnerAuthRoutes from './modules/partners/auth-routes';
 import metaInsightsRoutes from './modules/meta-insights/routes';
 
 async function buildApp() {
@@ -99,8 +101,8 @@ async function buildApp() {
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'MetaPilot AI API',
-        description: 'AI Social Sales Agent — Instagram & Facebook Automation',
+        title: 'KluConnect API',
+        description: 'Turn Every Comment Into A Customer — Instagram & Facebook Automation',
         version: '0.1.0',
       },
       servers: [{ url: `http://localhost:${config.port}` }],
@@ -113,6 +115,7 @@ async function buildApp() {
 
   await app.register(prismaPlugin);
   await app.register(authPlugin);
+  await app.register(partnerAuthPlugin);
   await app.register(usagePlugin);
 
   // ── WebSocket ──
@@ -169,6 +172,7 @@ async function buildApp() {
   await app.register(activityRoutes, { prefix: '/api/activity' });
   await app.register(metaHealthRoutes, { prefix: '/api/meta-health' });
   await app.register(reportRoutes, { prefix: '/api/reports' });
+  await app.register(partnerAuthRoutes, { prefix: '/api/partners/auth' });
   await app.register(partnerRoutes, { prefix: '/api/partners' });
   await app.register(automationRoutes, { prefix: '/api/automation' });
   await app.register(contentRoutes, { prefix: '/api/content' });
@@ -195,7 +199,7 @@ async function start() {
   const app = await buildApp();
   try {
     await app.listen({ port: config.port, host: '0.0.0.0' });
-    app.log.info(`MetaPilot AI API running on port ${config.port}`);
+    app.log.info(`KluConnect API (MetaPilot) running on port ${config.port}`);
   } catch (err) {
     app.log.error(err);
     captureException(err instanceof Error ? err : new Error(String(err)));

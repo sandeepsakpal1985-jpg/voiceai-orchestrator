@@ -55,9 +55,9 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
       const verifyUrl = `${config.frontendUrl}/verify-email?token=${verifyToken}&userId=${user.id}`;
       await sendEmail({
         to: body.email,
-        subject: 'Verify your MetaPilot AI account',
+        subject: 'Verify your KluConnect account',
         html: wrapEmailTemplate(
-          'Welcome to MetaPilot AI! 🚀',
+          'Welcome to KluConnect! 🚀',
           `<p>Hi ${body.name},</p>
            <p>Thanks for signing up! Please verify your email address by clicking the button below:</p>
            <p style="text-align: center; margin: 32px 0;">
@@ -161,7 +161,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
       const verifyUrl = `${config.frontendUrl}/verify-email?token=${verifyToken}&userId=${user.id}`;
       await sendEmail({
         to: email,
-        subject: 'Verify your MetaPilot AI account',
+        subject: 'Verify your KluConnect account',
         html: wrapEmailTemplate(
           'Email Verification',
           `<p>Hi ${user.name || 'there'},</p>
@@ -209,7 +209,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
       const resetUrl = `${config.frontendUrl}/reset-password?token=${resetToken}&userId=${user.id}`;
       await sendEmail({
         to: email,
-        subject: 'Reset your MetaPilot AI password',
+        subject: 'Reset your KluConnect password',
         html: wrapEmailTemplate(
           'Password Reset Request',
           `<p>Hi ${user.name || 'there'},</p>

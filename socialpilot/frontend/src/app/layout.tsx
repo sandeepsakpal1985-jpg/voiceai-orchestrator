@@ -12,8 +12,9 @@ import PostHogInit from './PostHogInit';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MetaPilot AI — AI Social Sales Agent',
-  description: 'Hire an AI sales employee in 5 minutes. Automate Instagram & Facebook sales and support.',
+  title: 'KluConnect — Turn Every Comment Into A Customer',
+  description: 'Your AI social sales employee. Auto-reply to Instagram comments and Facebook DMs, capture leads, and close sales.',
+  icons: { icon: '/branding/favicon.svg' },
 };
 
 export default function RootLayout({

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import Logo from '@/components/Logo';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,11 +37,11 @@ export default function RegisterPage() {
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 animate-fade-in">
       <div className="text-center mb-8">
-        <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-white font-bold text-xl">M</span>
+        <div className="flex justify-center mb-4">
+          <Logo variant="mark" size="lg" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Hire your AI employee</h1>
-        <p className="text-gray-500 mt-1">Set up your account in 30 seconds</p>
+        <h1 className="text-2xl font-bold text-gray-900">Start your free trial</h1>
+        <p className="text-gray-500 mt-1">Turn every comment into a customer</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

@@ -251,7 +251,7 @@ const customerSuccessRoutes: FastifyPluginAsync = async (fastify) => {
     // ── Summary narrative ──
     let summary = '';
     if (totalLeads === 0 && totalComments === 0) {
-      summary = 'Welcome to MetaPilot AI! You\'re all set up and ready to go. Connect your social accounts and the AI will start engaging with your customers, generating leads, and driving revenue automatically.';
+      summary = 'Welcome to KluConnect! You\'re all set up and ready to go. Connect your social accounts and the AI will start engaging with your customers, generating leads, and driving revenue automatically.';
     } else if (successScore >= 80) {
       summary = `Your AI sales agent is performing excellently! With a success score of ${successScore}/100, you've mastered lead generation (${totalLeads} leads), customer engagement (${commentReplyRate * 100}% reply rate), and revenue growth (${formatCurrency(totalRevenue)}). Keep up the great work!`;
     } else if (successScore >= 50) {

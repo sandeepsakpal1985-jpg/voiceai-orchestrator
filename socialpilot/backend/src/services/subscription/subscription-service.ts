@@ -28,7 +28,7 @@ export const PLANS: PlanDefinition[] = [
     id: 'free',
     name: 'Free',
     price: 0,
-    description: 'Try MetaPilot with basic features',
+    description: 'Try KluConnect with basic features',
     features: [
       '1 Meta Account',
       '100 AI Replies / Month',
@@ -47,7 +47,7 @@ export const PLANS: PlanDefinition[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 499,
+    price: 2900,
     description: 'For small businesses getting started',
     features: [
       '1 Meta Account',
@@ -67,7 +67,7 @@ export const PLANS: PlanDefinition[] = [
   {
     id: 'professional',
     name: 'Professional',
-    price: 1499,
+    price: 7900,
     description: 'For growing businesses',
     features: [
       'Up to 5 Meta Accounts',
@@ -90,7 +90,7 @@ export const PLANS: PlanDefinition[] = [
   {
     id: 'agency',
     name: 'Agency',
-    price: 4999,
+    price: 19900,
     description: 'For agencies and large teams',
     features: [
       'Unlimited Meta Accounts',

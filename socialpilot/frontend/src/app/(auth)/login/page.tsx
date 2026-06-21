@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import Logo from '@/components/Logo';
+import TrustStrip from '@/components/TrustStrip';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,10 +39,8 @@ export default function LoginPage() {
     setGoogleLoading(true);
 
     try {
-      // Dynamically load the Google Identity Services library
       const google = (window as any).google;
       if (!google) {
-        // Load the GIS script dynamically
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://accounts.google.com/gsi/client';
@@ -60,7 +60,6 @@ export default function LoginPage() {
             return;
           }
 
-          // Send the ID token to our backend
           const result = await api.post<{ user: any; token: string }>('/api/auth/google', {
             idToken: response.credential,
           });
@@ -100,14 +99,13 @@ export default function LoginPage() {
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 animate-fade-in">
       <div className="text-center mb-8">
-        <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-white font-bold text-xl">M</span>
+        <div className="flex justify-center mb-4">
+          <Logo variant="mark" size="lg" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-        <p className="text-gray-500 mt-1">Sign in to MetaPilot AI</p>
+        <p className="text-gray-500 mt-1">Sign in to KluConnect</p>
       </div>
 
-      {/* Demo Login Button */}
       <button
         onClick={handleDemoLogin}
         disabled={loading}
@@ -121,14 +119,12 @@ export default function LoginPage() {
         {loading ? 'Loading...' : 'Try Demo — Elite Dental Clinic'}
       </button>
 
-      {/* Divider */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-gray-200" />
         <span className="text-xs text-gray-400">OR</span>
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 
-      {/* Google Sign-In */}
       <button
         onClick={handleGoogleLogin}
         disabled={googleLoading}
@@ -149,7 +145,6 @@ export default function LoginPage() {
         </span>
       </button>
 
-      {/* Divider */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-gray-200" />
         <span className="text-xs text-gray-400">OR</span>
@@ -193,6 +188,8 @@ export default function LoginPage() {
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
+
+      <TrustStrip variant="compact" className="mt-6" />
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Don&apos;t have an account?{' '}

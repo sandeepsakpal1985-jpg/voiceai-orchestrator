@@ -15,6 +15,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import type { MetaWebhookEvent } from '@socialpilot/shared';
 import { addCommentJob, addDMJob } from '../queue/queue-service';
 import { sendEmail, wrapEmailTemplate } from '../email/email-service';
+import { parseKeywordTriggers, findMatchingTrigger } from '../automation/keyword-triggers';
+import { replyToComment, sendDirectMessage } from '../meta/meta-publish-service';
 
 type ProcessorResult = {
   processed: number;
@@ -256,6 +258,13 @@ export class MetaWebhookProcessor {
         ],
         status: 'active',
       },
+      select: {
+        id: true,
+        userId: true,
+        accessToken: true,
+        facebookPageId: true,
+        instagramAccountId: true,
+      },
     });
 
     if (!connection) {
@@ -340,7 +349,7 @@ export class MetaWebhookProcessor {
           </p>
           <p style="font-size: 12px; color: #9ca3af;">AI replies have been paused for this customer until the escalation is resolved.</p>`,
         ),
-        fromName: 'MetaPilot AI Alerts',
+        fromName: 'KluConnect Alerts',
         fromEmail: 'alerts@metapilot.ai',
       });
 
@@ -398,6 +407,9 @@ export class MetaWebhookProcessor {
           userId: connection.userId as string,
           platform: event.platform,
           postId: event.postId,
+          metaCommentId: event.commentId,
+          metaPostId: event.postId,
+          pageId: event.pageId,
           authorId: event.authorId,
           authorName: event.authorName || 'Unknown',
           content: event.content,
@@ -410,11 +422,85 @@ export class MetaWebhookProcessor {
       return;
     }
 
+    const userId = connection.userId as string;
+    const accessToken = (connection as any).accessToken as string | undefined;
+
+    // Check keyword automation triggers before AI pipeline
+    const brandSettings = await this.prisma.brandSettings.findUnique({
+      where: { userId },
+      select: { customInstructions: true, automationEnabled: true },
+    });
+
+    if (brandSettings?.automationEnabled !== false) {
+      const triggers = parseKeywordTriggers(brandSettings?.customInstructions);
+      const match = findMatchingTrigger(triggers, event.content, event.platform, 'comment');
+
+      if (match?.action === 'escalate') {
+        await this.autoEscalate(userId, event, {
+          reason: `Keyword trigger: "${match.keyword}"`,
+          severity: 'high',
+          alertReason: 'keyword',
+        });
+        await this.prisma.socialComment.create({
+          data: {
+            userId,
+            platform: event.platform,
+            postId: event.postId,
+            metaCommentId: event.commentId,
+            metaPostId: event.postId,
+            pageId: event.pageId,
+            authorId: event.authorId,
+            authorName: event.authorName || 'Unknown',
+            content: event.content,
+            replyStatus: 'escalated',
+          },
+        });
+        return;
+      }
+
+      if (match?.action === 'auto_reply_comment' && match.replyTemplate && accessToken && event.commentId) {
+        const comment = await this.prisma.socialComment.create({
+          data: {
+            userId,
+            platform: event.platform,
+            postId: event.postId,
+            metaCommentId: event.commentId,
+            metaPostId: event.postId,
+            pageId: event.pageId,
+            authorId: event.authorId,
+            authorName: event.authorName || 'Unknown',
+            content: event.content,
+            replyContent: match.replyTemplate,
+            replyStatus: 'queued',
+          },
+        });
+
+        const delayMs = 45000 + Math.floor(Math.random() * 45000);
+        setTimeout(async () => {
+          const result = await replyToComment(event.platform, event.commentId, match.replyTemplate!, accessToken);
+          await this.prisma.socialComment.update({
+            where: { id: comment.id },
+            data: {
+              replyStatus: result.published ? 'replied' : 'publish_failed',
+              metaReplyId: result.metaId,
+              repliedAt: result.published ? new Date() : undefined,
+            },
+          });
+        }, delayMs);
+
+        console.log(`[WebhookProcessor] Keyword auto-reply queued for comment ${event.commentId}`);
+        return;
+      }
+    }
+
     const comment = await this.prisma.socialComment.create({
       data: {
-        userId: connection.userId as string,
+        userId,
         platform: event.platform,
         postId: event.postId,
+        metaCommentId: event.commentId,
+        metaPostId: event.postId,
+        pageId: event.pageId,
         authorId: event.authorId,
         authorName: event.authorName || 'Unknown',
         content: event.content,
@@ -426,7 +512,7 @@ export class MetaWebhookProcessor {
     const delayMs = 45000 + Math.floor(Math.random() * 45000);
     await addCommentJob({
       commentId: comment.id,
-      userId: connection.userId as string,
+      userId,
       platform: event.platform,
       postId: event.postId,
       authorId: event.authorId,
@@ -467,12 +553,24 @@ export class MetaWebhookProcessor {
 
     if (!conversation) {
       conversation = await this.prisma.dMConversation.create({
-        data: { userId, customerId: event.senderId, platform: event.platform, status: 'active', lastActivityAt: new Date() },
+        data: {
+          userId,
+          customerId: event.senderId,
+          metaSenderId: event.senderId,
+          metaPageId: event.pageId,
+          platform: event.platform,
+          status: 'active',
+          lastActivityAt: new Date(),
+        },
       });
     } else {
       await this.prisma.dMConversation.update({
         where: { id: conversation.id },
-        data: { lastActivityAt: new Date() },
+        data: {
+          lastActivityAt: new Date(),
+          metaSenderId: event.senderId,
+          metaPageId: event.pageId,
+        },
       });
     }
 

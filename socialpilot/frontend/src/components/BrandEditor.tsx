@@ -152,8 +152,8 @@ export default function BrandEditor({ settings, onChange, onSave, saving, saved 
           <div className="flex items-center gap-2">
             {settings.hideBranding ? <EyeOff size={16} className="text-gray-400" /> : <Eye size={16} className="text-gray-400" />}
             <div>
-              <p className="text-sm font-medium text-gray-900">Hide MetaPilot Branding</p>
-              <p className="text-xs text-gray-500">Remove 'Powered by MetaPilot' from the dashboard</p>
+              <p className="text-sm font-medium text-gray-900">Hide KluConnect Branding</p>
+              <p className="text-xs text-gray-500">Remove &apos;Powered by KluConnect&apos; from the dashboard</p>
             </div>
           </div>
           <input

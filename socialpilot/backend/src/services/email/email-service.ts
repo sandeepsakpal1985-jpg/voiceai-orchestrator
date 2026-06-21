@@ -47,8 +47,8 @@ export interface EmailResult {
  */
 export async function sendEmail(params: SendEmailParams): Promise<EmailResult> {
   const { to, subject, html, fromName, fromEmail } = params;
-  const FROM_NAME = fromName || 'MetaPilot AI';
-  const FROM_EMAIL = fromEmail || 'noreply@metapilot.ai';
+  const FROM_NAME = fromName || 'KluConnect';
+  const FROM_EMAIL = fromEmail || 'noreply@kluconnect.com';
 
   const isDev = process.env.NODE_ENV === 'development' || !process.env.RESEND_API_KEY;
 
@@ -88,7 +88,7 @@ export async function sendEmail(params: SendEmailParams): Promise<EmailResult> {
 }
 
 /**
- * Generate a styled HTML email template with MetaPilot branding.
+ * Generate a styled HTML email template with KluConnect branding.
  */
 export function wrapEmailTemplate(title: string, bodyHtml: string): string {
   return `
@@ -102,12 +102,12 @@ export function wrapEmailTemplate(title: string, bodyHtml: string): string {
     .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
     .card { background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .header { text-align: center; padding-bottom: 24px; border-bottom: 1px solid #e5e7eb; margin-bottom: 24px; }
-    .header h1 { margin: 0; font-size: 20px; color: #6366f1; }
+    .header h1 { margin: 0; font-size: 20px; color: #2563eb; }
     .footer { text-align: center; padding-top: 24px; font-size: 12px; color: #9ca3af; }
-    .btn { display: inline-block; padding: 12px 32px; background: #6366f1; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px; }
-    .btn:hover { background: #4f46e5; }
+    .btn { display: inline-block; padding: 12px 32px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px; }
+    .btn:hover { background: #1d4ed8; }
     p { color: #4b5563; font-size: 14px; line-height: 1.6; }
-    a { color: #6366f1; }
+    a { color: #2563eb; }
   </style>
 </head>
 <body>
@@ -118,7 +118,7 @@ export function wrapEmailTemplate(title: string, bodyHtml: string): string {
       </div>
       ${bodyHtml}
       <div class="footer">
-        <p>MetaPilot AI — Your AI Social Sales Agent</p>
+        <p>KluConnect — Turn Every Comment Into A Customer</p>
         <p>If you didn't request this email, you can safely ignore it.</p>
       </div>
     </div>

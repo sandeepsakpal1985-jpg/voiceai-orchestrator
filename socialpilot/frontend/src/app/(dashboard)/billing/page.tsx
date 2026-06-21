@@ -119,7 +119,7 @@ export default function BillingPage() {
       key: keyId,
       amount,
       currency: currency || 'INR',
-      name: name || 'MetaPilot AI',
+      name: name || 'KluConnect',
       description: description || `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
       order_id: orderId,
       prefill: prefill || { contact: '', email: '' },

@@ -145,11 +145,11 @@ const partnerRoutes: FastifyPluginAsync = async (fastify) => {
         const setPasswordUrl = `${config.frontendUrl}/reset-password?userId=${partnerUserId}&firstTime=true`;
         await sendEmail({
           to: body.email,
-          subject: 'You\'ve been added as a MetaPilot AI Partner!',
+          subject: 'You\'ve been added as a KluConnect Partner!',
           html: wrapEmailTemplate(
             'Welcome to the Partner Program! 🎉',
             `<p>Hi ${body.name},</p>
-             <p>You've been added as a partner for MetaPilot AI. You can now access your partner portal to track clients, MRR, and commissions.</p>
+             <p>You've been added as a partner for KluConnect. You can now access your partner portal to track clients, MRR, and commissions.</p>
              <p style="text-align: center; margin: 32px 0;">
                <a href="${setPasswordUrl}" class="btn">Set Your Password</a>
              </p>
@@ -214,12 +214,70 @@ const partnerRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/:id',
     { preHandler: [fastify.authenticate as any] },
-    async (request) => {
+    async (request, reply) => {
       const { id } = request.params as { id: string };
+      const jwtUser = (request as any).user as { id?: string; role?: string; partnerId?: string };
+
+      // Partner-scoped JWT: only own record
+      if (jwtUser.role === 'partner' && jwtUser.partnerId) {
+        if (jwtUser.partnerId !== id) {
+          return reply.status(403).send({ success: false, error: 'Unauthorized' });
+        }
+        const partnerAuth = await (request as any).authenticatePartner();
+        const partner = await fastify.prisma.partner.findFirst({
+          where: { id: partnerAuth.partnerId, partnerUserId: partnerAuth.userId },
+        });
+        if (!partner) {
+          return reply.status(404).send({ success: false, error: 'Partner not found' });
+        }
+        // fall through to shared enrichment below using `partner`
+        const customers = await fastify.prisma.user.findMany({
+          where: { referredByPartner: partner.id },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            createdAt: true,
+            subscription: {
+              select: { plan: true, status: true, currentPeriodEnd: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        const prices: Record<string, number> = { starter: 2900, professional: 7900, agency: 19900 };
+        const activeCustomers = customers.filter((c: any) => c.subscription?.status === 'active');
+        const mrr = activeCustomers.reduce((sum, c: any) => sum + (prices[c.subscription?.plan || ''] || 0), 0);
+        const commissionEarned = Math.round(mrr * (partner.commissionRate / 100));
+
+        const commissionHistory = await fastify.prisma.commissionRecord.findMany({
+          where: { partnerId: partner.id },
+          orderBy: { month: 'desc' },
+          take: 12,
+        });
+
+        return {
+          success: true,
+          data: {
+            partner,
+            stats: {
+              totalCustomers: customers.length,
+              activeCustomers: activeCustomers.length,
+              mrr,
+              commissionRate: partner.commissionRate,
+              commissionEarned,
+              commissionPaid: commissionHistory.filter((c: any) => c.paid).reduce((s, c) => s + c.amount, 0),
+            },
+            customers,
+            commissionHistory,
+          },
+        };
+      }
+
       const { userId, role } = await (request as any).authenticate();
 
       const partner = await fastify.prisma.partner.findFirst({
-        where: role === 'partner' ? { id } : { id, userId },
+        where: role === 'partner' ? { id, partnerUserId: userId } : { id, userId },
       });
 
       if (!partner) {
@@ -308,32 +366,16 @@ const partnerRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  // ── Partner Portal (Self-Service Dashboard) ──
+  // ── Partner Portal (Self-Service Dashboard) — requires partner JWT ──
   fastify.get(
     '/portal',
-    { preHandler: [fastify.authenticate as any] },
+    { preHandler: [fastify.authenticatePartner as any] },
     async (request) => {
-      const auth = await (request as any).authenticate();
+      const auth = await (request as any).authenticatePartner();
 
-      // Partner users see their own portal — lookup by their userId
-      let partner = await fastify.prisma.partner.findFirst({
-        where: { partnerUserId: auth.userId },
+      const partner = await fastify.prisma.partner.findFirst({
+        where: { id: auth.partnerId, partnerUserId: auth.userId, status: 'active' },
       });
-
-      if (!partner) {
-        // Fallback: check by email for backward compatibility
-        const partnerByEmail = await fastify.prisma.partner.findFirst({
-          where: { email: auth.email },
-        });
-        if (partnerByEmail) {
-          // Migrate: link this user to the partner record
-          await fastify.prisma.partner.update({
-            where: { id: partnerByEmail.id },
-            data: { partnerUserId: auth.userId },
-          });
-          partner = partnerByEmail;
-        }
-      }
 
       if (!partner) {
         return { success: false, error: 'Partner account not found. Please contact the admin to set up your account.' };
