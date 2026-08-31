@@ -1,0 +1,22 @@
+{
+  "name": "klucoach",
+  "private": true,
+  "description": "KluCoach — Student 360 for coaching institutes, on the KluNex Education Platform",
+  "packageManager": "pnpm@11.5.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @klucoach/api --filter @klucoach/web dev",
+    "build": "pnpm --filter @klunex-edu/shared build && pnpm --filter @klunex-edu/database build && pnpm --filter @klucoach/api build && pnpm --filter @klucoach/web build",
+    "test": "pnpm --filter @klucoach/api test",
+    "test:integration": "pnpm --filter @klucoach/api test:integration",
+    "test:e2e": "pnpm --filter @klucoach/web test:e2e",
+    "db:generate": "pnpm --filter @klunex-edu/database generate",
+    "db:migrate": "pnpm --filter @klunex-edu/database migrate",
+    "db:migrate:deploy": "pnpm --filter @klunex-edu/database migrate:deploy",
+    "db:seed": "pnpm --filter @klunex-edu/database seed",
+    "db:studio": "pnpm --filter @klunex-edu/database studio",
+    "lint": "pnpm -r --if-present lint"
+  }
+}

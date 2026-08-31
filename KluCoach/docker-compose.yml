@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: klucoach
+      POSTGRES_PASSWORD: klucoach
+      POSTGRES_DB: klucoach
+    ports:
+      - "55433:5432"
+    volumes:
+      - klucoach_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U klucoach"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://klucoach:klucoach@postgres:5432/klucoach?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production-please-use-a-long-secret}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:5173}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173}
+      FILE_STORAGE_DIR: /data/files
+      API_PORT: 3000
+    ports:
+      - "3100:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - klucoach_files:/data/files
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  klucoach_pg:
+  klucoach_files:

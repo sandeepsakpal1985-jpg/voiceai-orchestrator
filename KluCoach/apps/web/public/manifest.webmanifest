@@ -1,0 +1,9 @@
+{
+  "name": "KluCoach",
+  "short_name": "KluCoach",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4efe6",
+  "theme_color": "#0f2a24",
+  "description": "Student 360 for coaching institutes"
+}

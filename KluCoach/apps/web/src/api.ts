@@ -1,0 +1,61 @@
+const API = "/api";
+
+let csrf = "";
+
+export type Me = {
+  user: {
+    id: string;
+    email: string | null;
+    firstName: string;
+    lastName: string;
+    role: string;
+    institutionId: string | null;
+  };
+  institution: { id: string; name: string; type: string } | null;
+  csrfToken: string | null;
+};
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body && !(init.body instanceof FormData)) {
+    headers.set("content-type", "application/json");
+  }
+  if (csrf && init.method && init.method !== "GET") {
+    headers.set("x-csrf-token", csrf);
+  }
+  const res = await fetch(`${API}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+  if (res.status === 401) {
+    if (!path.startsWith("/auth/login")) window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    throw new Error(data?.error?.message ?? `Request failed (${res.status})`);
+  }
+  if (data?.csrfToken) csrf = data.csrfToken;
+  return data as T;
+}
+
+export function setCsrf(token: string) {
+  csrf = token;
+}
+
+export const auth = {
+  login: (email: string, password: string) =>
+    api<{ user: Me["user"]; csrfToken: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  logout: () => api("/auth/logout", { method: "POST" }),
+  me: () => api<Me>("/me"),
+  acceptInvite: (token: string, password: string, firstName: string, lastName: string) =>
+    api("/auth/invitations/accept", {
+      method: "POST",
+      body: JSON.stringify({ token, password, firstName, lastName }),
+    }),
+};
