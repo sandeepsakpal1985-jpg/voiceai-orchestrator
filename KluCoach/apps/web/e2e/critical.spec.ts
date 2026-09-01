@@ -6,7 +6,7 @@ test("parent login shows child snapshot", async ({ page }) => {
   await page.getByLabel("Password").fill("DemoPassw0rd!");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: /Aarav/ })).toBeVisible({ timeout: 15000 });
-  await expect(page.locator(".card .label", { hasText: "Attendance" })).toBeVisible();
+  await expect(page.locator(".kpis .label").filter({ hasText: /^Attendance$/ })).toBeVisible();
 });
 
 test("admin login shows institute snapshot", async ({ page }) => {

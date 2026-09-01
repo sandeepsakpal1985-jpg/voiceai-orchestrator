@@ -63,6 +63,7 @@ describe("invitation lifecycle", () => {
   it("cannot be reused after activation and expired tokens are rejected", async () => {
     const students = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/students", headers: a.headers }));
     const student = students.find((s) => s.id)!;
+    const linkedBefore = await prisma.student.findFirst({ where: { id: student.id }, select: { userId: true } });
     const email = `invite-cycle-${Date.now()}@example.test`;
     const created = await app.inject({
       method: "POST",
@@ -79,6 +80,8 @@ describe("invitation lifecycle", () => {
       payload: { token: invite.token, password: "InvitePassw0rd!", firstName: "Nisha", lastName: "Patel" },
     });
     expect(first.statusCode, first.body).toBe(200);
+    const linkedAfter = await prisma.student.findFirst({ where: { id: student.id }, select: { userId: true } });
+    expect(linkedAfter?.userId).toBe(linkedBefore?.userId);
 
     const reuse = await app.inject({
       method: "POST",
@@ -260,3 +263,166 @@ describe("paged list isolation", () => {
     expect(JSON.stringify(batches.json())).not.toContain("Pune Camp");
   });
 });
+
+describe("attendance upsert and isolation", () => {
+  it("updates the same student/date instead of inserting duplicates", async () => {
+    const batches = json<{ id: string; name: string }[]>(await app.inject({ method: "GET", url: "/batches", headers: a.headers }));
+    const jee = batches.find((b) => b.name.includes("JEE"))!;
+    const roster = json<{ id: string; firstName: string }[]>(
+      await app.inject({ method: "GET", url: `/students?batchId=${jee.id}`, headers: a.headers }),
+    );
+    const aarav = roster.find((s) => s.firstName === "Aarav")!;
+    const date = "2026-09-04";
+    const first = await app.inject({
+      method: "POST",
+      url: "/attendance",
+      headers: teacherA.headers,
+      payload: { batchId: jee.id, date, records: [{ studentId: aarav.id, status: "PRESENT" }] },
+    });
+    expect(first.statusCode, first.body).toBe(201);
+    const second = await app.inject({
+      method: "POST",
+      url: "/attendance",
+      headers: teacherA.headers,
+      payload: { batchId: jee.id, date, records: [{ studentId: aarav.id, status: "ABSENT" }] },
+    });
+    expect(second.statusCode).toBe(201);
+    const forStudent = json<{ studentId: string; status: string }[]>(
+      await app.inject({ method: "GET", url: `/attendance?studentId=${aarav.id}&date=${date}`, headers: a.headers }),
+    );
+    const aaravRows = forStudent.filter((r) => r.studentId === aarav.id);
+    expect(aaravRows).toHaveLength(1);
+    expect(aaravRows[0]!.status).toBe("ABSENT");
+    const audit = await prisma.auditLog.findFirst({
+      where: { action: "attendance.mark", entityId: jee.id },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(audit?.userId).toBeTruthy();
+    expect(audit?.institutionId).toBeTruthy();
+    expect(audit?.action).toBe("attendance.mark");
+    expect(audit?.createdAt).toBeTruthy();
+  });
+
+  it("cannot mark tenant B attendance from tenant A", async () => {
+    const bBatches = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/batches", headers: b.headers }));
+    const aStudents = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/students", headers: a.headers }));
+    const res = await app.inject({
+      method: "POST",
+      url: "/attendance",
+      headers: teacherA.headers,
+      payload: {
+        batchId: bBatches[0]!.id,
+        date: "2026-09-04",
+        records: [{ studentId: aStudents[0]!.id, status: "PRESENT" }],
+      },
+    });
+    expect(res.statusCode).toBe(404);
+    const get = await app.inject({
+      method: "GET",
+      url: `/attendance?batchId=${bBatches[0]!.id}`,
+      headers: teacherA.headers,
+    });
+    expect(get.statusCode).toBe(404);
+  });
+});
+
+describe("timetable isolation", () => {
+  it("blocks retrieve and update of tenant B timetable slots and sessions", async () => {
+    const slots = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/timetable", headers: b.headers }));
+    const sessions = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/sessions", headers: b.headers }));
+    expect(slots[0]?.id).toBeTruthy();
+    expect(sessions[0]?.id).toBeTruthy();
+    expect((await app.inject({ method: "GET", url: `/timetable/${slots[0]!.id}`, headers: a.headers })).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: `/sessions/${sessions[0]!.id}`, headers: a.headers })).statusCode).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: "PATCH",
+          url: `/timetable/${slots[0]!.id}`,
+          headers: a.headers,
+          payload: { room: "Hijack" },
+        })
+      ).statusCode,
+    ).toBe(404);
+    const aPaged = await app.inject({ method: "GET", url: "/timetable?page=1&q=Pune", headers: a.headers });
+    expect(aPaged.statusCode).toBe(200);
+    expect(JSON.stringify(aPaged.json())).not.toContain("Pune Camp");
+  });
+
+  it("cannot create a timetable slot on a tenant B batch", async () => {
+    const bBatches = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/batches", headers: b.headers }));
+    const aSubjects = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/subjects", headers: a.headers }));
+    const res = await app.inject({
+      method: "POST",
+      url: "/timetable",
+      headers: a.headers,
+      payload: {
+        batchId: bBatches[0]!.id,
+        subjectId: aSubjects[0]!.id,
+        dayOfWeek: "FRIDAY",
+        startMinute: 16 * 60,
+        endMinute: 17 * 60,
+      },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("cannot create a class session on a tenant B batch", async () => {
+    const bBatches = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/batches", headers: b.headers }));
+    const aSubjects = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/subjects", headers: a.headers }));
+    const res = await app.inject({
+      method: "POST",
+      url: "/sessions",
+      headers: a.headers,
+      payload: {
+        batchId: bBatches[0]!.id,
+        subjectId: aSubjects[0]!.id,
+        date: "2026-09-10",
+        startMinute: 17 * 60,
+        endMinute: 18 * 60,
+      },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe("assignment submit isolation", () => {
+  it("lets a student submit their own assignment and rejects parent impersonation", async () => {
+    const student = await login("student@example.test");
+    const listed = await app.inject({ method: "GET", url: "/assignments", headers: student.headers });
+    expect(listed.statusCode, listed.body).toBe(200);
+    const payload = json<{ id: string; title: string; submissions: { status: string }[] }[] | { items: { id: string; title: string; submissions: { status: string }[] }[] }>(listed);
+    const list = Array.isArray(payload) ? payload : payload.items;
+    const homework = list.find((row) => row.title.includes("Motion")) ?? list[0]!;
+    const submitted = await app.inject({
+      method: "POST",
+      url: `/assignments/${homework.id}/submit`,
+      headers: student.headers,
+      payload: { status: "SUBMITTED" },
+    });
+    expect(submitted.statusCode, submitted.body).toBe(200);
+    const parentSubmit = await app.inject({
+      method: "POST",
+      url: `/assignments/${homework.id}/submit`,
+      headers: parentA.headers,
+      payload: { status: "SUBMITTED" },
+    });
+    expect(parentSubmit.statusCode).toBe(403);
+    const bList = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/assignments", headers: b.headers }));
+    const cross = await app.inject({
+      method: "POST",
+      url: `/assignments/${bList[0]!.id}/submit`,
+      headers: student.headers,
+      payload: { status: "SUBMITTED" },
+    });
+    expect(cross.statusCode).toBe(404);
+    const patch = await app.inject({
+      method: "PATCH",
+      url: `/assignments/${bList[0]!.id}`,
+      headers: a.headers,
+      payload: { title: "Hijacked" },
+    });
+    expect(patch.statusCode).toBe(404);
+  });
+});
+
