@@ -3,6 +3,7 @@ import { prisma } from "@klunex-edu/database";
 import { notFound, validationError } from "../../lib/errors.js";
 import { rateLimits } from "../../lib/rateLimits.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
+import { studentInTenant } from "../tenancy/scope.js";
 import { writeAudit } from "../audit/write.js";
 import { parseSpreadsheet, SpreadsheetParseError } from "../import/parseSpreadsheet.js";
 import {
@@ -217,6 +218,7 @@ export async function opsRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "fees:read");
     const query = req.query as { studentId?: string };
+    if (query.studentId) await studentInTenant(tenant.institutionId, query.studentId);
     return prisma.feeInvoice.findMany({
       where: {
         institutionId: tenant.institutionId,

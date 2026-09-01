@@ -5,7 +5,7 @@ import { writeAudit } from "../audit/write.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { parentStudentIds } from "../identity/scope.js";
-import { studentInTenant } from "../tenancy/scope.js";
+import { batchInTenant, branchInTenant, studentInTenant, subjectInTenant, teacherInTenant } from "../tenancy/scope.js";
 
 function parse<T>(schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }, body: unknown): T {
   const result = schema.safeParse(body);
@@ -56,6 +56,8 @@ export async function peopleRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "students:write");
     const body = parse(studentCreateSchema, req.body);
+    await branchInTenant(tenant.institutionId, body.branchId);
+    if (body.batchId) await batchInTenant(tenant.institutionId, body.batchId);
     const student = await prisma.$transaction(async (tx) => {
       const created = await tx.student.create({
         data: {
@@ -165,6 +167,18 @@ export async function peopleRoutes(app: FastifyInstance) {
     });
   });
 
+  app.get("/parents/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "parents:read");
+    const { id } = req.params as { id: string };
+    const guardian = await prisma.guardian.findFirst({
+      where: { id, institutionId: tenant.institutionId },
+      include: { students: { include: { student: true } }, user: true },
+    });
+    if (!guardian) throw notFound();
+    return guardian;
+  });
+
   app.get("/teachers", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "teachers:read");
@@ -179,6 +193,9 @@ export async function peopleRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "teachers:write");
     const body = parse(teacherCreateSchema, req.body);
+    for (const branchId of body.branchIds ?? []) await branchInTenant(tenant.institutionId, branchId);
+    for (const batchId of body.batchIds ?? []) await batchInTenant(tenant.institutionId, batchId);
+    for (const subjectId of body.subjectIds ?? []) await subjectInTenant(tenant.institutionId, subjectId);
     const teacher = await prisma.teacher.create({
       data: {
         institutionId: tenant.institutionId,
@@ -204,6 +221,25 @@ export async function peopleRoutes(app: FastifyInstance) {
       include: { batches: true, subjects: true, branches: true },
     });
     if (!teacher) throw notFound();
+    return teacher;
+  });
+
+  app.patch("/teachers/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "teachers:write");
+    const { id } = req.params as { id: string };
+    await teacherInTenant(tenant.institutionId, id);
+    const body = req.body as { name?: string; phone?: string; email?: string; status?: "ACTIVE" | "INACTIVE" };
+    const teacher = await prisma.teacher.update({
+      where: { id },
+      data: {
+        ...(body.name ? { name: body.name } : {}),
+        ...(body.phone !== undefined ? { phone: body.phone } : {}),
+        ...(body.email !== undefined ? { email: body.email } : {}),
+        ...(body.status ? { status: body.status } : {}),
+      },
+    });
+    await writeAudit(req, "teacher.update", "Teacher", id);
     return teacher;
   });
 }

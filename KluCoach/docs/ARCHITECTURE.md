@@ -89,9 +89,9 @@ Isolation layers:
 
 1. **Session** — tenant comes from the authenticated session, never from the client body/query as authority
 2. **Authorization** — RBAC + teacher-batch scope
-3. **Service** — every query includes `institutionId` from session
+3. **Service** — every query includes `institutionId` from session; write/filter IDs go through `*InTenant` (404 if missing)
 4. **Database** — `institutionId` on every tenant-owned row; composite indexes
-5. **Tests** — explicit cross-tenant denial tests (must execute)
+5. **Tests** — explicit cross-tenant denial tests (must execute). Phase 1 gate: [SECURITY_GATE_PHASE1.md](./SECURITY_GATE_PHASE1.md)
 
 `SUPER_ADMIN` is the only role that may have a null institution (platform operator). All other users are institution-scoped.
 

@@ -14,6 +14,7 @@ import { can } from "./policies.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { createSession, destroySession, newToken, hashToken } from "./session.js";
 import { rateLimits } from "../../lib/rateLimits.js";
+import { guardianInTenant, studentInTenant, teacherInTenant } from "../tenancy/scope.js";
 
 function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
@@ -101,7 +102,7 @@ export async function authRoutes(app: FastifyInstance) {
       where: { email: body.email.toLowerCase(), status: "ACTIVE" },
     });
     if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, body.password))) {
-      await writeAudit(req, "auth.login_failed", "User", user?.id ?? null, { email: body.email });
+      await writeAudit(req, "auth.login_failed", "User", null, { reason: "invalid_credentials" });
       throw unauthorized("Invalid email or password");
     }
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
@@ -139,6 +140,24 @@ export async function authRoutes(app: FastifyInstance) {
     });
     if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
       throw unauthorized("Invitation invalid or expired");
+    }
+    if (invite.studentId) {
+      const student = await prisma.student.findFirst({
+        where: { id: invite.studentId, institutionId: invite.institutionId },
+      });
+      if (!student) throw unauthorized("Invitation invalid or expired");
+    }
+    if (invite.guardianId) {
+      const guardian = await prisma.guardian.findFirst({
+        where: { id: invite.guardianId, institutionId: invite.institutionId },
+      });
+      if (!guardian) throw unauthorized("Invitation invalid or expired");
+    }
+    if (invite.teacherId) {
+      const teacher = await prisma.teacher.findFirst({
+        where: { id: invite.teacherId, institutionId: invite.institutionId },
+      });
+      if (!teacher) throw unauthorized("Invitation invalid or expired");
     }
     const passwordHash = await hashPassword(body.password);
     const role =
@@ -192,6 +211,9 @@ export async function authRoutes(app: FastifyInstance) {
       guardianId?: string;
       teacherId?: string;
     };
+    if (body.studentId) await studentInTenant(user.institutionId, body.studentId);
+    if (body.guardianId) await guardianInTenant(user.institutionId, body.guardianId);
+    if (body.teacherId) await teacherInTenant(user.institutionId, body.teacherId);
     const token = newToken();
     const invite = await prisma.invitation.create({
       data: {

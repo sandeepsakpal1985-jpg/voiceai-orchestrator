@@ -25,4 +25,10 @@ describe("RBAC policies", () => {
     expect(can("STUDENT", "assignments:write")).toBe(true);
     expect(can("STUDENT", "notices:write")).toBe(false);
   });
+
+  it("lets institution admin write teachers and invitations", () => {
+    expect(can("INSTITUTION_ADMIN", "teachers:write")).toBe(true);
+    expect(can("TEACHER", "teachers:write")).toBe(false);
+    expect(can("PARENT", "teachers:write")).toBe(false);
+  });
 });

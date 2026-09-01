@@ -1,14 +1,17 @@
 import { prisma } from "@klunex-edu/database";
 import { forbidden, notFound } from "../../lib/errors.js";
 import type { AuthUser } from "../identity/http-auth.js";
+import { batchInTenant } from "../tenancy/scope.js";
 
 export async function assertTeacherBatchAccess(user: AuthUser, batchId: string) {
+  if (!user.institutionId) throw forbidden();
+  await batchInTenant(user.institutionId, batchId);
   if (user.role === "INSTITUTION_ADMIN" || user.role === "STAFF" || user.role === "SUPER_ADMIN") {
     return;
   }
   if (user.role !== "TEACHER") throw forbidden();
   const teacher = await prisma.teacher.findFirst({
-    where: { userId: user.id, institutionId: user.institutionId ?? undefined },
+    where: { userId: user.id, institutionId: user.institutionId },
   });
   if (!teacher) throw forbidden();
   const link = await prisma.teacherBatch.findUnique({

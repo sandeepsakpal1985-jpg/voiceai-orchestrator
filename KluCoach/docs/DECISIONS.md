@@ -18,3 +18,5 @@ Index of architectural decision records.
 KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital schema.
 
 Commit `1a585f7` also contains unrelated `ai-sales-agent` documentation moves. History is not rewritten; see [INITIAL_AUDIT.md](./INITIAL_AUDIT.md).
+
+The tenant **is** `Institution`. We did not add a second Institution table. `*InTenant` helpers 404 when a foreign id is used as a write/filter handle.

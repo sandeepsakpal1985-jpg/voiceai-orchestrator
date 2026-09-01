@@ -28,6 +28,20 @@ Identity, tenant, and role come from the **server session**. Resource IDs in URL
 - Logout deletes the server session
 - Rate limit login and invitation-accept endpoints
 
+Production rate limits (in-process `@fastify/rate-limit`; no Redis):
+
+| Endpoint | Max | Window | Rationale |
+|----------|-----|--------|-----------|
+| `POST /auth/login` | 10 | 1 minute | Credential stuffing |
+| `POST /auth/register` | 5 | 1 minute | Institution spam |
+| `POST /auth/invitations/accept` | 10 | 1 minute | Token guessing |
+| `POST /invitations` | 20 | 1 minute | Invite flood |
+| `POST /imports/students/preview` | 20 | 1 minute | Parse CPU |
+| Global (other routes) | 300 | 1 minute | Generic abuse |
+| `/health`, `/ready` | allow-listed | — | Probes |
+
+Vitest uses a 10_000 ceiling so isolation suites do not 429. Phase 1 gate: [SECURITY_GATE_PHASE1.md](./SECURITY_GATE_PHASE1.md).
+
 ---
 
 ## Authorization

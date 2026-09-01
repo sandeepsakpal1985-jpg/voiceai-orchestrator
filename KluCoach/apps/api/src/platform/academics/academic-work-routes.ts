@@ -11,7 +11,15 @@ import { writeAudit } from "../audit/write.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { assertTeacherBatchAccess, parentStudentIds, studentSelfId } from "../identity/scope.js";
-import { studentInTenant } from "../tenancy/scope.js";
+import {
+  assessmentInTenant,
+  assignmentInTenant,
+  batchInTenant,
+  branchInTenant,
+  noticeInTenant,
+  studentInTenant,
+  subjectInTenant,
+} from "../tenancy/scope.js";
 
 function parse<T>(schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }, body: unknown): T {
   const result = schema.safeParse(body);
@@ -36,6 +44,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
       if (studentIds && !studentIds.includes(query.studentId)) throw notFound();
       await studentInTenant(tenant.institutionId, query.studentId);
     }
+    if (query.batchId) await batchInTenant(tenant.institutionId, query.batchId);
     return prisma.attendanceRecord.findMany({
       where: {
         institutionId: tenant.institutionId,
@@ -53,6 +62,9 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     requirePermission(req, "attendance:write");
     const body = parse(attendanceMarkSchema, req.body);
     await assertTeacherBatchAccess(tenant, body.batchId);
+    for (const rec of body.records) {
+      await studentInTenant(tenant.institutionId, rec.studentId);
+    }
     const date = new Date(body.date);
     const rows = [];
     for (const rec of body.records) {
@@ -93,6 +105,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     requirePermission(req, "assessments:write");
     const body = parse(assessmentCreateSchema, req.body);
     await assertTeacherBatchAccess(tenant, body.batchId);
+    await subjectInTenant(tenant.institutionId, body.subjectId);
     const row = await prisma.assessment.create({
       data: {
         institutionId: tenant.institutionId,
@@ -121,6 +134,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
       if (studentIds && !studentIds.includes(query.studentId)) throw notFound();
       await studentInTenant(tenant.institutionId, query.studentId);
     }
+    if (query.assessmentId) await assessmentInTenant(tenant.institutionId, query.assessmentId);
     return prisma.assessmentResult.findMany({
       where: {
         institutionId: tenant.institutionId,
@@ -145,6 +159,9 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     if (!assessment) throw notFound();
     await assertTeacherBatchAccess(tenant, assessment.batchId);
     const body = parse(resultsUpsertSchema, req.body);
+    for (const rec of body.results) {
+      await studentInTenant(tenant.institutionId, rec.studentId);
+    }
     const max = Number(assessment.maxMarks);
     const rankingEnabled = assessment.batch.rankingEnabled;
     const computed = body.results.map((r) => ({
@@ -182,6 +199,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "assignments:read");
     const query = req.query as { batchId?: string };
+    if (query.batchId) await batchInTenant(tenant.institutionId, query.batchId);
     return prisma.assignment.findMany({
       where: {
         institutionId: tenant.institutionId,
@@ -197,6 +215,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     requirePermission(req, "assignments:write");
     const body = parse(assignmentCreateSchema, req.body);
     await assertTeacherBatchAccess(tenant, body.batchId);
+    await subjectInTenant(tenant.institutionId, body.subjectId);
     const row = await prisma.assignment.create({
       data: {
         institutionId: tenant.institutionId,
@@ -216,6 +235,13 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     }
     await writeAudit(req, "assignment.create", "Assignment", row.id);
     return reply.code(201).send(row);
+  });
+
+  app.get("/assignments/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "assignments:read");
+    const { id } = req.params as { id: string };
+    return assignmentInTenant(tenant.institutionId, id);
   });
 
   app.get("/notices", async (req) => {
@@ -251,6 +277,11 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "notices:write");
     const body = parse(noticeCreateSchema, req.body);
+    if (body.branchId) await branchInTenant(tenant.institutionId, body.branchId);
+    if (body.batchId) await batchInTenant(tenant.institutionId, body.batchId);
+    for (const studentId of body.studentIds ?? []) {
+      await studentInTenant(tenant.institutionId, studentId);
+    }
     const notice = await prisma.notice.create({
       data: {
         institutionId: tenant.institutionId,
@@ -267,5 +298,12 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     });
     await writeAudit(req, "notice.create", "Notice", notice.id);
     return reply.code(201).send(notice);
+  });
+
+  app.get("/notices/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "notices:read");
+    const { id } = req.params as { id: string };
+    return noticeInTenant(tenant.institutionId, id);
   });
 }

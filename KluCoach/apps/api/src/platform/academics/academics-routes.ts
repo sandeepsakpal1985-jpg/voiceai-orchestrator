@@ -5,6 +5,14 @@ import { writeAudit } from "../audit/write.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { parentStudentIds, studentSelfId } from "../identity/scope.js";
+import {
+  academicYearInTenant,
+  batchInTenant,
+  branchInTenant,
+  programInTenant,
+  studentInTenant,
+  subjectInTenant,
+} from "../tenancy/scope.js";
 
 function parse<T>(schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }, body: unknown): T {
   const result = schema.safeParse(body);
@@ -16,6 +24,12 @@ export async function academicsRoutes(app: FastifyInstance) {
   app.get("/branches", async (req) => {
     const tenant = requireTenant(req);
     return prisma.branch.findMany({ where: { institutionId: tenant.institutionId }, orderBy: { name: "asc" } });
+  });
+
+  app.get("/branches/:id", async (req) => {
+    const tenant = requireTenant(req);
+    const { id } = req.params as { id: string };
+    return branchInTenant(tenant.institutionId, id);
   });
 
   app.post("/branches", async (req, reply) => {
@@ -39,6 +53,12 @@ export async function academicsRoutes(app: FastifyInstance) {
     return prisma.program.findMany({ where: { institutionId: tenant.institutionId }, orderBy: { name: "asc" } });
   });
 
+  app.get("/programs/:id", async (req) => {
+    const tenant = requireTenant(req);
+    const { id } = req.params as { id: string };
+    return programInTenant(tenant.institutionId, id);
+  });
+
   app.post("/programs", async (req, reply) => {
     const tenant = requireTenant(req);
     requirePermission(req, "batches:write");
@@ -53,6 +73,12 @@ export async function academicsRoutes(app: FastifyInstance) {
   app.get("/subjects", async (req) => {
     const tenant = requireTenant(req);
     return prisma.subject.findMany({ where: { institutionId: tenant.institutionId }, orderBy: { name: "asc" } });
+  });
+
+  app.get("/subjects/:id", async (req) => {
+    const tenant = requireTenant(req);
+    const { id } = req.params as { id: string };
+    return subjectInTenant(tenant.institutionId, id);
   });
 
   app.post("/subjects", async (req, reply) => {
@@ -76,10 +102,21 @@ export async function academicsRoutes(app: FastifyInstance) {
     });
   });
 
+  app.get("/batches/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "batches:read");
+    const { id } = req.params as { id: string };
+    return batchInTenant(tenant.institutionId, id);
+  });
+
   app.post("/batches", async (req, reply) => {
     const tenant = requireTenant(req);
     requirePermission(req, "batches:write");
     const body = parse(batchCreateSchema, req.body);
+    await branchInTenant(tenant.institutionId, body.branchId);
+    await academicYearInTenant(tenant.institutionId, body.academicYearId);
+    await programInTenant(tenant.institutionId, body.programId);
+    for (const subjectId of body.subjectIds ?? []) await subjectInTenant(tenant.institutionId, subjectId);
     const batch = await prisma.batch.create({
       data: {
         institutionId: tenant.institutionId,
@@ -105,6 +142,7 @@ export async function academicsRoutes(app: FastifyInstance) {
     const body = req.body as { studentId: string };
     const batch = await prisma.batch.findFirst({ where: { id, institutionId: tenant.institutionId } });
     if (!batch) throw notFound();
+    await studentInTenant(tenant.institutionId, body.studentId);
     const enrollment = await prisma.batchEnrollment.upsert({
       where: { batchId_studentId: { batchId: id, studentId: body.studentId } },
       update: { status: "ACTIVE" },
@@ -116,6 +154,7 @@ export async function academicsRoutes(app: FastifyInstance) {
   app.get("/sessions", async (req) => {
     const tenant = requireTenant(req);
     const query = req.query as { batchId?: string; date?: string };
+    if (query.batchId) await batchInTenant(tenant.institutionId, query.batchId);
     return prisma.classSession.findMany({
       where: {
         institutionId: tenant.institutionId,
@@ -140,6 +179,8 @@ export async function academicsRoutes(app: FastifyInstance) {
       endMinute: number;
       room?: string;
     };
+    await batchInTenant(tenant.institutionId, body.batchId);
+    await subjectInTenant(tenant.institutionId, body.subjectId);
     const session = await prisma.classSession.create({
       data: {
         institutionId: tenant.institutionId,
@@ -170,6 +211,7 @@ export async function academicsRoutes(app: FastifyInstance) {
       const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: sid } });
       batchIds = enrolls.map((e) => e.batchId);
     } else if (query.batchId) {
+      await batchInTenant(tenant.institutionId, query.batchId);
       batchIds = [query.batchId];
     }
     return prisma.timetableSlot.findMany({
@@ -194,6 +236,8 @@ export async function academicsRoutes(app: FastifyInstance) {
       endMinute: number;
       room?: string;
     };
+    await batchInTenant(tenant.institutionId, body.batchId);
+    await subjectInTenant(tenant.institutionId, body.subjectId);
     const slot = await prisma.timetableSlot.create({
       data: {
         institutionId: tenant.institutionId,
