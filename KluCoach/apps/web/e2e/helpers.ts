@@ -10,5 +10,5 @@ export async function loginAs(page: Page, email: string) {
 }
 
 export async function expectHeading(page: Page, name: string | RegExp) {
-  await expect(page.getByRole("heading", { name })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("heading", { name }).first()).toBeVisible({ timeout: 15000 });
 }
