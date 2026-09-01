@@ -183,13 +183,13 @@ export async function authRoutes(app: FastifyInstance) {
           role,
         },
       });
-      if (invite.guardianId) {
+      if (invite.type === "PARENT" && invite.guardianId) {
         await tx.guardian.update({ where: { id: invite.guardianId }, data: { userId: created.id } });
       }
-      if (invite.studentId) {
+      if (invite.type === "STUDENT" && invite.studentId) {
         await tx.student.update({ where: { id: invite.studentId }, data: { userId: created.id } });
       }
-      if (invite.teacherId) {
+      if (invite.type === "TEACHER" && invite.teacherId) {
         await tx.teacher.update({ where: { id: invite.teacherId }, data: { userId: created.id } });
       }
       await tx.invitation.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
