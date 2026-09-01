@@ -182,6 +182,10 @@ apps/web/src/
 - Student: simple academic home
 - PWA-friendly: manifest, responsive, installable later
 - Tables: one `DataTable` (TanStack Table v9) — do not invent ten grids
+- Admin lists using that table: Students, Parents, Teachers, Batches, Timetable, Assignments
+- Parent/student timetable is a weekday schedule view over the same `/timetable` API
+- Students submit assignments via `POST /assignments/:id/submit` (own enrollment only; parents cannot impersonate)
+- Parent snapshot includes recent attendance so a teacher save is visible without analytics
 - List APIs: `?page=` returns `{ items, total, page, pageSize }`; omitting `page` still returns an array (test compatibility)
 - Forms: React Hook Form + Zod from `@klunex-edu/shared`
 - Server state: TanStack Query; **authorization stays on the API**

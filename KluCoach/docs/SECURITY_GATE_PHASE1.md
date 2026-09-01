@@ -20,7 +20,7 @@ Checkpoint: `47d1989` (locked foundation). Isolation policy remains **404**. Tes
 | route ID isolation | PASS | GET by id suite | executed | branches, programs, subjects, batches, parents, teachers, assignments, notices |
 | query/filter isolation | PASS | batchId / studentId | executed | Foreign IDs 404, not empty lists |
 | password reset | NOT IMPLEMENTED | — | — | No reset endpoints |
-| assignment submit-by-id | NOT IMPLEMENTED | — | — | Create + list exist; no student submit route yet |
+| assignment submit-by-id | PASS | workflows + playwright | executed | `POST /assignments/:id/submit`; student own enrollment only; parent → 403; cross-tenant → 404 |
 | teacher hard-delete | NOT IMPLEMENTED | — | — | PATCH status only |
 | PDF / XLSX export | NOT IMPLEMENTED | — | — | CSV only |
 
@@ -44,6 +44,7 @@ Applicable implemented tests executed and passed: Vitest **35/35**.
 2. POST student/teacher/batch/notice/session/timetable accepted foreign branch/batch/subject/student IDs.
 3. POST `/invitations` accepted Tenant B `studentId` / `guardianId` / `teacherId`.
 4. GET filters (`assignments?batchId=`, `attendance?batchId=`, `fees?studentId=`) returned empty instead of 404.
+5. Parent invitation accept wrote `student.userId` whenever `studentId` was present, including PARENT invites. That detached `student@example.test` from Aarav and made `studentSelfId` 404. Accept now links `student.userId` only for `STUDENT` invites.
 
 `findUnique({ where: { id } })` after `*InTenant` is used only for updates of rows already proven in-tenant.
 

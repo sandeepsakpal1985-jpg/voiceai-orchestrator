@@ -1,42 +1,74 @@
 # Progress
 
-Updated: 2026-09-01 (Phase 2 — core education workflows)
+Updated: 2026-09-01 (Phase 2 completion — attendance E2E, timetable, assignments)
 
 Validation rule: COMPLETE only with execution evidence.
 
 | Feature | Status | Tests | Verified | Notes |
 |---------|--------|-------|----------|-------|
 | Locked foundation `47d1989` | VALIDATED | n/a | git | Not rebuilt |
-| Phase 1 security gate `70a9ecc` | VALIDATED | vitest 35 | yes | Permanent regression |
+| Phase 1 security gate `70a9ecc` | VALIDATED | vitest | yes | Permanent regression; parent-invite no longer hijacks `student.userId` |
 | Parent invitation E2E | VALIDATED | playwright | yes | Admin → invite → activate → child |
-| Parent activation | VALIDATED | playwright | yes | Token shown in UI; not logged |
-| Parent sees correct child | VALIDATED | playwright | yes | Seeded unique student |
-| Cross-tenant parent access | VALIDATED | playwright + vitest | yes | Foreign studentId → 404 |
-| Invitation reuse / expiry / invalid | VALIDATED | vitest + playwright | yes | 401; accept 401 no longer bounces to login |
-| Assessment creation | VALIDATED | playwright | yes | Teacher, JEE batch, Physics |
-| Marks entry | VALIDATED | playwright | yes | Aarav 91 |
-| Invalid marks rejected | VALIDATED | playwright + vitest | yes | 101 and negative |
-| Parent sees result | VALIDATED | playwright | yes | Name + 91% |
-| Cross-tenant assessment access | VALIDATED | vitest | yes | 404 on foreign assessment/results |
-| Shared DataTable | VALIDATED | playwright students + vitest pages | yes | One `DataTable`; server page/search/sort |
-| Parents table | VALIDATED | vitest paged isolation | yes | Shared DataTable |
-| Teachers table | VALIDATED | vitest paged isolation | yes | Shared DataTable; no hard-delete |
-| Batches table | VALIDATED | vitest paged isolation | yes | Shared DataTable; FK checks |
-| Students table | VALIDATED | playwright create + vitest | yes | Shared DataTable; Student 360 route |
-| Attendance workflow | VALIDATED | vitest teacher 403 | yes | Batch roster from API; teacher assigned batches only |
-| Teacher batch authorization | VALIDATED | vitest | yes | Unassigned batch → 403 on write; omitted from GET /batches |
-| Tenant isolation regression | VALIDATED | vitest 42/42 | yes | Previous 35 plus workflow cases |
+| Assessment/marks E2E | VALIDATED | playwright | yes | Teacher, JEE, Aarav 91 |
+| Shared DataTable | VALIDATED | playwright + vitest | yes | One table: Students, Parents, Teachers, Batches, Timetable, Assignments |
+| Attendance teacher workflow | VALIDATED | playwright | yes | Teacher → JEE batch → date → roster → PRESENT/ABSENT/LATE/EXCUSED → save |
+| Attendance persist after reload | VALIDATED | playwright + vitest upsert | yes | Same student/date updates; no duplicate row |
+| Attendance parent view | VALIDATED | playwright | yes | Parent snapshot + `/attendance` recent list |
+| Unauthorized batch access | VALIDATED | vitest | yes | Unassigned same-tenant → 403; Tenant B batch → 404 |
+| Timetable backend | VALIDATED | vitest | yes | GET/POST/PATCH slots and sessions; teacher batch scope |
+| Timetable tenant isolation | VALIDATED | vitest | yes | Foreign id → 404; POST on Tenant B batch → 404 |
+| Timetable admin DataTable | VALIDATED | playwright | yes | Shared table + create slot |
+| Assignment backend | VALIDATED | vitest + playwright | yes | Create, list, PATCH, submit-by-id |
+| Assignment tenant isolation | VALIDATED | vitest | yes | GET/PATCH/submit foreign id → 404 |
+| Assignment admin DataTable | VALIDATED | playwright | yes | Shared table |
+| Assignment submission | VALIDATED | vitest + playwright | yes | Student own enrollment; parent 403; non-file path |
+| Tenant isolation regression | VALIDATED | vitest 48/48 | yes | Original Phase 1 matrix still executing |
 | Password reset | NOT STARTED | | | Backlog |
 | PDF/XLSX export | NOT STARTED | | | Backlog |
-| Playwright admin create-branch | NOT STARTED | | | Deferred |
+| Student 360 redesign | NOT STARTED | | | Next phase — do not add more admin CRUD first |
 | Production deployment | NOT STARTED | | | BLOCKED — no production host |
 
-## Session summary (Phase 2)
+## Phase 2 exit checklist
 
-1. **Starting commit:** `70a9ecc`
-2. **Parent invitation:** Playwright executed and passed
-3. **Assessment/marks:** Playwright executed and passed
-4. **DataTable:** one TanStack Table v9 wrapper used by Students, Parents, Teachers, Batches
-5. **Tests executed:** Vitest 42/42; Playwright 7/7
-6. **Tests blocked:** none
-7. **Exact next step:** Timetable and assignments screens on the same DataTable pattern; do not start password reset or PDF export
+- [x] Attendance teacher workflow executes in Playwright
+- [x] Attendance save succeeds
+- [x] Attendance persists after reload
+- [x] Parent can see attendance
+- [x] Unauthorized batch access is denied
+- [x] Timetable backend validated
+- [x] Timetable tenant isolation tested
+- [x] Timetable admin list uses shared DataTable where appropriate
+- [x] Assignment backend validated
+- [x] Assignment tenant isolation tested
+- [x] Assignment admin list uses shared DataTable
+- [x] Assignment submission validated
+- [x] Existing security regression suite passes
+- [x] Full Vitest executes (48/48)
+- [x] Full Playwright executes (10/10)
+- [x] Build succeeds
+- [x] Typecheck succeeds
+- [x] Lint succeeds (`pnpm lint` — no package lint scripts; `--if-present` no-op)
+- [x] No critical/high security regression
+- [x] PROGRESS.md updated
+- [x] TESTING.md updated
+- [x] ARCHITECTURE.md updated
+- [ ] Git tree clean — pending commits in this session
+
+## Session summary (Phase 2 completion)
+
+1. **Starting commit:** `1623867`
+2. **Ending commit:** (see git log after this session’s commits)
+3. **Attendance E2E:** Playwright executed and passed — teacher save, reload preserves ABSENT/LATE/EXCUSED, parent sees ABSENT
+4. **Timetable:** Admin DataTable + create slot Playwright passed; isolation Vitest passed
+5. **Assignment:** Admin DataTable + student submit-by-id Playwright passed; isolation Vitest passed
+6. **Shared DataTable coverage:** Students, Parents, Teachers, Batches, Timetable (admin), Assignments (admin)
+7. **Vitest:** 48/48 PASS
+8. **Playwright:** 10/10 PASS
+9. **Typecheck:** PASS
+10. **Build:** PASS (`pnpm build` — shared, database, api tsc, web vite)
+11. **Lint:** `pnpm lint` is `--if-present`; no lint scripts in packages
+12. **Security regression:** isolation + boundary suites included in 48/48; parent-invite `student.userId` hijack fixed
+13. **Tests blocked:** none
+14. **Not implemented:** password reset, PDF/XLSX, Student 360 redesign, AI, billing
+15. **Documentation:** PROGRESS.md, TESTING.md, ARCHITECTURE.md, ROADMAP.md, SECURITY_GATE_PHASE1.md
+16. **Exact next phase:** **Student 360 + Parent Experience** — not more admin CRUD

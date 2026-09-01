@@ -6,13 +6,22 @@ Items here are **not** in the current build phase. Do not implement them because
 
 ## Phase 2 deferred
 
-Do not interrupt core education workflows for:
+Do not interrupt Student 360 / parent experience for:
 
 - Password reset
 - PDF / XLSX export
-- Assignment submit-by-id
 - Teacher hard-delete
-- Full Playwright suite beyond the two critical workflows
+- Full Playwright suite expansion beyond proven workflows
+
+Assignment submit-by-id is implemented (non-file path).
+
+---
+
+## Next major phase — Student 360 + Parent Experience
+
+Stop accumulating admin CRUD. Prove the commercial product:
+
+Parent opens KluCoach → selects child → sees attendance, latest performance, upcoming classes, pending assignments, notices, timetable, fees/status from the workflows already validated.
 
 ---
 
