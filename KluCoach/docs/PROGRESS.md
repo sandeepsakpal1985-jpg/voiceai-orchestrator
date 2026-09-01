@@ -1,74 +1,90 @@
 # Progress
 
-Updated: 2026-09-01 (Phase 2 completion — attendance E2E, timetable, assignments)
+Updated: 2026-09-01 (Phase 3 COMPLETE — Student 360 + parent experience)
 
 Validation rule: COMPLETE only with execution evidence.
 
 | Feature | Status | Tests | Verified | Notes |
 |---------|--------|-------|----------|-------|
 | Locked foundation `47d1989` | VALIDATED | n/a | git | Not rebuilt |
-| Phase 1 security gate `70a9ecc` | VALIDATED | vitest | yes | Permanent regression; parent-invite no longer hijacks `student.userId` |
-| Parent invitation E2E | VALIDATED | playwright | yes | Admin → invite → activate → child |
-| Assessment/marks E2E | VALIDATED | playwright | yes | Teacher, JEE, Aarav 91 |
-| Shared DataTable | VALIDATED | playwright + vitest | yes | One table: Students, Parents, Teachers, Batches, Timetable, Assignments |
-| Attendance teacher workflow | VALIDATED | playwright | yes | Teacher → JEE batch → date → roster → PRESENT/ABSENT/LATE/EXCUSED → save |
-| Attendance persist after reload | VALIDATED | playwright + vitest upsert | yes | Same student/date updates; no duplicate row |
-| Attendance parent view | VALIDATED | playwright | yes | Parent snapshot + `/attendance` recent list |
-| Unauthorized batch access | VALIDATED | vitest | yes | Unassigned same-tenant → 403; Tenant B batch → 404 |
-| Timetable backend | VALIDATED | vitest | yes | GET/POST/PATCH slots and sessions; teacher batch scope |
-| Timetable tenant isolation | VALIDATED | vitest | yes | Foreign id → 404; POST on Tenant B batch → 404 |
-| Timetable admin DataTable | VALIDATED | playwright | yes | Shared table + create slot |
-| Assignment backend | VALIDATED | vitest + playwright | yes | Create, list, PATCH, submit-by-id |
-| Assignment tenant isolation | VALIDATED | vitest | yes | GET/PATCH/submit foreign id → 404 |
-| Assignment admin DataTable | VALIDATED | playwright | yes | Shared table |
-| Assignment submission | VALIDATED | vitest + playwright | yes | Student own enrollment; parent 403; non-file path |
-| Tenant isolation regression | VALIDATED | vitest 48/48 | yes | Original Phase 1 matrix still executing |
+| Phase 1 security gate `70a9ecc` | VALIDATED | vitest | yes | Permanent regression |
+| Phase 2 workflows `60534fe` | VALIDATED | vitest + playwright | yes | Start of Phase 3 |
+| Student 360 aggregation API | VALIDATED | vitest | yes | `GET /students/:id/360`; Zod `student360Schema` |
+| Parent own-child / multi-child auth | VALIDATED | vitest | yes | Aarav + Diya 200; foreign / Tenant B → 404 |
+| Student own 360 / deny other | VALIDATED | vitest + playwright | yes | Own 200; sibling 360 404 |
+| Teacher assigned / unassigned | VALIDATED | vitest | yes | Assigned 200; unassigned same-tenant → 404 |
+| Admin in-tenant / cross-tenant | VALIDATED | vitest | yes | In-tenant 200; Tenant B → 404 |
+| Empty-state sibling (Diya) | VALIDATED | vitest + playwright | yes | `INSUFFICIENT_DATA`; `percent` null; no invented 0% |
+| Deterministic overall status | VALIDATED | vitest unit | yes | `student360-status.ts`; ADR-011 |
+| Parent Student 360 UI | VALIDATED | playwright | yes | One `/dashboard/parent` request; mobile 390×844 |
+| Multi-child parent E2E | VALIDATED | playwright | yes | Aarav ↔ Diya; URL / Tenant B 360 404 |
+| Student 360 E2E | VALIDATED | playwright | yes | No child switcher; timetable/assignments still reachable |
+| Phase 2 Playwright regression | VALIDATED | playwright | yes | Invite, marks, attendance, assignment, timetable, notice |
 | Password reset | NOT STARTED | | | Backlog |
 | PDF/XLSX export | NOT STARTED | | | Backlog |
-| Student 360 redesign | NOT STARTED | | | Next phase — do not add more admin CRUD first |
+| AI assistant / LLM summaries | NOT IMPLEMENTED | | | Explicitly out of Phase 3 |
+| Payment gateway | NOT IMPLEMENTED | | | Fee invoice read-only only |
 | Production deployment | NOT STARTED | | | BLOCKED — no production host |
 
-## Phase 2 exit checklist
+## Phase 3 exit checklist
 
-- [x] Attendance teacher workflow executes in Playwright
-- [x] Attendance save succeeds
-- [x] Attendance persists after reload
-- [x] Parent can see attendance
-- [x] Unauthorized batch access is denied
-- [x] Timetable backend validated
-- [x] Timetable tenant isolation tested
-- [x] Timetable admin list uses shared DataTable where appropriate
-- [x] Assignment backend validated
-- [x] Assignment tenant isolation tested
-- [x] Assignment admin list uses shared DataTable
-- [x] Assignment submission validated
-- [x] Existing security regression suite passes
-- [x] Full Vitest executes (48/48)
-- [x] Full Playwright executes (10/10)
-- [x] Build succeeds
-- [x] Typecheck succeeds
-- [x] Lint succeeds (`pnpm lint` — no package lint scripts; `--if-present` no-op)
-- [x] No critical/high security regression
-- [x] PROGRESS.md updated
-- [x] TESTING.md updated
-- [x] ARCHITECTURE.md updated
-- [x] Git tree clean
+- [x] Student 360 aggregation API exists
+- [x] API is typed/validated
+- [x] Parent own-child access works
+- [x] Parent foreign-child access denied
+- [x] Cross-tenant access denied
+- [x] Multiple children supported
+- [x] Student own Student 360 works
+- [x] Student cannot access another student
+- [x] Teacher authorized access works
+- [x] Teacher unauthorized access denied
+- [x] Admin authorized access works
+- [x] Attendance displayed
+- [x] Academic performance displayed
+- [x] Recent results displayed
+- [x] Upcoming classes displayed
+- [x] Assignments displayed
+- [x] Notices displayed
+- [x] Fee/status displayed if available
+- [x] Empty states handled
+- [x] Overall status deterministic
+- [x] Status rules documented
+- [x] Parent mobile experience works
+- [x] Parent Playwright passes
+- [x] Multiple-child Playwright passes
+- [x] Student Playwright passes
+- [x] Existing Phase 2 Playwright workflows still pass
+- [x] Full Vitest passes (58/58)
+- [x] Full Playwright passes (13/13)
+- [x] Typecheck passes
+- [x] Build passes
+- [x] Lint passes (`pnpm lint` — no package lint scripts; `--if-present` no-op)
+- [x] No critical/high security issue
+- [x] Documentation updated
+- [ ] Git tree clean (this session’s KluCoach commits; parent monorepo may have unrelated dirty files)
 
-## Session summary (Phase 2 completion)
+## Session summary (Phase 3)
 
-1. **Starting commit:** `1623867`
-2. **Ending commit:** this session’s HEAD on master (after `1623867`)
-3. **Attendance E2E:** Playwright executed and passed — teacher save, reload preserves ABSENT/LATE/EXCUSED, parent sees ABSENT
-4. **Timetable:** Admin DataTable + create slot Playwright passed; isolation Vitest passed
-5. **Assignment:** Admin DataTable + student submit-by-id Playwright passed; isolation Vitest passed
-6. **Shared DataTable coverage:** Students, Parents, Teachers, Batches, Timetable (admin), Assignments (admin)
-7. **Vitest:** 48/48 PASS
-8. **Playwright:** 10/10 PASS
-9. **Typecheck:** PASS
-10. **Build:** PASS (`pnpm build` — shared, database, api tsc, web vite)
-11. **Lint:** `pnpm lint` is `--if-present`; no lint scripts in packages
-12. **Security regression:** isolation + boundary suites included in 48/48; parent-invite `student.userId` hijack fixed
-13. **Tests blocked:** none
-14. **Not implemented:** password reset, PDF/XLSX, Student 360 redesign, AI, billing
-15. **Documentation:** PROGRESS.md, TESTING.md, ARCHITECTURE.md, ROADMAP.md, SECURITY_GATE_PHASE1.md
-16. **Exact next phase:** **Student 360 + Parent Experience** — not more admin CRUD
+1. **Starting commit:** `60534fe`
+2. **Ending commit:** this documentation commit on master (after `8e90c91`)
+3. **Student 360 API:** VALIDATED — `GET /students/:id/360` + parent/student dashboard wrappers
+4. **Parent experience:** VALIDATED — child selector + aggregated home
+5. **Multiple-child:** VALIDATED — Aarav and Diya; unrelated/Tenant B 404
+6. **Student experience:** VALIDATED — own 360; no sibling switch
+7. **Attendance:** VALIDATED — existing `AttendanceRecord` rows
+8. **Academic:** VALIDATED — existing results; no ranking
+9. **Assignments:** VALIDATED — existing submissions
+10. **Timetable:** VALIDATED — upcoming `SCHEDULED` sessions
+11. **Notices:** VALIDATED — existing notice model, audience-filtered
+12. **Fees:** VALIDATED — latest invoice or `null` / “Fees not configured”
+13. **Security tests:** VALIDATED — Vitest matrix + Playwright URL/API deny
+14. **Vitest:** 58/58 PASS
+15. **Playwright:** 13/13 PASS
+16. **Typecheck:** PASS
+17. **Build:** PASS
+18. **Lint:** `pnpm lint` `--if-present` no-op PASS
+19. **Tests blocked:** none
+20. **Security issues:** none found in this phase’s executed suites
+21. **Documentation:** PROGRESS, ARCHITECTURE, TESTING, ROADMAP, DECISIONS, ADR-011
+22. **Remaining work:** password reset, export, communication/notifications (Phase 4), billing, AI
+23. **Exact next phase:** **Communication / engagement + notifications** — not more admin CRUD

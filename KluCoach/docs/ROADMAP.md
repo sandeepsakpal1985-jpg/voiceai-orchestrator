@@ -17,19 +17,22 @@ Assignment submit-by-id is implemented (non-file path).
 
 ---
 
-## Next major phase — Student 360 + Parent Experience
+## Phase 3 — Student 360 + Parent Experience
 
-Stop accumulating admin CRUD. Prove the commercial product:
-
-Parent opens KluCoach → selects child → sees attendance, latest performance, upcoming classes, pending assignments, notices, timetable, fees/status from the workflows already validated.
+Aggregation API, deterministic status, parent multi-child home, student own view. See [ADR-011](./adr/ADR-011-student-360-aggregation.md). Do not expand admin CRUD to finish this phase.
 
 ---
 
-## After MVP (KluCoach)
+## Next major phase — Communication / engagement
 
-- Performance trends, improvement score, risk indicators
-- AI insights with tenant/role-respecting retrieval (only when cost model allows)
-- Payment gateway + receipts as first-class money movement
+In-app notifications, unread notices, parent/student engagement around the proven Student 360 data. Not more people/batch CRUD.
+
+---
+
+## After that
+
+- Billing / subscriptions / partner economics (payment gateway is still later)
+- AI insights with tenant/role-respecting retrieval (only when cost model allows) — sits on Student 360, does not replace it
 - SMS/WhatsApp providers (institution-paid usage)
 - PDF reports
 - Branch-level admin role

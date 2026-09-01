@@ -14,6 +14,7 @@ Index of architectural decision records.
 | [ADR-008](./adr/ADR-008-education-platform-core.md) | Platform vs KluCoach product | Accepted |
 | [ADR-009](./adr/ADR-009-operating-cost-discipline.md) | No unfunded per-student variable cost | Accepted |
 | [ADR-010](./adr/ADR-010-commodity-oss.md) | Commodity OSS vs owned domain | Accepted |
+| [ADR-011](./adr/ADR-011-student-360-aggregation.md) | Student 360 aggregation | Accepted |
 
 KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital schema.
 
@@ -22,3 +23,5 @@ Commit `1a585f7` also contains unrelated `ai-sales-agent` documentation moves. H
 The tenant **is** `Institution`. We did not add a second Institution table. `*InTenant` helpers 404 when a foreign id is used as a write/filter handle.
 
 Phase 2: one shared DataTable; list endpoints accept optional `page` (envelope `{ items, total, page, pageSize }`) and keep unpaged array responses for compatibility. Parent invitations auto-create a guardian when `guardianId` is omitted. Marks above `maxMarks` are rejected server-side.
+
+Phase 3: Student 360 is a typed aggregation over existing domain rows (`GET /students/:id/360`). Status is deterministic (`student360-status.ts`). No AI, no Redis, no billing rebuild. See [ADR-011](./adr/ADR-011-student-360-aggregation.md).

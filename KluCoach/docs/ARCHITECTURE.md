@@ -174,6 +174,7 @@ apps/web/src/
   ui/           shadcn-style primitives (Button, Input, Table, …)
   klucoach/     product components (StudentStatusCard, DataTable usage)
   students/     queries + pages
+  student360/   parent/student aggregation view (ChildSelector, cards)
   …
 ```
 
@@ -222,4 +223,24 @@ Design queries and indexes for 10k → 100k → 1M students **without a rewrite*
 - no chatty per-student microservice calls
 - background jobs only when justified (import, email)
 
-Caching is optional later (Redis). Not required for MVP.
+Caching is optional later (Redis). Not required for MVP. Student 360 is not cached in Phase 3; see [ADR-011](./adr/ADR-011-student-360-aggregation.md).
+
+---
+
+## 12. Student 360
+
+`assembleStudent360` is the only Student 360 read model. It joins current attendance, assessment results, assignment submissions, upcoming `ClassSession` rows (`SCHEDULED`, `date >= today UTC`), notices the student is allowed to see, and the latest `FeeInvoice` when one exists.
+
+| Route | Who | Notes |
+|-------|-----|-------|
+| `GET /students/:id/360` | roles with `students:read` after `assertStudent360Access` | Canonical DTO (`student360Schema`) |
+| `GET /dashboard/parent` | PARENT | `{ children, snapshot }`; `?studentId=` must be a linked child or **404** |
+| `GET /dashboard/student` | STUDENT | Own snapshot only |
+
+Frontend parent/student home issues **one** of those aggregation requests for the primary page. Authorization never trusts the selected child id from the client: the API re-checks the guardian or self link.
+
+Overall status labels: Doing Well, On Track, Needs Attention, Not enough data. Empty data is distinguishable from poor performance (`percent: null`, not `0`).
+
+Multi-child: one parent account, many `StudentGuardian` rows, same institution. Child selector is the parent home control; students have no selector.
+
+Future AI (Phase 4+ later) may summarize this DTO. It must not compute authorization or replace the status engine.
