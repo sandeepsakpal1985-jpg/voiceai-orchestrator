@@ -1,128 +1,102 @@
-# KluCoach — Initial Repository Audit
+# KluCoach — Foundation audit (commit `1a585f7`)
 
-**Date:** 2026-08-31  
-**Workspace:** `C:\Users\sande\ai-orchestrator\KluCoach`  
-**Status:** Greenfield. No existing KluCoach source was found.
+**Date:** 2026-09-01  
+**Checkpoint:** `1a585f7` on `master`  
+**Scope:** Audit existing KluCoach; establish OSS strategy. Do not rebuild the foundation.
 
----
-
-## 1. Existing files in KluCoach
-
-The `KluCoach/` directory was empty at audit time:
-
-- no `package.json`
-- no source tree
-- no Prisma schema
-- no documentation
-- no nested `.git`
-
-This directory is intended specifically for KluCoach. The product will remain self-contained here.
+The original greenfield audit (empty directory) is superseded by this review.
 
 ---
 
-## 2. Parent repository context
+## Git state
 
-KluCoach sits inside `C:\Users\sande\ai-orchestrator`, a large KluNex workspace that also contains:
+| Item | Finding |
+|------|---------|
+| Checkpoint | `1a585f7` — `feat: initialize KluCoach on the KluNex Education Platform core` |
+| KluCoach files | 96 paths added (app, schema, docs, tests, lockfile) |
+| Unrelated files | 10 `ai-sales-agent` documentation **renames** into `archive/documentation/` |
+| History rewrite | **Not done.** Leave `1a585f7` intact. |
 
-| Path | Role |
-|------|------|
-| `KluCare/` | Hospital management SaaS (TypeScript monorepo) |
-| `KluNex/` | Portfolio dashboard |
-| `KluNex-Engineering-Framework/` | How to build (standards, MVP discipline, security) |
-| `KluGarage`, `KluHR`, `KluHire`, … | Other KluNex products |
-| Root `app/`, `ARCHITECTURE.md` | Unrelated VoiceAI orchestrator (Python/FastAPI) |
+### `ai-sales-agent` (unrelated, keep)
 
-The parent git repository tracks many products. KluCoach will be a self-contained project under `KluCoach/` and will not import KluCare, KluChat, or VoiceAI code.
+These were already staged in the parent repo and were included accidentally in the same commit:
 
----
+- `ai-sales-agent/archive/documentation/DEPLOYMENT_READINESS_REPORT.md`
+- `PROGRESS.md`, `PROJECT_STATE.md`, `PROJECT_STATUS.md`
+- `bottleneck_analysis.md`, `first_live_call.md`, `latency_report.md`
+- `microsip_internal_test.md`, `migration_report.md`, `production_readiness_report.md`
 
-## 3. Existing architecture (sibling products)
-
-### KluCare (inspected, not copied)
-
-Reusable *patterns* (concepts only):
-
-- pnpm workspace + TypeScript
-- Fastify API + Prisma/PostgreSQL + Zod
-- Tenant column (`organizationId`) on domain rows
-- Unique `(tenant, email)` for users
-- Central roles/permissions
-- Demo seed + Docker Compose for Postgres
-- Health endpoints, rate limiting, helmet
-- Multi-tenant isolation as a first-class test concern
-
-Explicitly **not reused**:
-
-- KluCare source files, schema, JWT/bcrypt auth, hospital domain models
-- Turbo pipeline, mobile apps, billing/pharmacy/lab modules
-- Any patient/clinical data model
-
-KluCare uses JWT + bcryptjs. KluCoach will use **session cookies + Argon2**, as specified.
-
-### KluNex Engineering Framework (inspected)
-
-Reusable *standards*:
-
-- Tenant column on domain rows
-- Few tables; justify expansions
-- Migrations, not `db push` in production
-- RBAC + tenancy on protected data
-- Audit log for sensitive mutations
-- MVP discipline: must-haves first, no feature creep
-- Do not claim success without execution evidence
-
-### Root VoiceAI orchestrator
-
-Not relevant. Python/FastAPI/LiveKit. Do not depend on it.
+They are documentation moves only (content unchanged). They do not affect KluCoach. **Do not split or reset `1a585f7`.**
 
 ---
 
-## 4. Reusable components
+## Classification
 
-| Concept | Source | How KluCoach uses it |
-|---------|--------|----------------------|
-| Shared-database multi-tenancy | KluCare pattern | `institutionId` on every tenant-owned row |
-| Modular Fastify + Prisma + Zod | KluCare / spec | New implementation |
-| Provider interfaces (notifications, files) | VoiceAI “provider-agnostic” idea + spec | New interfaces; no KluCare/VoiceAI code |
-| Engineering docs layout | KluNex framework | `docs/ARCHITECTURE.md`, ADRs, PROGRESS |
-| Demo tenant + fake PII | KluCare seed idea | New education-domain seed |
+### EXISTING (keep)
 
-**No files were copied.**
+| Area | Status |
+|------|--------|
+| Modular monolith: `apps/api`, `apps/web`, `packages/database`, `packages/shared` | Keep |
+| Prisma education-platform schema (`InstitutionType`, students, guardians, batches, …) | Keep |
+| Session cookies + Argon2 + CSRF | Keep — do **not** replace with Clerk/Auth.js/Supabase Auth |
+| Central RBAC `policies.ts` | Keep |
+| Tenant scoping from session | Keep |
+| Fastify + `@fastify/helmet` + `@fastify/rate-limit` (global 300/min) | Keep; tighten route limits |
+| Zod in `@klunex-edu/shared` | Keep; share with frontend forms |
+| Demo seed + Playwright smoke + Vitest isolation | Keep |
+| Custom CSS Student 360 look (ink / saffron / paper) | Keep as product theme |
+
+### REUSABLE
+
+- KluNex Engineering Framework: tenant column, migrations not `db push`, MVP discipline (patterns only; no code copy)
+- KluCare: Fastify/Prisma/Zod/pnpm workspace *ideas* already applied; still do not copy hospital code
+- Existing KluCoach domain routes and dashboards: incrementally restyle, do not rewrite
+
+### NEEDS CHANGE
+
+| Gap | Direction |
+|-----|-----------|
+| Frontend is hand-rolled tables/forms/`useEffect` fetch | shadcn primitives + TanStack Table/Query + RHF |
+| One global rate limit | Route-specific auth/invite limits; skip health |
+| Hand-rolled CSV parser; XLSX rejected | Papa Parse + ExcelJS behind a parse port |
+| No shared DataTable / form field components | Add once, reuse |
+| No `docs/OPEN_SOURCE.md` | Add |
+| Web `build` uses `tsc -b` without project references | Fix typecheck script |
+
+### NOT NEEDED (this phase)
+
+BullMQ, Redis, Kafka, Kubernetes, microservices, Elasticsearch, TipTap, Next.js, cloning a shadcn SaaS starter, third-party auth SaaS.
+
+### RISK
+
+| Risk | Mitigation |
+|------|------------|
+| Tailwind preflight would break Playwright + existing CSS | Import theme/utilities only; keep current class names |
+| TanStack Table v9 API (`useTable`, explicit features) ≠ v8 `useReactTable` | Follow current docs; no v8 copy-paste |
+| ExcelJS size on API | API-only; never ship to parent PWA bundle |
+| Accidental tenant leak via new table/query helpers | Server remains authoritative; isolation tests stay required |
+| Parent git repo mixed products | KluCoach stays self-contained under `KluCoach/` |
 
 ---
 
-## 5. Conflicting components
+## Existing architecture (unchanged)
 
-| Conflict | Decision |
-|----------|----------|
-| KluCare JWT vs spec session auth | Follow spec: server-side sessions + httpOnly cookies |
-| KluCare bcrypt vs spec Argon2 | Follow spec: Argon2 |
-| KluCare `Organization` naming | Use `Institution` (education domain) |
-| Internal name “KluCoach” for the platform | Platform is **KluNex Education Platform**. KluCoach is the first commercial product / institution mode (`COACHING`) |
-| Parent repo is a mixed Python + many products dump | Keep KluCoach isolated; no workspace dependency on sibling products |
-| Engineering framework prefers JWT | ADR-003 records session cookies as the KluCoach/education-platform choice |
+KluNex Education Platform core in `apps/api/src/platform/*`. KluCoach is `InstitutionType.COACHING` plus `products/coach`. Auth, tenancy, and Prisma remain the source of truth. See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
-## 6. Risks
+## OSS integration (this phase)
 
-1. **Parent repo noise** — accidental imports or shared `node_modules` at repo root. Mitigation: KluCoach has its own lockfile, Docker, and docs; no `file:` deps into siblings.
-2. **Schema lock-in** — if we model “batch” as coaching-only, KluSchool becomes a rewrite. Mitigation: education-platform core + `InstitutionType` + mode modules.
-3. **₹500/student economics** — per-student variable cost (SMS, AI, video) would destroy margin. Mitigation: cost rule in architecture; in-app + email only in MVP; no AI.
-4. **Child data** — high privacy bar. Mitigation: privacy/security docs, audit log, tenant isolation tests before any launch claim.
-5. **Empty directory** — nothing to salvage; all code is new. Low reuse risk, higher build volume.
+Implemented incrementally on top of `1a585f7` — foundation not replaced.
 
----
+| Area | Status |
+|------|--------|
+| shadcn-style primitives in `apps/web/src/ui/` | IMPLEMENTED — theme tokens unchanged; Tailwind utilities without preflight |
+| DataTable (TanStack Table v9) | IMPLEMENTED — Students is the canonical screen |
+| React Hook Form + Zod | IMPLEMENTED — login uses shared `loginSchema` |
+| TanStack Query | IMPLEMENTED — `students/queries.ts` |
+| Papa Parse + ExcelJS parse port | IMPLEMENTED — plus domain validation (no silent skips) |
+| Helmet + route-specific rate limits | IMPLEMENTED |
+| BullMQ / Redis / TipTap / starter clone | NOT STARTED / rejected |
 
-## 7. Recommendation
-
-**Proceed as a greenfield modular monolith.**
-
-1. Implement **KluNex Education Platform** core (identity, tenancy, students, academics, attendance, assessments, communication, billing data model).
-2. Ship **KluCoach** as the first product on that core (`InstitutionType.COACHING`).
-3. Stub School/College modes as configuration, not separate apps.
-4. Do not copy KluCare/KluChat.
-5. Do not delete anything in sibling products.
-6. Prefer cheap-to-operate infrastructure: Postgres, local/object file storage, no per-request AI, no Kubernetes.
-
-**Audit conclusion:** KluCoach has no usable prior code. Start with architecture docs, then Prisma schema, then auth/tenancy.
+See [OPEN_SOURCE.md](./OPEN_SOURCE.md).

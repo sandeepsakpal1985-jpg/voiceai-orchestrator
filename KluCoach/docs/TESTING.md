@@ -10,8 +10,8 @@
 
 | Layer | Tool | What |
 |-------|------|------|
-| Unit | Vitest | RBAC policies, Zod, attendance %, grade helpers |
-| Integration | Vitest + Postgres | auth, tenant isolation, CRUD, import validation |
+| Unit | Vitest | RBAC policies, spreadsheet parse, student-import validation |
+| Integration | Vitest + Postgres | auth, tenant isolation, CRUD |
 | E2E | Playwright | critical parent/teacher/admin workflows |
 
 ## Cross-tenant matrix

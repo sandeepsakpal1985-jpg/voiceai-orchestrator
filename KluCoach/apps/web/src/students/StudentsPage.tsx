@@ -1,22 +1,23 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
+import { useState } from "react";
+import { DataTable } from "../ui/DataTable";
+import { createAppColumnHelper } from "../ui/table-engine";
+import { useStudentsQuery, type StudentListRow } from "./queries";
 
-type Student = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  admissionNumber: string;
-  status: string;
-  branch?: { name: string };
-  enrollments: { batch: { name: string } }[];
-};
+const helper = createAppColumnHelper<StudentListRow>();
+const columns = helper.columns([
+  helper.accessor("admissionNumber", { header: "Admission" }),
+  helper.accessor((row) => `${row.firstName} ${row.lastName}`, { id: "name", header: "Name" }),
+  helper.accessor((row) => row.enrollments[0]?.batch.name ?? "—", { id: "batch", header: "Batch" }),
+  helper.accessor((row) => row.branch?.name ?? "—", { id: "branch", header: "Branch" }),
+  helper.accessor("status", { header: "Status" }),
+]);
+
+const EMPTY: StudentListRow[] = [];
 
 export function StudentsPage() {
-  const [rows, setRows] = useState<Student[]>([]);
   const [q, setQ] = useState("");
-  useEffect(() => {
-    api<Student[]>(`/students${q ? `?q=${encodeURIComponent(q)}` : ""}`).then(setRows).catch(() => undefined);
-  }, [q]);
+  const query = useStudentsQuery(q);
+
   return (
     <div>
       <div className="top">
@@ -24,30 +25,12 @@ export function StudentsPage() {
         <input placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 240 }} />
       </div>
       <div className="card">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Admission</th>
-              <th>Name</th>
-              <th>Batch</th>
-              <th>Branch</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s) => (
-              <tr key={s.id}>
-                <td>{s.admissionNumber}</td>
-                <td>
-                  {s.firstName} {s.lastName}
-                </td>
-                <td>{s.enrollments[0]?.batch.name ?? "—"}</td>
-                <td>{s.branch?.name ?? "—"}</td>
-                <td>{s.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {query.isError ? <p className="err">Could not load students.</p> : null}
+        {query.isLoading ? (
+          <p className="hint">Loading…</p>
+        ) : (
+          <DataTable columns={columns} data={query.data ?? EMPTY} empty="No students match this search." />
+        )}
       </div>
     </div>
   );

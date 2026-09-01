@@ -1,5 +1,17 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  Bell,
+  Calendar,
+  CalendarCheck,
+  ClipboardList,
+  Home,
+  LayoutDashboard,
+  Layers,
+  LogOut,
+  Upload,
+  Users,
+} from "lucide-react";
 import { api, auth, setCsrf, type Me } from "../api";
 
 export function AppShell() {
@@ -35,20 +47,58 @@ export function AppShell() {
   return (
     <div className="shell">
       <nav className="nav">
-        <div className="brand">Klu<span>Coach</span></div>
+        <div className="brand">
+          Klu<span>Coach</span>
+        </div>
         <div className="hint" style={{ color: "#cfc3ad", padding: "8px 12px" }}>
           {me.institution?.name}
         </div>
-        {role === "PARENT" && <NavLink to="/parent">Home</NavLink>}
-        {role === "STUDENT" && <NavLink to="/student">Home</NavLink>}
-        {adminish && <NavLink to="/admin">Dashboard</NavLink>}
-        {adminish && <NavLink to="/students">Students</NavLink>}
-        {adminish && <NavLink to="/batches">Batches</NavLink>}
-        {(adminish || role === "STUDENT" || role === "PARENT") && <NavLink to="/attendance">Attendance</NavLink>}
-        {(adminish || role === "STUDENT" || role === "PARENT") && <NavLink to="/assessments">Tests</NavLink>}
-        <NavLink to="/timetable">Timetable</NavLink>
-        <NavLink to="/notices">Notices</NavLink>
-        {role === "INSTITUTION_ADMIN" && <NavLink to="/import">Import</NavLink>}
+        {role === "PARENT" && (
+          <NavLink to="/parent">
+            <Home size={16} aria-hidden /> Home
+          </NavLink>
+        )}
+        {role === "STUDENT" && (
+          <NavLink to="/student">
+            <Home size={16} aria-hidden /> Home
+          </NavLink>
+        )}
+        {adminish && (
+          <NavLink to="/admin">
+            <LayoutDashboard size={16} aria-hidden /> Dashboard
+          </NavLink>
+        )}
+        {adminish && (
+          <NavLink to="/students">
+            <Users size={16} aria-hidden /> Students
+          </NavLink>
+        )}
+        {adminish && (
+          <NavLink to="/batches">
+            <Layers size={16} aria-hidden /> Batches
+          </NavLink>
+        )}
+        {(adminish || role === "STUDENT" || role === "PARENT") && (
+          <NavLink to="/attendance">
+            <CalendarCheck size={16} aria-hidden /> Attendance
+          </NavLink>
+        )}
+        {(adminish || role === "STUDENT" || role === "PARENT") && (
+          <NavLink to="/assessments">
+            <ClipboardList size={16} aria-hidden /> Tests
+          </NavLink>
+        )}
+        <NavLink to="/timetable">
+          <Calendar size={16} aria-hidden /> Timetable
+        </NavLink>
+        <NavLink to="/notices">
+          <Bell size={16} aria-hidden /> Notices
+        </NavLink>
+        {role === "INSTITUTION_ADMIN" && (
+          <NavLink to="/import">
+            <Upload size={16} aria-hidden /> Import
+          </NavLink>
+        )}
         <button
           type="button"
           onClick={async () => {
@@ -56,7 +106,7 @@ export function AppShell() {
             navigate("/login");
           }}
         >
-          Log out
+          <LogOut size={16} aria-hidden /> Log out
         </button>
       </nav>
       <div className="main">

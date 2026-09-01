@@ -1,41 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@klunex-edu/database";
 import { notFound, validationError } from "../../lib/errors.js";
+import { rateLimits } from "../../lib/rateLimits.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { writeAudit } from "../audit/write.js";
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cur = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else if (ch === '"') quoted = false;
-      else cur += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ",") {
-      row.push(cur.trim());
-      cur = "";
-    } else if (ch === "\n") {
-      row.push(cur.trim());
-      if (row.some((c) => c.length)) rows.push(row);
-      row = [];
-      cur = "";
-    } else if (ch !== "\r") cur += ch;
-  }
-  if (cur.length || row.length) {
-    row.push(cur.trim());
-    if (row.some((c) => c.length)) rows.push(row);
-  }
-  return rows;
-}
-
-const REQUIRED = ["firstName", "lastName", "admissionNumber", "branchName", "batchName"];
+import { parseSpreadsheet, SpreadsheetParseError } from "../import/parseSpreadsheet.js";
+import {
+  missingRequiredColumns,
+  validateStudentImport,
+  type StudentImportRecord,
+} from "../import/validateStudentImport.js";
 
 export async function opsRoutes(app: FastifyInstance) {
   app.get("/search", async (req) => {
@@ -117,32 +91,36 @@ export async function opsRoutes(app: FastifyInstance) {
     return reply.header("content-type", "text/csv").send(header + body);
   });
 
-  app.post("/imports/students/preview", async (req, reply) => {
+  app.post("/imports/students/preview", { config: { rateLimit: rateLimits.importPreview } }, async (req, reply) => {
     const tenant = requireTenant(req);
     requirePermission(req, "import:write");
     const file = await req.file();
-    if (!file) throw validationError("CSV file required");
+    if (!file) throw validationError("CSV or XLSX file required");
     const buf = await file.toBuffer();
-    const text = buf.toString("utf8");
-    if (text.startsWith("PK")) throw validationError("Excel .xlsx is not parsed in MVP. Export CSV and upload again.");
-    const table = parseCsv(text);
-    if (table.length < 2) throw validationError("CSV has no data rows");
-    const headers = table[0]!.map((h) => h.replace(/^\uFEFF/, ""));
-    const missing = REQUIRED.filter((h) => !headers.includes(h));
+    let sheet;
+    try {
+      sheet = await parseSpreadsheet(buf, file.filename);
+    } catch (err) {
+      if (err instanceof SpreadsheetParseError) throw validationError(err.message);
+      throw err;
+    }
+    if (sheet.rows.length === 0) throw validationError("Spreadsheet has no data rows");
+    const missing = missingRequiredColumns(sheet.headers);
     if (missing.length) throw validationError(`Missing columns: ${missing.join(", ")}`);
-    const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
-    const col = (row: string[], name: string) => row[idx[name] ?? -1] ?? "";
-    const errors: { rowNumber: number; message: string }[] = [];
-    const valid: Record<string, string>[] = [];
-    table.slice(1).forEach((row, i) => {
-      const rowNumber = i + 2;
-      const rec: Record<string, string> = {};
-      for (const h of headers) rec[h] = col(row, h);
-      if (!rec.firstName || !rec.lastName) errors.push({ rowNumber, message: "firstName and lastName required" });
-      else if (!rec.admissionNumber) errors.push({ rowNumber, message: "admissionNumber required" });
-      else if (!rec.branchName) errors.push({ rowNumber, message: "branchName required" });
-      else if (!rec.batchName) errors.push({ rowNumber, message: "batchName required" });
-      else valid.push(rec);
+
+    const admissions = sheet.rows.map((row) => row[sheet.headers.indexOf("admissionNumber")] ?? "").filter(Boolean);
+    const [branches, batches, existing] = await Promise.all([
+      prisma.branch.findMany({ where: { institutionId: tenant.institutionId }, select: { name: true } }),
+      prisma.batch.findMany({ where: { institutionId: tenant.institutionId }, select: { name: true } }),
+      prisma.student.findMany({
+        where: { institutionId: tenant.institutionId, admissionNumber: { in: admissions } },
+        select: { admissionNumber: true },
+      }),
+    ]);
+    const { valid, errors } = validateStudentImport(sheet, {
+      branchNames: new Set(branches.map((b) => b.name)),
+      batchNames: new Set(batches.map((b) => b.name)),
+      existingAdmissionNumbers: new Set(existing.map((s) => s.admissionNumber)),
     });
     const job = await prisma.importJob.create({
       data: {
@@ -150,7 +128,7 @@ export async function opsRoutes(app: FastifyInstance) {
         createdById: tenant.id,
         status: "VALIDATED",
         fileName: file.filename,
-        totalRows: table.length - 1,
+        totalRows: sheet.rows.length,
         validRows: valid.length,
         errorRows: errors.length,
         payload: valid,
@@ -175,50 +153,61 @@ export async function opsRoutes(app: FastifyInstance) {
     });
     if (!job) throw notFound();
     if (job.status === "COMMITTED") throw validationError("Already committed");
-    const rows = job.payload as Record<string, string>[];
-    let created = 0;
-    for (const rec of rows) {
-      const branch = await prisma.branch.findFirst({
-        where: { institutionId: tenant.institutionId, name: rec.branchName },
-      });
-      const batch = await prisma.batch.findFirst({
-        where: { institutionId: tenant.institutionId, name: rec.batchName },
-      });
-      if (!branch || !batch) continue;
-      const exists = await prisma.student.findFirst({
-        where: { institutionId: tenant.institutionId, admissionNumber: rec.admissionNumber },
-      });
-      if (exists) continue;
-      const student = await prisma.student.create({
-        data: {
-          institutionId: tenant.institutionId,
-          branchId: branch.id,
-          admissionNumber: rec.admissionNumber,
-          firstName: rec.firstName,
-          lastName: rec.lastName,
-          email: rec.email || undefined,
-          phone: rec.phone || undefined,
-        },
-      });
-      await prisma.batchEnrollment.create({ data: { batchId: batch.id, studentId: student.id } });
-      if (rec.parentName) {
-        const guardian = await prisma.guardian.create({
+    const rows = job.payload as StudentImportRecord[];
+    const created = await prisma.$transaction(async (tx) => {
+      let count = 0;
+      for (const rec of rows) {
+        const branch = await tx.branch.findFirst({
+          where: { institutionId: tenant.institutionId, name: rec.branchName },
+        });
+        const batch = await tx.batch.findFirst({
+          where: { institutionId: tenant.institutionId, name: rec.batchName },
+        });
+        if (!branch || !batch) {
+          throw validationError(
+            `Commit aborted: branch or batch missing for admissionNumber ${rec.admissionNumber}. Re-preview the file.`,
+          );
+        }
+        const exists = await tx.student.findFirst({
+          where: { institutionId: tenant.institutionId, admissionNumber: rec.admissionNumber },
+        });
+        if (exists) {
+          throw validationError(
+            `Commit aborted: admissionNumber ${rec.admissionNumber} already exists. Re-preview the file.`,
+          );
+        }
+        const student = await tx.student.create({
           data: {
             institutionId: tenant.institutionId,
-            name: rec.parentName,
-            phone: rec.parentPhone || undefined,
-            email: rec.parentEmail || undefined,
+            branchId: branch.id,
+            admissionNumber: rec.admissionNumber,
+            firstName: rec.firstName,
+            lastName: rec.lastName,
+            email: rec.email || undefined,
+            phone: rec.phone || undefined,
           },
         });
-        await prisma.studentGuardian.create({
-          data: { studentId: student.id, guardianId: guardian.id, relationship: "GUARDIAN", isPrimary: true },
-        });
+        await tx.batchEnrollment.create({ data: { batchId: batch.id, studentId: student.id } });
+        if (rec.parentName) {
+          const guardian = await tx.guardian.create({
+            data: {
+              institutionId: tenant.institutionId,
+              name: rec.parentName,
+              phone: rec.parentPhone || undefined,
+              email: rec.parentEmail || undefined,
+            },
+          });
+          await tx.studentGuardian.create({
+            data: { studentId: student.id, guardianId: guardian.id, relationship: "GUARDIAN", isPrimary: true },
+          });
+        }
+        count += 1;
       }
-      created += 1;
-    }
-    await prisma.importJob.update({
-      where: { id: job.id },
-      data: { status: "COMMITTED", committedAt: new Date() },
+      await tx.importJob.update({
+        where: { id: job.id },
+        data: { status: "COMMITTED", committedAt: new Date() },
+      });
+      return count;
     });
     await writeAudit(req, "import.commit", "ImportJob", job.id, { created });
     return reply.send({ jobId: job.id, created });

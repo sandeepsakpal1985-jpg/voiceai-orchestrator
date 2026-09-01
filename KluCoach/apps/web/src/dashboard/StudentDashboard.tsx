@@ -11,7 +11,15 @@ export function StudentDashboard() {
   } | null>(null);
 
   useEffect(() => {
-    api("/dashboard/student").then(setData).catch(() => undefined);
+    api<{
+      student: { firstName: string };
+      attendance: { percent: number | null };
+      academic: { average: number | null; latest: { percentage: string; assessment: { name: string } }[] };
+      assignments: { pending: number };
+      notices: { id: string; title: string }[];
+    }>("/dashboard/student")
+      .then(setData)
+      .catch(() => undefined);
   }, []);
 
   if (!data) return <p>Loading…</p>;

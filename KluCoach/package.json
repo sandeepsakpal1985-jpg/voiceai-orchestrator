@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @klucoach/api --filter @klucoach/web dev",
+    "typecheck": "pnpm --filter @klucoach/api exec tsc --noEmit && pnpm --filter @klucoach/web exec tsc --noEmit",
     "build": "pnpm --filter @klunex-edu/shared build && pnpm --filter @klunex-edu/database build && pnpm --filter @klucoach/api build && pnpm --filter @klucoach/web build",
     "test": "pnpm --filter @klucoach/api test",
     "test:integration": "pnpm --filter @klucoach/api test:integration",

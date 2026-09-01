@@ -35,8 +35,12 @@ export function ImportPage() {
         <h1>Bulk import</h1>
       </div>
       <form className="card" onSubmit={previewCsv}>
-        <p className="hint">CSV columns: firstName, lastName, admissionNumber, branchName, batchName, parentName, parentPhone, parentEmail, email, phone</p>
-        <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <p className="hint">CSV or XLSX columns: firstName, lastName, admissionNumber, branchName, batchName, parentName, parentPhone, parentEmail, email, phone. Invalid rows are listed — nothing is imported silently.</p>
+        <input
+          type="file"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
         <button className="btn" type="submit">Preview</button>
       </form>
       {preview && (

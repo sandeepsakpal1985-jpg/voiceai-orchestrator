@@ -3,6 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  workers: 1,
+  timeout: 60_000,
   retries: 0,
   use: {
     baseURL: "http://localhost:5173",
@@ -14,12 +16,14 @@ export default defineConfig({
       command: "pnpm --filter @klucoach/api dev",
       url: "http://localhost:3100/health",
       reuseExistingServer: true,
+      timeout: 120_000,
       cwd: "../..",
     },
     {
       command: "pnpm --filter @klucoach/web dev",
       url: "http://localhost:5173",
       reuseExistingServer: true,
+      timeout: 120_000,
       cwd: "../..",
     },
   ],

@@ -169,10 +169,35 @@ See [ADR-005](./adr/ADR-005-file-storage.md), [ADR-006](./adr/ADR-006-notificati
 
 Organized by domain, not a giant `components/` dump.
 
+```
+apps/web/src/
+  ui/           shadcn-style primitives (Button, Input, Table, …)
+  klucoach/     product components (StudentStatusCard, DataTable usage)
+  students/     queries + pages
+  …
+```
+
 - Parent: mobile-first Student 360
 - Admin: desktop-first, still responsive
 - Student: simple academic home
 - PWA-friendly: manifest, responsive, installable later
+- Tables: one `DataTable` (TanStack Table v9) — do not invent ten grids
+- Forms: React Hook Form + Zod from `@klunex-edu/shared`
+- Server state: TanStack Query; **authorization stays on the API**
+- Charts: Recharts only when a trend is real
+
+See [OPEN_SOURCE.md](./OPEN_SOURCE.md) and [ADR-010](./adr/ADR-010-commodity-oss.md).
+
+---
+
+## 9.1 Import pipeline
+
+```
+UPLOAD → PARSE (Papa Parse / ExcelJS) → NORMALIZE → VALIDATE
+  → PREVIEW → CONFIRM → TRANSACTION → RESULT
+```
+
+Parsers do not authorize. Tenant, batch resolution, duplicates, and error rows are KluCoach logic.
 
 ---
 

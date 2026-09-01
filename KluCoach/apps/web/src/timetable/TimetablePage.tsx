@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { format, setHours, setMinutes } from "date-fns";
 import { api } from "../api";
 
 type Slot = {
@@ -12,11 +13,10 @@ type Slot = {
 };
 
 function hhmm(min: number) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  const am = h >= 12 ? "PM" : "AM";
-  const hr = ((h + 11) % 12) + 1;
-  return `${hr}:${String(m).padStart(2, "0")} ${am}`;
+  const hours = Math.floor(min / 60);
+  const minutes = min % 60;
+  const date = setMinutes(setHours(new Date(2000, 0, 1), hours), minutes);
+  return format(date, "h:mm a");
 }
 
 export function TimetablePage() {

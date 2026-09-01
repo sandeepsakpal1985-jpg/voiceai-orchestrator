@@ -9,6 +9,7 @@ import { prisma } from "@klunex-edu/database";
 import { config } from "./config.js";
 import { ApiError } from "./lib/errors.js";
 import { createRequestId } from "./lib/logger.js";
+import { isHealthPath, rateLimits } from "./lib/rateLimits.js";
 import { assertCsrf, bindSession } from "./platform/identity/http-auth.js";
 import { authRoutes } from "./platform/identity/auth-routes.js";
 import { peopleRoutes } from "./platform/students/people-routes.js";
@@ -34,8 +35,10 @@ export async function buildApp() {
   });
   await app.register(cookie);
   await app.register(rateLimit, {
-    max: 300,
+    max: rateLimits.globalMax,
     timeWindow: "1 minute",
+    skipOnError: true,
+    allowList: (req) => isHealthPath(req.url),
   });
   await app.register(multipart, { limits: { fileSize: 8 * 1024 * 1024 } });
 
@@ -56,7 +59,7 @@ export async function buildApp() {
     return reply.code(status >= 400 && status < 600 ? status : 500).send({
       error: {
         code: status === 400 ? ERROR_CODES.VALIDATION : ERROR_CODES.INTERNAL,
-        message: status >= 500 ? "Internal error" : err.message,
+        message: status >= 500 ? "Internal error" : err instanceof Error ? err.message : "Request failed",
       },
     });
   });

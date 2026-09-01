@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { StudentStatusCard } from "../klucoach/StudentStatusCard";
 
 export function AdminDashboard() {
   const [kpis, setKpis] = useState<Record<string, number> | null>(null);
@@ -24,10 +25,7 @@ export function AdminDashboard() {
       </div>
       <div className="kpis">
         {items.map(([key, label]) => (
-          <div className="card" key={key}>
-            <div className="label">{label}</div>
-            <div className="value">{kpis[key] ?? 0}</div>
-          </div>
+          <StudentStatusCard key={key} label={label} value={String(kpis[key] ?? 0)} />
         ))}
       </div>
     </div>

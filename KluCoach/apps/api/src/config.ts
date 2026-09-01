@@ -6,6 +6,7 @@ loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.
 
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
+  isTest: process.env.VITEST === "true" || process.env.NODE_ENV === "test",
   host: process.env.API_HOST ?? "0.0.0.0",
   port: Number(process.env.API_PORT ?? 3000),
   databaseUrl: process.env.DATABASE_URL ?? "",

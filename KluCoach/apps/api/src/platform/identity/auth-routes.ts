@@ -5,6 +5,7 @@ import {
   loginSchema,
   registerInstitutionSchema,
 } from "@klunex-edu/shared";
+import type { z } from "zod";
 import { writeAudit } from "../audit/write.js";
 import { unauthorized, validationError } from "../../lib/errors.js";
 import { notifyUser } from "../communication/notify.js";
@@ -12,9 +13,10 @@ import { requireUser } from "./http-auth.js";
 import { can } from "./policies.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { createSession, destroySession, newToken, hashToken } from "./session.js";
+import { rateLimits } from "../../lib/rateLimits.js";
 
-function parse<T>(schema: { parse: (v: unknown) => T }, body: unknown): T {
-  const result = (schema as { safeParse: (v: unknown) => { success: boolean; data: T; error: { issues: { message: string }[] } } }).safeParse(body);
+function parse<T>(schema: z.ZodType<T>, body: unknown): T {
+  const result = schema.safeParse(body);
   if (!result.success) {
     throw validationError(result.error.issues.map((i) => i.message).join("; "));
   }
@@ -26,7 +28,7 @@ function slugify(name: string) {
 }
 
 export async function authRoutes(app: FastifyInstance) {
-  app.post("/auth/register", async (req, reply) => {
+  app.post("/auth/register", { config: { rateLimit: rateLimits.register } }, async (req, reply) => {
     const body = parse(registerInstitutionSchema, req.body);
     const existing = await prisma.user.findFirst({
       where: { email: body.adminEmail.toLowerCase() },
@@ -93,7 +95,7 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post("/auth/login", async (req, reply) => {
+  app.post("/auth/login", { config: { rateLimit: rateLimits.login } }, async (req, reply) => {
     const body = parse(loginSchema, req.body);
     const user = await prisma.user.findFirst({
       where: { email: body.email.toLowerCase(), status: "ACTIVE" },
@@ -130,7 +132,7 @@ export async function authRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/auth/invitations/accept", async (req, reply) => {
+  app.post("/auth/invitations/accept", { config: { rateLimit: rateLimits.inviteAccept } }, async (req, reply) => {
     const body = parse(acceptInvitationSchema, req.body);
     const invite = await prisma.invitation.findUnique({
       where: { tokenHash: hashToken(body.token) },
@@ -179,7 +181,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { user: publicUser(user), csrfToken: session.csrfToken };
   });
 
-  app.post("/invitations", async (req, reply) => {
+  app.post("/invitations", { config: { rateLimit: rateLimits.inviteCreate } }, async (req, reply) => {
     const user = requireUser(req);
     if (!can(user.role, "invitations:write") || !user.institutionId) throw unauthorized();
     const body = req.body as {

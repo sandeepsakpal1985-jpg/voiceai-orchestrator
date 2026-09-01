@@ -17,7 +17,7 @@ export async function writeAudit(
       action,
       entityType,
       entityId: entityId ?? null,
-      metadata,
+      metadata: JSON.parse(JSON.stringify(metadata)) as object,
       ip: req.ip,
     },
   });
