@@ -1,57 +1,16 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { Student360 } from "@klunex-edu/shared";
 import { api } from "../api";
+import { Student360Loading, Student360View } from "../student360/Student360View";
 
 export function StudentDashboard() {
-  const [data, setData] = useState<{
-    student: { firstName: string };
-    attendance: { percent: number | null };
-    academic: { average: number | null; latest: { percentage: string; assessment: { name: string } }[] };
-    assignments: { pending: number };
-    notices: { id: string; title: string }[];
-  } | null>(null);
-
-  useEffect(() => {
-    api<{
-      student: { firstName: string };
-      attendance: { percent: number | null };
-      academic: { average: number | null; latest: { percentage: string; assessment: { name: string } }[] };
-      assignments: { pending: number };
-      notices: { id: string; title: string }[];
-    }>("/dashboard/student")
-      .then(setData)
-      .catch(() => undefined);
-  }, []);
-
-  if (!data) return <p>Loading…</p>;
-
-  return (
-    <div>
-      <div className="top">
-        <h1>Hi, {data.student.firstName}</h1>
-      </div>
-      <div className="kpis">
-        <div className="card">
-          <div className="label">Attendance</div>
-          <div className="value">{data.attendance.percent ?? "—"}%</div>
-        </div>
-        <div className="card">
-          <div className="label">Average</div>
-          <div className="value">{data.academic.average ?? "—"}%</div>
-        </div>
-        <div className="card">
-          <div className="label">Assignments due</div>
-          <div className="value">{data.assignments.pending}</div>
-        </div>
-      </div>
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="label">Recent tests</div>
-        {data.academic.latest.map((r, i) => (
-          <div className="row" key={i}>
-            <span>{r.assessment.name}</span>
-            <strong>{Number(r.percentage)}%</strong>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const query = useQuery({
+    queryKey: ["student360", "self"],
+    queryFn: () => api<Student360>("/dashboard/student"),
+  });
+  if (query.isError) {
+    return <p className="err">{query.error instanceof Error ? query.error.message : "Could not load Student 360"}</p>;
+  }
+  if (!query.data) return <Student360Loading />;
+  return <Student360View snapshot={query.data} />;
 }

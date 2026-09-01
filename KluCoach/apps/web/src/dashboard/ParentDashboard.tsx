@@ -1,110 +1,37 @@
-import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import type { Student360 } from "@klunex-edu/shared";
 import { api } from "../api";
-import { AttendanceBreakdown } from "../klucoach/AttendanceBreakdown";
-import { ParentChildSwitcher } from "../klucoach/ParentChildSwitcher";
-import { StudentStatusCard } from "../klucoach/StudentStatusCard";
+import { ChildSelector } from "../student360/ChildSelector";
+import { Student360Loading, Student360View } from "../student360/Student360View";
 
-type Snapshot = {
+type ParentHome = {
   children: { id: string; firstName: string; lastName: string }[];
-  snapshot: {
-    overall: string;
-    student: { firstName: string; lastName: string };
-    attendance: { percent: number | null; present: number; absent: number; late: number; recent?: { date: string; status: string }[] };
-    academic: { average: number | null; latest: { percentage: string; assessment: { name: string; subject: { name: string } } }[] };
-    assignments: { pending: number };
-    nextTest: { name: string; date: string; subject: { name: string } } | null;
-    notices: { id: string; title: string }[];
-    fees: { pending: number; status: string } | null;
-  } | null;
+  snapshot: Student360 | null;
 };
 
 export function ParentDashboard() {
-  const [params] = useSearchParams();
-  const [data, setData] = useState<Snapshot | null>(null);
-  const [studentId, setStudentId] = useState<string | undefined>();
-  const [error, setError] = useState("");
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("studentId") ?? undefined;
+  const query = useQuery({
+    queryKey: ["student360", "parent", requested ?? "default"],
+    queryFn: () => api<ParentHome>(`/dashboard/parent${requested ? `?studentId=${requested}` : ""}`),
+  });
 
-  useEffect(() => {
-    const requested = studentId ?? params.get("studentId") ?? undefined;
-    const q = requested ? `?studentId=${requested}` : "";
-    setError("");
-    api<Snapshot>(`/dashboard/parent${q}`)
-      .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load snapshot"));
-  }, [studentId, params]);
-
-  if (error) return <p className="err">{error}</p>;
-  if (!data?.snapshot) return <p>Loading your child’s snapshot…</p>;
-  const s = data.snapshot;
+  if (query.isError) {
+    return <p className="err">{query.error instanceof Error ? query.error.message : "Could not load Student 360"}</p>;
+  }
+  if (query.isLoading || !query.data) return <Student360Loading />;
+  if (!query.data.snapshot) return <p className="hint">No children linked yet.</p>;
 
   return (
     <div>
-      <div className="top">
-        <div>
-          <h1>
-            {s.student.firstName} {s.student.lastName}
-          </h1>
-          <p className="hint">Everything important, in one glance.</p>
-        </div>
-        <div className={s.overall === "Doing Well" ? "status" : "status warn"}>{s.overall}</div>
-      </div>
-      <ParentChildSwitcher
-        childList={data.children}
-        selectedId={studentId ?? data.children[0]?.id}
-        onSelect={setStudentId}
+      <ChildSelector
+        childList={query.data.children}
+        selectedId={query.data.snapshot.student.id}
+        onSelect={(id) => setParams({ studentId: id })}
       />
-      <div className="kpis">
-        <StudentStatusCard
-          label="Attendance"
-          value={`${s.attendance.percent ?? "—"}%`}
-          hint={`Present ${s.attendance.present} · Absent ${s.attendance.absent} · Late ${s.attendance.late}`}
-        />
-        <StudentStatusCard label="Academic" value={`${s.academic.average ?? "—"}%`} />
-        <StudentStatusCard label="Assignments" value={String(s.assignments.pending)} hint="pending" />
-        <StudentStatusCard
-          label="Upcoming"
-          value={s.nextTest ? `${s.nextTest.subject.name} test` : "No test scheduled"}
-          compact
-        />
-      </div>
-      <AttendanceBreakdown present={s.attendance.present} absent={s.attendance.absent} late={s.attendance.late} />
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="label">Recent attendance</div>
-        {(s.attendance.recent ?? []).map((row, i) => (
-          <div className="row" key={`${row.date}-${i}`}>
-            <span>{row.date}</span>
-            <strong>{row.status}</strong>
-          </div>
-        ))}
-        {(s.attendance.recent ?? []).length === 0 ? <p className="hint">No attendance recorded yet.</p> : null}
-      </div>
-      <div className="grid" style={{ marginTop: 20 }}>
-        <div className="card">
-          <div className="label">Latest marks</div>
-          {s.academic.latest.map((r, i) => (
-            <div className="row" key={i}>
-              <span>
-                {r.assessment.subject.name} · {r.assessment.name}
-              </span>
-              <strong>{Number(r.percentage)}%</strong>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="label">Notices</div>
-          {s.notices.map((n) => (
-            <div className="row" key={n.id}>
-              {n.title}
-            </div>
-          ))}
-          {s.fees && (
-            <p className="hint">
-              Fees {s.fees.status}: ₹{(s.fees.pending / 100).toLocaleString("en-IN")} pending
-            </p>
-          )}
-        </div>
-      </div>
+      <Student360View snapshot={query.data.snapshot} />
     </div>
   );
 }

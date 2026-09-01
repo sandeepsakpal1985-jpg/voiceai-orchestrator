@@ -122,6 +122,14 @@ h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.03em; }
 }
 .status { font-weight: 700; color: var(--good); }
 .status.warn { color: var(--warn); }
+.status.muted { color: var(--muted); }
+.student360 { max-width: 960px; overflow-x: hidden; }
+.student360-stack { display: grid; gap: 16px; grid-template-columns: 1fr; }
+.student360-header { align-items: flex-start; }
+.skeleton {
+  min-height: 88px;
+  background: linear-gradient(90deg, #f4efe6 0%, #fffdf8 50%, #f4efe6 100%);
+}
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); font-size: 0.95rem; }
 .child-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -131,6 +139,7 @@ h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.03em; }
   padding: 8px 12px;
   border-radius: 999px;
   cursor: pointer;
+  min-height: 44px;
 }
 .pill.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 .hint { color: var(--muted); font-size: 0.9rem; }
@@ -148,9 +157,14 @@ h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.03em; }
 .column-menu { margin-left: auto; }
 .column-menu-list { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 
+@media (min-width: 860px) {
+  .student360-stack { grid-template-columns: 1fr 1fr; }
+}
+
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
   .nav { flex-direction: row; overflow-x: auto; padding: 12px; }
   .grid { grid-template-columns: 1fr; }
   .main { padding: 16px; }
+  .student360-header { flex-direction: column; }
 }
