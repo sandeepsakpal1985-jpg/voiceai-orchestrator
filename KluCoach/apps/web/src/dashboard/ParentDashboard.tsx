@@ -10,7 +10,7 @@ type Snapshot = {
   snapshot: {
     overall: string;
     student: { firstName: string; lastName: string };
-    attendance: { percent: number | null; present: number; absent: number; late: number };
+    attendance: { percent: number | null; present: number; absent: number; late: number; recent?: { date: string; status: string }[] };
     academic: { average: number | null; latest: { percentage: string; assessment: { name: string; subject: { name: string } } }[] };
     assignments: { pending: number };
     nextTest: { name: string; date: string; subject: { name: string } } | null;
@@ -69,6 +69,16 @@ export function ParentDashboard() {
         />
       </div>
       <AttendanceBreakdown present={s.attendance.present} absent={s.attendance.absent} late={s.attendance.late} />
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="label">Recent attendance</div>
+        {(s.attendance.recent ?? []).map((row, i) => (
+          <div className="row" key={`${row.date}-${i}`}>
+            <span>{row.date}</span>
+            <strong>{row.status}</strong>
+          </div>
+        ))}
+        {(s.attendance.recent ?? []).length === 0 ? <p className="hint">No attendance recorded yet.</p> : null}
+      </div>
       <div className="grid" style={{ marginTop: 20 }}>
         <div className="card">
           <div className="label">Latest marks</div>

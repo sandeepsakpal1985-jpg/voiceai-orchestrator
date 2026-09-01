@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
+  BookOpen,
   Bell,
   Calendar,
   CalendarCheck,
@@ -100,6 +101,9 @@ export function AppShell() {
         )}
         <NavLink to="/timetable">
           <Calendar size={16} aria-hidden /> Timetable
+        </NavLink>
+        <NavLink to="/assignments">
+          <BookOpen size={16} aria-hidden /> Assignments
         </NavLink>
         <NavLink to="/notices">
           <Bell size={16} aria-hidden /> Notices

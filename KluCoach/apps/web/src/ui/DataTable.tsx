@@ -99,6 +99,7 @@ export function DataTable<T extends Row>({
               <label key={col.id} className="hint" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input
                   type="checkbox"
+                  aria-label={`Toggle ${typeof col.columnDef.header === "string" ? col.columnDef.header : col.id} column`}
                   checked={col.getIsVisible()}
                   onChange={col.getToggleVisibilityHandler()}
                 />

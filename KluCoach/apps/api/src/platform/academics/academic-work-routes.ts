@@ -3,12 +3,15 @@ import { prisma } from "@klunex-edu/database";
 import {
   assessmentCreateSchema,
   assignmentCreateSchema,
+  assignmentPatchSchema,
+  assignmentSubmitSchema,
   attendanceMarkSchema,
   noticeCreateSchema,
   resultsUpsertSchema,
 } from "@klunex-edu/shared";
 import { writeAudit } from "../audit/write.js";
-import { notFound, validationError } from "../../lib/errors.js";
+import { listSkipTake, parseListQuery, sendList } from "../../lib/listQuery.js";
+import { forbidden, notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { assertTeacherBatchAccess, parentStudentIds, studentSelfId, teacherAssignedBatchIds } from "../identity/scope.js";
 import {
@@ -16,6 +19,7 @@ import {
   assignmentInTenant,
   batchInTenant,
   branchInTenant,
+  classSessionInTenant,
   noticeInTenant,
   studentInTenant,
   subjectInTenant,
@@ -36,7 +40,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
   app.get("/attendance", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "attendance:read");
-    const query = req.query as { studentId?: string; batchId?: string };
+    const query = req.query as { studentId?: string; batchId?: string; date?: string; classSessionId?: string };
     let studentIds: string[] | null = null;
     if (tenant.role === "PARENT") studentIds = await parentStudentIds(tenant);
     if (tenant.role === "STUDENT") studentIds = [await studentSelfId(tenant)];
@@ -44,14 +48,21 @@ export async function academicWorkRoutes(app: FastifyInstance) {
       if (studentIds && !studentIds.includes(query.studentId)) throw notFound();
       await studentInTenant(tenant.institutionId, query.studentId);
     }
-    if (query.batchId) await batchInTenant(tenant.institutionId, query.batchId);
+    if (query.batchId) {
+      if (tenant.role === "TEACHER") await assertTeacherBatchAccess(tenant, query.batchId);
+      else await batchInTenant(tenant.institutionId, query.batchId);
+    }
+    if (query.classSessionId) await classSessionInTenant(tenant.institutionId, query.classSessionId);
     return prisma.attendanceRecord.findMany({
       where: {
         institutionId: tenant.institutionId,
         ...visibleStudentFilter(tenant.role, studentIds),
         ...(query.studentId ? { studentId: query.studentId } : {}),
         ...(query.batchId ? { batchId: query.batchId } : {}),
+        ...(query.date ? { date: new Date(query.date) } : {}),
+        ...(query.classSessionId ? { classSessionId: query.classSessionId } : {}),
       },
+      include: { student: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { date: "desc" },
       take: 400,
     });
@@ -62,6 +73,12 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     requirePermission(req, "attendance:write");
     const body = parse(attendanceMarkSchema, req.body);
     await assertTeacherBatchAccess(tenant, body.batchId);
+    if (body.classSessionId) {
+      const session = await prisma.classSession.findFirst({
+        where: { id: body.classSessionId, institutionId: tenant.institutionId, batchId: body.batchId },
+      });
+      if (!session) throw notFound();
+    }
     for (const rec of body.records) {
       await studentInTenant(tenant.institutionId, rec.studentId);
       const enrolled = await prisma.batchEnrollment.findFirst({
@@ -72,6 +89,15 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const date = new Date(body.date);
     const rows = [];
     for (const rec of body.records) {
+      const existing = await prisma.attendanceRecord.findFirst({
+        where: {
+          institutionId: tenant.institutionId,
+          studentId: rec.studentId,
+          batchId: body.batchId,
+          date,
+          classSessionId: body.classSessionId ?? null,
+        },
+      });
       const data = {
         institutionId: tenant.institutionId,
         studentId: rec.studentId,
@@ -81,16 +107,18 @@ export async function academicWorkRoutes(app: FastifyInstance) {
         status: rec.status,
         markedById: tenant.id,
       };
-      const row = body.classSessionId
-        ? await prisma.attendanceRecord.upsert({
-            where: { classSessionId_studentId: { classSessionId: body.classSessionId, studentId: rec.studentId } },
-            update: { status: rec.status, markedById: tenant.id },
-            create: data,
+      const row = existing
+        ? await prisma.attendanceRecord.update({
+            where: { id: existing.id },
+            data: { status: rec.status, markedById: tenant.id },
           })
         : await prisma.attendanceRecord.create({ data });
       rows.push(row);
     }
-    await writeAudit(req, "attendance.mark", "AttendanceRecord", body.batchId, { count: rows.length });
+    await writeAudit(req, "attendance.mark", "AttendanceRecord", body.batchId, {
+      count: rows.length,
+      date: body.date,
+    });
     return reply.code(201).send({ records: rows });
   });
 
@@ -256,16 +284,48 @@ export async function academicWorkRoutes(app: FastifyInstance) {
   app.get("/assignments", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "assignments:read");
-    const query = req.query as { batchId?: string };
-    if (query.batchId) await batchInTenant(tenant.institutionId, query.batchId);
-    return prisma.assignment.findMany({
-      where: {
-        institutionId: tenant.institutionId,
-        ...(query.batchId ? { batchId: query.batchId } : {}),
-      },
-      include: { subject: true, batch: true, submissions: true },
-      orderBy: { dueAt: "asc" },
-    });
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
+    let batchIds: string[] | undefined;
+    let submissionStudentIds: string[] | undefined;
+    if (tenant.role === "TEACHER") batchIds = await teacherAssignedBatchIds(tenant);
+    if (tenant.role === "PARENT") {
+      submissionStudentIds = await parentStudentIds(tenant);
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: { in: submissionStudentIds } } });
+      batchIds = enrolls.map((e) => e.batchId);
+    }
+    if (tenant.role === "STUDENT") {
+      const sid = await studentSelfId(tenant);
+      submissionStudentIds = [sid];
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: sid } });
+      batchIds = enrolls.map((e) => e.batchId);
+    }
+    if (list.batchId) {
+      if (tenant.role === "TEACHER") await assertTeacherBatchAccess(tenant, list.batchId);
+      else await batchInTenant(tenant.institutionId, list.batchId);
+      if (batchIds && !batchIds.includes(list.batchId)) throw notFound();
+      batchIds = [list.batchId];
+    }
+    const where = {
+      institutionId: tenant.institutionId,
+      ...(batchIds ? { batchId: { in: batchIds } } : {}),
+      ...(list.q ? { title: { contains: list.q, mode: "insensitive" as const } } : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.assignment.findMany({
+        where,
+        include: {
+          subject: true,
+          batch: true,
+          submissions: submissionStudentIds ? { where: { studentId: { in: submissionStudentIds } } } : true,
+        },
+        orderBy: { dueAt: "asc" },
+        skip,
+        take,
+      }),
+      prisma.assignment.count({ where }),
+    ]);
+    return sendList(list, items, total);
   });
 
   app.post("/assignments", async (req, reply) => {
@@ -299,7 +359,59 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "assignments:read");
     const { id } = req.params as { id: string };
-    return assignmentInTenant(tenant.institutionId, id);
+    const row = await assignmentInTenant(tenant.institutionId, id);
+    if (tenant.role === "TEACHER") {
+      const assigned = await teacherAssignedBatchIds(tenant);
+      if (!assigned.includes(row.batchId)) throw notFound();
+    }
+    if (tenant.role === "PARENT" || tenant.role === "STUDENT") {
+      const ids = tenant.role === "PARENT" ? await parentStudentIds(tenant) : [await studentSelfId(tenant)];
+      const enroll = await prisma.batchEnrollment.findFirst({
+        where: { batchId: row.batchId, studentId: { in: ids } },
+      });
+      if (!enroll) throw notFound();
+    }
+    return row;
+  });
+
+  app.patch("/assignments/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "assignments:write");
+    const { id } = req.params as { id: string };
+    const existing = await assignmentInTenant(tenant.institutionId, id);
+    await assertTeacherBatchAccess(tenant, existing.batchId);
+    const body = parse(assignmentPatchSchema, req.body);
+    const row = await prisma.assignment.update({
+      where: { id },
+      data: {
+        ...(body.title ? { title: body.title } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.dueAt ? { dueAt: new Date(body.dueAt) } : {}),
+      },
+    });
+    await writeAudit(req, "assignment.update", "Assignment", id);
+    return row;
+  });
+
+  app.post("/assignments/:id/submit", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "assignments:write");
+    if (tenant.role !== "STUDENT") throw forbidden();
+    const { id } = req.params as { id: string };
+    parse(assignmentSubmitSchema, req.body ?? { status: "SUBMITTED" });
+    const assignment = await assignmentInTenant(tenant.institutionId, id);
+    const studentId = await studentSelfId(tenant);
+    const enroll = await prisma.batchEnrollment.findFirst({
+      where: { batchId: assignment.batchId, studentId },
+    });
+    if (!enroll) throw notFound();
+    const submission = await prisma.assignmentSubmission.upsert({
+      where: { assignmentId_studentId: { assignmentId: id, studentId } },
+      update: { status: "SUBMITTED", submittedAt: new Date() },
+      create: { assignmentId: id, studentId, status: "SUBMITTED", submittedAt: new Date() },
+    });
+    await writeAudit(req, "assignment.submit", "AssignmentSubmission", submission.id);
+    return submission;
   });
 
   app.get("/notices", async (req) => {

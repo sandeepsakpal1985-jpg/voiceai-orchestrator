@@ -56,3 +56,11 @@ export async function assignmentInTenant(institutionId: string, assignmentId: st
 export async function noticeInTenant(institutionId: string, noticeId: string) {
   return findTenantOr404(() => prisma.notice.findFirst({ where: { id: noticeId, institutionId } }));
 }
+
+export async function classSessionInTenant(institutionId: string, sessionId: string) {
+  return findTenantOr404(() => prisma.classSession.findFirst({ where: { id: sessionId, institutionId } }));
+}
+
+export async function timetableSlotInTenant(institutionId: string, slotId: string) {
+  return findTenantOr404(() => prisma.timetableSlot.findFirst({ where: { id: slotId, institutionId } }));
+}

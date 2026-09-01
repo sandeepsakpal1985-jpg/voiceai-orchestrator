@@ -1,18 +1,21 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@klunex-edu/database";
-import { batchCreateSchema, batchPatchSchema } from "@klunex-edu/shared";
+import { batchCreateSchema, batchPatchSchema, sessionCreateSchema, sessionPatchSchema, timetableCreateSchema, timetablePatchSchema } from "@klunex-edu/shared";
 import { writeAudit } from "../audit/write.js";
 import { listSkipTake, orderBy, parseListQuery, sendList } from "../../lib/listQuery.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
-import { parentStudentIds, studentSelfId, teacherAssignedBatchIds } from "../identity/scope.js";
+import { parentStudentIds, studentSelfId, teacherAssignedBatchIds, assertTeacherBatchAccess } from "../identity/scope.js";
 import {
   academicYearInTenant,
   batchInTenant,
   branchInTenant,
+  classSessionInTenant,
   programInTenant,
   studentInTenant,
   subjectInTenant,
+  teacherInTenant,
+  timetableSlotInTenant,
 } from "../tenancy/scope.js";
 
 function parse<T>(schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }, body: unknown): T {
@@ -234,12 +237,33 @@ export async function academicsRoutes(app: FastifyInstance) {
 
   app.get("/sessions", async (req) => {
     const tenant = requireTenant(req);
+    requirePermission(req, "timetable:read");
     const query = req.query as { batchId?: string; date?: string };
-    if (query.batchId) await batchInTenant(tenant.institutionId, query.batchId);
+    let batchIds: string[] | undefined;
+    if (tenant.role === "TEACHER") batchIds = await teacherAssignedBatchIds(tenant);
+    if (tenant.role === "PARENT") {
+      const ids = await parentStudentIds(tenant);
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: { in: ids } } });
+      batchIds = enrolls.map((e) => e.batchId);
+    }
+    if (tenant.role === "STUDENT") {
+      const sid = await studentSelfId(tenant);
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: sid } });
+      batchIds = enrolls.map((e) => e.batchId);
+    }
+    if (query.batchId) {
+      if (tenant.role === "TEACHER") await assertTeacherBatchAccess(tenant, query.batchId);
+      else if (tenant.role === "PARENT" || tenant.role === "STUDENT") {
+        if (!batchIds?.includes(query.batchId)) throw notFound();
+      } else {
+        await batchInTenant(tenant.institutionId, query.batchId);
+      }
+      batchIds = [query.batchId];
+    }
     return prisma.classSession.findMany({
       where: {
         institutionId: tenant.institutionId,
-        ...(query.batchId ? { batchId: query.batchId } : {}),
+        ...(batchIds ? { batchId: { in: batchIds } } : {}),
         ...(query.date ? { date: new Date(query.date) } : {}),
       },
       include: { subject: true, teacher: true, batch: true },
@@ -248,20 +272,32 @@ export async function academicsRoutes(app: FastifyInstance) {
     });
   });
 
+  app.get("/sessions/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "timetable:read");
+    const { id } = req.params as { id: string };
+    const session = await classSessionInTenant(tenant.institutionId, id);
+    if (tenant.role === "TEACHER") {
+      const assigned = await teacherAssignedBatchIds(tenant);
+      if (!assigned.includes(session.batchId)) throw notFound();
+    }
+    if (tenant.role === "PARENT" || tenant.role === "STUDENT") {
+      const ids = tenant.role === "PARENT" ? await parentStudentIds(tenant) : [await studentSelfId(tenant)];
+      const enroll = await prisma.batchEnrollment.findFirst({
+        where: { batchId: session.batchId, studentId: { in: ids } },
+      });
+      if (!enroll) throw notFound();
+    }
+    return session;
+  });
+
   app.post("/sessions", async (req, reply) => {
     const tenant = requireTenant(req);
     requirePermission(req, "timetable:write");
-    const body = req.body as {
-      batchId: string;
-      subjectId: string;
-      teacherId?: string;
-      date: string;
-      startMinute: number;
-      endMinute: number;
-      room?: string;
-    };
-    await batchInTenant(tenant.institutionId, body.batchId);
+    const body = parse(sessionCreateSchema, req.body);
+    await assertTeacherBatchAccess(tenant, body.batchId);
     await subjectInTenant(tenant.institutionId, body.subjectId);
+    if (body.teacherId) await teacherInTenant(tenant.institutionId, body.teacherId);
     const session = await prisma.classSession.create({
       data: {
         institutionId: tenant.institutionId,
@@ -272,9 +308,38 @@ export async function academicsRoutes(app: FastifyInstance) {
         startMinute: body.startMinute,
         endMinute: body.endMinute,
         room: body.room,
+        status: body.status ?? "SCHEDULED",
       },
     });
+    await writeAudit(req, "session.create", "ClassSession", session.id);
     return reply.code(201).send(session);
+  });
+
+  app.patch("/sessions/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "timetable:write");
+    const { id } = req.params as { id: string };
+    const existing = await classSessionInTenant(tenant.institutionId, id);
+    await assertTeacherBatchAccess(tenant, existing.batchId);
+    const body = parse(sessionPatchSchema, req.body);
+    if (body.batchId) await assertTeacherBatchAccess(tenant, body.batchId);
+    if (body.subjectId) await subjectInTenant(tenant.institutionId, body.subjectId);
+    if (body.teacherId) await teacherInTenant(tenant.institutionId, body.teacherId);
+    const session = await prisma.classSession.update({
+      where: { id },
+      data: {
+        ...(body.batchId ? { batchId: body.batchId } : {}),
+        ...(body.subjectId ? { subjectId: body.subjectId } : {}),
+        ...(body.teacherId !== undefined ? { teacherId: body.teacherId } : {}),
+        ...(body.date ? { date: new Date(body.date) } : {}),
+        ...(body.startMinute !== undefined ? { startMinute: body.startMinute } : {}),
+        ...(body.endMinute !== undefined ? { endMinute: body.endMinute } : {}),
+        ...(body.room !== undefined ? { room: body.room } : {}),
+        ...(body.status ? { status: body.status } : {}),
+      },
+    });
+    await writeAudit(req, "session.update", "ClassSession", id);
+    return session;
   });
 
   app.get("/timetable", async (req) => {
@@ -282,6 +347,7 @@ export async function academicsRoutes(app: FastifyInstance) {
     requirePermission(req, "timetable:read");
     const user = tenant;
     const query = req.query as { batchId?: string; studentId?: string };
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
     let batchIds: string[] | undefined;
     if (user.role === "PARENT") {
       const ids = await parentStudentIds(user);
@@ -291,40 +357,106 @@ export async function academicsRoutes(app: FastifyInstance) {
       const sid = await studentSelfId(user);
       const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: sid } });
       batchIds = enrolls.map((e) => e.batchId);
-    } else if (query.batchId) {
-      await batchInTenant(tenant.institutionId, query.batchId);
+    } else if (user.role === "TEACHER") {
+      batchIds = await teacherAssignedBatchIds(user);
+    }
+    if (query.batchId) {
+      if (user.role === "TEACHER") await assertTeacherBatchAccess(user, query.batchId);
+      else await batchInTenant(tenant.institutionId, query.batchId);
       batchIds = [query.batchId];
     }
-    return prisma.timetableSlot.findMany({
-      where: {
-        institutionId: tenant.institutionId,
-        ...(batchIds ? { batchId: { in: batchIds } } : {}),
-      },
-      include: { subject: true, teacher: true, batch: true },
-      orderBy: [{ dayOfWeek: "asc" }, { startMinute: "asc" }],
-    });
+    const where = {
+      institutionId: tenant.institutionId,
+      ...(batchIds ? { batchId: { in: batchIds } } : {}),
+      ...(list.q
+        ? {
+            OR: [
+              { room: { contains: list.q, mode: "insensitive" as const } },
+              { subject: { name: { contains: list.q, mode: "insensitive" as const } } },
+              { batch: { name: { contains: list.q, mode: "insensitive" as const } } },
+            ],
+          }
+        : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.timetableSlot.findMany({
+        where,
+        include: { subject: true, teacher: true, batch: true },
+        orderBy: [{ dayOfWeek: "asc" }, { startMinute: "asc" }],
+        skip,
+        take,
+      }),
+      prisma.timetableSlot.count({ where }),
+    ]);
+    return sendList(list, items, total);
+  });
+
+  app.get("/timetable/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "timetable:read");
+    const { id } = req.params as { id: string };
+    const slot = await timetableSlotInTenant(tenant.institutionId, id);
+    if (tenant.role === "TEACHER") {
+      const assigned = await teacherAssignedBatchIds(tenant);
+      if (!assigned.includes(slot.batchId)) throw notFound();
+    }
+    if (tenant.role === "PARENT" || tenant.role === "STUDENT") {
+      const ids = tenant.role === "PARENT" ? await parentStudentIds(tenant) : [await studentSelfId(tenant)];
+      const enroll = await prisma.batchEnrollment.findFirst({
+        where: { batchId: slot.batchId, studentId: { in: ids } },
+      });
+      if (!enroll) throw notFound();
+    }
+    return slot;
   });
 
   app.post("/timetable", async (req, reply) => {
     const tenant = requireTenant(req);
     requirePermission(req, "timetable:write");
-    const body = req.body as {
-      batchId: string;
-      subjectId: string;
-      teacherId?: string;
-      dayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
-      startMinute: number;
-      endMinute: number;
-      room?: string;
-    };
-    await batchInTenant(tenant.institutionId, body.batchId);
+    const body = parse(timetableCreateSchema, req.body);
+    await assertTeacherBatchAccess(tenant, body.batchId);
     await subjectInTenant(tenant.institutionId, body.subjectId);
+    if (body.teacherId) await teacherInTenant(tenant.institutionId, body.teacherId);
     const slot = await prisma.timetableSlot.create({
       data: {
         institutionId: tenant.institutionId,
-        ...body,
+        batchId: body.batchId,
+        subjectId: body.subjectId,
+        teacherId: body.teacherId,
+        dayOfWeek: body.dayOfWeek,
+        startMinute: body.startMinute,
+        endMinute: body.endMinute,
+        room: body.room,
       },
     });
+    await writeAudit(req, "timetable.create", "TimetableSlot", slot.id);
     return reply.code(201).send(slot);
+  });
+
+  app.patch("/timetable/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "timetable:write");
+    const { id } = req.params as { id: string };
+    const existing = await timetableSlotInTenant(tenant.institutionId, id);
+    await assertTeacherBatchAccess(tenant, existing.batchId);
+    const body = parse(timetablePatchSchema, req.body);
+    if (body.batchId) await assertTeacherBatchAccess(tenant, body.batchId);
+    if (body.subjectId) await subjectInTenant(tenant.institutionId, body.subjectId);
+    if (body.teacherId) await teacherInTenant(tenant.institutionId, body.teacherId);
+    const slot = await prisma.timetableSlot.update({
+      where: { id },
+      data: {
+        ...(body.batchId ? { batchId: body.batchId } : {}),
+        ...(body.subjectId ? { subjectId: body.subjectId } : {}),
+        ...(body.teacherId !== undefined ? { teacherId: body.teacherId } : {}),
+        ...(body.dayOfWeek ? { dayOfWeek: body.dayOfWeek } : {}),
+        ...(body.startMinute !== undefined ? { startMinute: body.startMinute } : {}),
+        ...(body.endMinute !== undefined ? { endMinute: body.endMinute } : {}),
+        ...(body.room !== undefined ? { room: body.room } : {}),
+      },
+    });
+    await writeAudit(req, "timetable.update", "TimetableSlot", id);
+    return slot;
   });
 }

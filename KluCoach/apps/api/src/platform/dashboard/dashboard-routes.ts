@@ -83,6 +83,13 @@ async function student360(institutionId: string, studentId: string) {
       absent: attendance.filter((a) => a.status === "ABSENT").length,
       late: attendance.filter((a) => a.status === "LATE").length,
       excused: attendance.filter((a) => a.status === "EXCUSED").length,
+      recent: [...attendance]
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .slice(0, 8)
+        .map((a) => ({
+          date: a.date.toISOString().slice(0, 10),
+          status: a.status,
+        })),
     },
     academic: {
       average: avg,

@@ -4,6 +4,7 @@ import {
   ASSESSMENT_TYPES,
   ASSIGNMENT_STATUSES,
   ATTENDANCE_STATUSES,
+  DAYS_OF_WEEK,
   GUARDIAN_RELATIONSHIPS,
   INSTITUTION_TYPES,
   NOTICE_AUDIENCES,
@@ -140,6 +141,41 @@ export const assignmentCreateSchema = z.object({
   batchId: z.string().min(1),
   dueAt: z.string().min(8),
 });
+
+export const assignmentPatchSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(5000).nullable().optional(),
+  dueAt: z.string().min(8).optional(),
+});
+
+export const assignmentSubmitSchema = z.object({
+  status: z.enum(["SUBMITTED"]).default("SUBMITTED"),
+});
+
+export const timetableCreateSchema = z.object({
+  batchId: z.string().min(1),
+  subjectId: z.string().min(1),
+  teacherId: z.string().optional(),
+  dayOfWeek: z.enum(DAYS_OF_WEEK),
+  startMinute: z.number().int().min(0).max(24 * 60),
+  endMinute: z.number().int().min(1).max(24 * 60),
+  room: z.string().max(80).optional(),
+});
+
+export const timetablePatchSchema = timetableCreateSchema.partial();
+
+export const sessionCreateSchema = z.object({
+  batchId: z.string().min(1),
+  subjectId: z.string().min(1),
+  teacherId: z.string().optional(),
+  date: z.string().min(8),
+  startMinute: z.number().int().min(0).max(24 * 60),
+  endMinute: z.number().int().min(1).max(24 * 60),
+  room: z.string().max(80).optional(),
+  status: z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]).optional(),
+});
+
+export const sessionPatchSchema = sessionCreateSchema.partial();
 
 export const assignmentStatusSchema = z.object({
   status: z.enum(ASSIGNMENT_STATUSES),
