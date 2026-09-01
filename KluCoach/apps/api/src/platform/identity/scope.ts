@@ -1,7 +1,7 @@
 import { prisma } from "@klunex-edu/database";
 import { forbidden, notFound } from "../../lib/errors.js";
 import type { AuthUser } from "../identity/http-auth.js";
-import { batchInTenant } from "../tenancy/scope.js";
+import { batchInTenant, studentInTenant } from "../tenancy/scope.js";
 
 export async function assertTeacherBatchAccess(user: AuthUser, batchId: string) {
   if (!user.institutionId) throw forbidden();
@@ -54,4 +54,31 @@ export async function teacherAssignedBatchIds(user: AuthUser): Promise<string[]>
     select: { batchId: true },
   });
   return links.map((l) => l.batchId);
+}
+
+export async function assertStudent360Access(user: AuthUser, studentId: string) {
+  if (!user.institutionId) throw forbidden();
+  const student = await studentInTenant(user.institutionId, studentId);
+  if (user.role === "SUPER_ADMIN" || user.role === "INSTITUTION_ADMIN" || user.role === "STAFF") {
+    return student;
+  }
+  if (user.role === "PARENT") {
+    await assertParentOwnsStudent(user, studentId);
+    return student;
+  }
+  if (user.role === "STUDENT") {
+    const self = await studentSelfId(user);
+    if (self !== studentId) throw notFound();
+    return student;
+  }
+  if (user.role === "TEACHER") {
+    const batchIds = await teacherAssignedBatchIds(user);
+    if (!batchIds.length) throw notFound();
+    const enroll = await prisma.batchEnrollment.findFirst({
+      where: { studentId, batchId: { in: batchIds } },
+    });
+    if (!enroll) throw notFound();
+    return student;
+  }
+  throw forbidden();
 }

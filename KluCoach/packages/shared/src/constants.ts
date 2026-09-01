@@ -34,6 +34,8 @@ export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
 export const ASSESSMENT_TYPES = ["TEST", "EXAM", "QUIZ", "MOCK_TEST", "ASSIGNMENT"] as const;
 export const ASSIGNMENT_STATUSES = ["PENDING", "SUBMITTED", "LATE", "REVIEWED"] as const;
+export const STUDENT_360_STATUSES = ["DOING_WELL", "ON_TRACK", "NEEDS_ATTENTION", "INSUFFICIENT_DATA"] as const;
+export const STUDENT_360_TRENDS = ["IMPROVING", "STABLE", "DECLINING", "INSUFFICIENT_DATA"] as const;
 export const NOTICE_AUDIENCES = ["INSTITUTION", "BRANCH", "BATCH", "STUDENTS"] as const;
 export const GUARDIAN_RELATIONSHIPS = ["MOTHER", "FATHER", "GUARDIAN", "OTHER"] as const;
 export const DAYS_OF_WEEK = [

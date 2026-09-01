@@ -9,6 +9,8 @@ import {
   INSTITUTION_TYPES,
   NOTICE_AUDIENCES,
   STAFF_STATUSES,
+  STUDENT_360_STATUSES,
+  STUDENT_360_TRENDS,
   STUDENT_STATUSES,
 } from "./constants.js";
 
@@ -216,3 +218,84 @@ export const teacherPatchSchema = z.object({
   employeeId: z.string().max(40).nullable().optional(),
   status: z.enum(STAFF_STATUSES).optional(),
 });
+
+export const student360Schema = z.object({
+  student: z.object({
+    id: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    preferredName: z.string().nullable(),
+    admissionNumber: z.string(),
+    status: z.string(),
+    photoUrl: z.string().nullable(),
+    batch: z.string().nullable(),
+    program: z.string().nullable(),
+    branch: z.string(),
+    academicYear: z.string().nullable(),
+  }),
+  summary: z.object({
+    status: z.enum(STUDENT_360_STATUSES),
+    statusLabel: z.string(),
+    reasons: z.array(z.string()),
+  }),
+  overall: z.string(),
+  attendance: z.object({
+    percent: z.number().nullable(),
+    present: z.number(),
+    absent: z.number(),
+    late: z.number(),
+    excused: z.number(),
+    recent: z.array(z.object({ date: z.string(), status: z.string() })),
+    periodLabel: z.string(),
+    trend: z.enum(STUDENT_360_TRENDS),
+  }),
+  academic: z.object({
+    average: z.number().nullable(),
+    latest: z.array(
+      z.object({
+        percentage: z.number(),
+        marks: z.number(),
+        maxMarks: z.number().nullable(),
+        assessment: z.object({ name: z.string(), subject: z.object({ name: z.string() }) }),
+      }),
+    ),
+    bySubject: z.array(z.object({ subject: z.string(), average: z.number(), count: z.number() })),
+    trend: z.enum(STUDENT_360_TRENDS),
+  }),
+  upcoming: z.array(
+    z.object({
+      id: z.string(),
+      date: z.string(),
+      startMinute: z.number(),
+      endMinute: z.number(),
+      room: z.string().nullable(),
+      subject: z.object({ name: z.string() }),
+      teacher: z.object({ name: z.string() }).nullable(),
+    }),
+  ),
+  assignments: z.object({
+    pending: z.number(),
+    overdue: z.number(),
+    dueSoon: z.number(),
+    submitted: z.number(),
+    items: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        dueAt: z.string(),
+        status: z.string(),
+        subject: z.string(),
+      }),
+    ),
+  }),
+  notices: z.array(z.object({ id: z.string(), title: z.string(), publishedAt: z.string() })),
+  fees: z
+    .object({
+      status: z.string(),
+      pendingPaise: z.number(),
+      dueDate: z.string().nullable(),
+    })
+    .nullable(),
+  metadata: z.object({ generatedAt: z.string() }),
+});
+export type Student360 = z.infer<typeof student360Schema>;

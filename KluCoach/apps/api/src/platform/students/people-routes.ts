@@ -5,8 +5,9 @@ import { writeAudit } from "../audit/write.js";
 import { listSkipTake, orderBy, parseListQuery, sendList } from "../../lib/listQuery.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
-import { parentStudentIds, teacherAssignedBatchIds } from "../identity/scope.js";
+import { parentStudentIds, teacherAssignedBatchIds, assertStudent360Access } from "../identity/scope.js";
 import { batchInTenant, branchInTenant, guardianInTenant, studentInTenant, subjectInTenant, teacherInTenant } from "../tenancy/scope.js";
+import { assembleStudent360 } from "./student360.js";
 
 function parse<T>(schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }, body: unknown): T {
   const result = schema.safeParse(body);
@@ -134,6 +135,16 @@ export async function peopleRoutes(app: FastifyInstance) {
     });
     await writeAudit(req, "student.create", "Student", student.id);
     return reply.code(201).send(student);
+  });
+
+  app.get("/students/:id/360", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "students:read");
+    const { id } = req.params as { id: string };
+    await assertStudent360Access(tenant, id);
+    const snapshot = await assembleStudent360(tenant.institutionId, id);
+    await writeAudit(req, "student360.view", "Student", id);
+    return snapshot;
   });
 
   app.get("/students/:id", async (req) => {

@@ -428,6 +428,33 @@ async function seedTenant(opts: {
     },
   });
 
+  await prisma.classSession.create({
+    data: {
+      institutionId: institution.id,
+      batchId: jee.id,
+      subjectId: subject("Physics").id,
+      teacherId: teacher.id,
+      date: date("2026-10-05"),
+      startMinute: 17 * 60,
+      endMinute: 18 * 60,
+      room: "R1",
+      status: "SCHEDULED",
+    },
+  });
+  await prisma.classSession.create({
+    data: {
+      institutionId: institution.id,
+      batchId: neet.id,
+      subjectId: subject("Biology").id,
+      teacherId: teacher.id,
+      date: date("2026-10-06"),
+      startMinute: 18 * 60,
+      endMinute: 19 * 60,
+      room: "R3",
+      status: "SCHEDULED",
+    },
+  });
+
   const jeeStudents = students.filter((s) => s.batch.id === jee.id);
   await prisma.attendanceRecord.createMany({
     data: jeeStudents.map(({ student }, idx) => ({
