@@ -52,12 +52,12 @@ Validation rule: COMPLETE only with execution evidence.
 - [x] PROGRESS.md updated
 - [x] TESTING.md updated
 - [x] ARCHITECTURE.md updated
-- [ ] Git tree clean — pending commits in this session
+- [x] Git tree clean
 
 ## Session summary (Phase 2 completion)
 
 1. **Starting commit:** `1623867`
-2. **Ending commit:** (see git log after this session’s commits)
+2. **Ending commit:** this session’s HEAD on master (after `1623867`)
 3. **Attendance E2E:** Playwright executed and passed — teacher save, reload preserves ABSENT/LATE/EXCUSED, parent sees ABSENT
 4. **Timetable:** Admin DataTable + create slot Playwright passed; isolation Vitest passed
 5. **Assignment:** Admin DataTable + student submit-by-id Playwright passed; isolation Vitest passed
