@@ -73,6 +73,16 @@ export function AppShell() {
             <Users size={16} aria-hidden /> Students
           </NavLink>
         )}
+        {["INSTITUTION_ADMIN", "STAFF", "SUPER_ADMIN"].includes(role) && (
+          <NavLink to="/parents">
+            <Users size={16} aria-hidden /> Parents
+          </NavLink>
+        )}
+        {["INSTITUTION_ADMIN", "STAFF", "SUPER_ADMIN"].includes(role) && (
+          <NavLink to="/teachers">
+            <Users size={16} aria-hidden /> Teachers
+          </NavLink>
+        )}
         {adminish && (
           <NavLink to="/batches">
             <Layers size={16} aria-hidden /> Batches

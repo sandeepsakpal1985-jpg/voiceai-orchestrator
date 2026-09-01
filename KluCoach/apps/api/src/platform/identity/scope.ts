@@ -41,3 +41,17 @@ export async function studentSelfId(user: AuthUser): Promise<string> {
   if (!student) throw notFound();
   return student.id;
 }
+
+export async function teacherAssignedBatchIds(user: AuthUser): Promise<string[]> {
+  if (!user.institutionId) return [];
+  const teacher = await prisma.teacher.findFirst({
+    where: { userId: user.id, institutionId: user.institutionId },
+    select: { id: true },
+  });
+  if (!teacher) return [];
+  const links = await prisma.teacherBatch.findMany({
+    where: { teacherId: teacher.id },
+    select: { batchId: true },
+  });
+  return links.map((l) => l.batchId);
+}

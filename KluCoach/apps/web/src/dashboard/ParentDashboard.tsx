@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { AttendanceBreakdown } from "../klucoach/AttendanceBreakdown";
 import { ParentChildSwitcher } from "../klucoach/ParentChildSwitcher";
@@ -19,14 +20,21 @@ type Snapshot = {
 };
 
 export function ParentDashboard() {
+  const [params] = useSearchParams();
   const [data, setData] = useState<Snapshot | null>(null);
   const [studentId, setStudentId] = useState<string | undefined>();
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const q = studentId ? `?studentId=${studentId}` : "";
-    api<Snapshot>(`/dashboard/parent${q}`).then(setData).catch(() => undefined);
-  }, [studentId]);
+    const requested = studentId ?? params.get("studentId") ?? undefined;
+    const q = requested ? `?studentId=${requested}` : "";
+    setError("");
+    api<Snapshot>(`/dashboard/parent${q}`)
+      .then(setData)
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load snapshot"));
+  }, [studentId, params]);
 
+  if (error) return <p className="err">{error}</p>;
   if (!data?.snapshot) return <p>Loading your child’s snapshot…</p>;
   const s = data.snapshot;
 

@@ -10,9 +10,11 @@
 
 | Layer | Tool | What |
 |-------|------|------|
-| Unit | Vitest | RBAC policies, spreadsheet parse, student-import validation |
-| Integration | Vitest + Postgres | auth, tenant isolation, CRUD |
-| E2E | Playwright | critical parent/teacher/admin workflows |
+| Unit | Vitest | RBAC policies, spreadsheet parse, student-import validation, rate-limit config |
+| Integration | Vitest + Postgres | auth, tenant isolation, invitation lifecycle, marks validation, teacher-batch denial |
+| E2E | Playwright | parent invitation activation, assessment marks, parent/teacher/admin smoke |
+
+Phase 2 Playwright evidence (2026-09-01): **7/7 passed** — invitation activation, invalid token, assessment marks + parent result, plus existing smoke/notice.
 
 ## Cross-tenant matrix
 

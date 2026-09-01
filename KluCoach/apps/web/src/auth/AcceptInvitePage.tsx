@@ -28,12 +28,12 @@ export function AcceptInvitePage() {
         <div className="brand">Join Klu<span>Coach</span></div>
         <p className="lede">Create your password to see your child’s coaching journey.</p>
         {error && <div className="err">{error}</div>}
-        <label>First name</label>
-        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-        <label>Last name</label>
-        <input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-        <label>Password</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} required />
+        <label htmlFor="invite-first-name">First name</label>
+        <input id="invite-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        <label htmlFor="invite-last-name">Last name</label>
+        <input id="invite-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+        <label htmlFor="invite-password">Password</label>
+        <input id="invite-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} required />
         <button className="btn" type="submit">Activate</button>
       </form>
     </div>

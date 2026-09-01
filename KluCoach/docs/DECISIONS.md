@@ -20,3 +20,5 @@ KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital
 Commit `1a585f7` also contains unrelated `ai-sales-agent` documentation moves. History is not rewritten; see [INITIAL_AUDIT.md](./INITIAL_AUDIT.md).
 
 The tenant **is** `Institution`. We did not add a second Institution table. `*InTenant` helpers 404 when a foreign id is used as a write/filter handle.
+
+Phase 2: one shared DataTable; list endpoints accept optional `page` (envelope `{ items, total, page, pageSize }`) and keep unpaged array responses for compatibility. Parent invitations auto-create a guardian when `guardianId` is omitted. Marks above `maxMarks` are rejected server-side.

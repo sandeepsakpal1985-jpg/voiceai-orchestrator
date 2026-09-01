@@ -182,6 +182,7 @@ apps/web/src/
 - Student: simple academic home
 - PWA-friendly: manifest, responsive, installable later
 - Tables: one `DataTable` (TanStack Table v9) — do not invent ten grids
+- List APIs: `?page=` returns `{ items, total, page, pageSize }`; omitting `page` still returns an array (test compatibility)
 - Forms: React Hook Form + Zod from `@klunex-edu/shared`
 - Server state: TanStack Query; **authorization stays on the API**
 - Charts: Recharts only when a trend is real

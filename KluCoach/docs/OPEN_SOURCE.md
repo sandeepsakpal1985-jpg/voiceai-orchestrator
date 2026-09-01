@@ -35,6 +35,8 @@ shadcn/ui itself is **copied source** (MIT), not an npm runtime. Primitives live
 
 Canonical table: `apps/web/src/ui/DataTable.tsx` (TanStack Table v9 `createTableHook` / `useAppTable` / `table.FlexRender`).
 
+Admin lists (Students, Parents, Teachers, Batches) configure that one component. Server-side `page`, `q`, `sort`, `dir`, and filters are authoritative. Frontend filtering is not a security boundary.
+
 Canonical form pattern: `apps/web/src/ui/form.tsx` + domain Zod schemas in `@klunex-edu/shared` (example: login via `loginSchema`).
 
 Import parse port: `apps/api/src/platform/import/parseSpreadsheet.ts`. Validation: `validateStudentImport.ts`. Authorization remains in `ops-routes.ts`.

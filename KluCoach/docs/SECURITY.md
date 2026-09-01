@@ -96,6 +96,12 @@ Failed cross-tenant access returns **404** (do not confirm the other tenant's re
 
 Tenant-scoped audit log for: login/logout, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports.
 
+Invitation tokens are returned to the inviter in the API/UI for activation. They are not written to audit metadata or email logs. `POST /auth/invitations/accept` 401s stay on the accept page (they do not bounce to login).
+
+Teachers only receive assigned batches from `GET /batches`. Attendance and assessment writes still go through `assertTeacherBatchAccess` (same-tenant unauthorized batch → **403**; cross-tenant batch → **404**).
+
+Paged admin lists (`?page=`) remain tenant-scoped; omitting `page` keeps the original array response for existing tests.
+
 ---
 
 ## Known non-goals for MVP

@@ -1,11 +1,13 @@
 import { z } from "zod";
 import {
+  ACADEMIC_ENTITY_STATUSES,
   ASSESSMENT_TYPES,
   ASSIGNMENT_STATUSES,
   ATTENDANCE_STATUSES,
   GUARDIAN_RELATIONSHIPS,
   INSTITUTION_TYPES,
   NOTICE_AUDIENCES,
+  STAFF_STATUSES,
   STUDENT_STATUSES,
 } from "./constants.js";
 
@@ -78,6 +80,27 @@ export const batchCreateSchema = z.object({
   subjectIds: z.array(z.string()).optional(),
 });
 
+export const batchPatchSchema = z.object({
+  name: z.string().min(1).max(160).optional(),
+  branchId: z.string().min(1).optional(),
+  academicYearId: z.string().min(1).optional(),
+  programId: z.string().min(1).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  capacity: z.number().int().positive().nullable().optional(),
+  rankingEnabled: z.boolean().optional(),
+  status: z.enum(ACADEMIC_ENTITY_STATUSES).optional(),
+});
+
+export const parentCreateSchema = z.object({
+  name: z.string().min(1).max(160),
+  email: z.string().email().optional(),
+  phone: z.string().max(20).optional(),
+  studentId: z.string().optional(),
+  relationship: z.enum(GUARDIAN_RELATIONSHIPS).optional(),
+  isPrimary: z.boolean().optional(),
+});
+
 export const attendanceMarkSchema = z.object({
   classSessionId: z.string().optional(),
   batchId: z.string().min(1),
@@ -148,4 +171,12 @@ export const teacherCreateSchema = z.object({
   branchIds: z.array(z.string()).optional(),
   batchIds: z.array(z.string()).optional(),
   subjectIds: z.array(z.string()).optional(),
+});
+
+export const teacherPatchSchema = z.object({
+  name: z.string().min(1).max(160).optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().max(20).nullable().optional(),
+  employeeId: z.string().max(40).nullable().optional(),
+  status: z.enum(STAFF_STATUSES).optional(),
 });

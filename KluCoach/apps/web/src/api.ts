@@ -28,12 +28,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers,
     credentials: "include",
   });
-  if (res.status === 401) {
-    if (!path.startsWith("/auth/login")) window.location.href = "/login";
-    throw new Error("Unauthorized");
-  }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
+  if (res.status === 401) {
+    const publicAuth = path.startsWith("/auth/login") || path.startsWith("/auth/invitations/accept");
+    if (!publicAuth) window.location.href = "/login";
+    throw new Error(data?.error?.message ?? "Unauthorized");
+  }
   if (!res.ok) {
     throw new Error(data?.error?.message ?? `Request failed (${res.status})`);
   }

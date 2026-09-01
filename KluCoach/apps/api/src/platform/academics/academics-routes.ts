@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@klunex-edu/database";
-import { batchCreateSchema } from "@klunex-edu/shared";
+import { batchCreateSchema, batchPatchSchema } from "@klunex-edu/shared";
 import { writeAudit } from "../audit/write.js";
+import { listSkipTake, orderBy, parseListQuery, sendList } from "../../lib/listQuery.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
-import { parentStudentIds, studentSelfId } from "../identity/scope.js";
+import { parentStudentIds, studentSelfId, teacherAssignedBatchIds } from "../identity/scope.js";
 import {
   academicYearInTenant,
   batchInTenant,
@@ -95,18 +96,71 @@ export async function academicsRoutes(app: FastifyInstance) {
   app.get("/batches", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "batches:read");
-    return prisma.batch.findMany({
-      where: { institutionId: tenant.institutionId },
-      include: { program: true, branch: true, _count: { select: { enrollments: true } } },
-      orderBy: { name: "asc" },
-    });
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
+    if (list.branchId) await branchInTenant(tenant.institutionId, list.branchId);
+    let teacherBatchIds: string[] | undefined;
+    if (tenant.role === "TEACHER") teacherBatchIds = await teacherAssignedBatchIds(tenant);
+    const where = {
+      institutionId: tenant.institutionId,
+      ...(list.status ? { status: list.status as "ACTIVE" } : {}),
+      ...(list.branchId ? { branchId: list.branchId } : {}),
+      ...(teacherBatchIds ? { id: { in: teacherBatchIds } } : {}),
+      ...(list.q
+        ? {
+            OR: [
+              { name: { contains: list.q, mode: "insensitive" as const } },
+              { program: { name: { contains: list.q, mode: "insensitive" as const } } },
+            ],
+          }
+        : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.batch.findMany({
+        where,
+        include: {
+          program: true,
+          branch: true,
+          academicYear: { select: { id: true, name: true } },
+          _count: { select: { enrollments: true } },
+        },
+        orderBy: orderBy(list.sort, list.dir, ["name", "createdAt"] as const, "name"),
+        skip,
+        take,
+      }),
+      prisma.batch.count({ where }),
+    ]);
+    return sendList(list, items, total);
   });
 
   app.get("/batches/:id", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "batches:read");
     const { id } = req.params as { id: string };
-    return batchInTenant(tenant.institutionId, id);
+    if (tenant.role === "TEACHER") {
+      const assigned = await teacherAssignedBatchIds(tenant);
+      if (!assigned.includes(id)) {
+        await batchInTenant(tenant.institutionId, id);
+        throw notFound();
+      }
+    }
+    const batch = await prisma.batch.findFirst({
+      where: { id, institutionId: tenant.institutionId },
+      include: {
+        program: true,
+        branch: true,
+        academicYear: true,
+        subjects: { include: { subject: true } },
+        enrollments: {
+          include: {
+            student: { select: { id: true, firstName: true, lastName: true, admissionNumber: true, status: true } },
+          },
+        },
+        _count: { select: { enrollments: true } },
+      },
+    });
+    if (!batch) throw notFound();
+    return batch;
   });
 
   app.post("/batches", async (req, reply) => {
@@ -133,6 +187,33 @@ export async function academicsRoutes(app: FastifyInstance) {
     });
     await writeAudit(req, "batch.create", "Batch", batch.id);
     return reply.code(201).send(batch);
+  });
+
+  app.patch("/batches/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "batches:write");
+    const { id } = req.params as { id: string };
+    await batchInTenant(tenant.institutionId, id);
+    const body = parse(batchPatchSchema, req.body);
+    if (body.branchId) await branchInTenant(tenant.institutionId, body.branchId);
+    if (body.academicYearId) await academicYearInTenant(tenant.institutionId, body.academicYearId);
+    if (body.programId) await programInTenant(tenant.institutionId, body.programId);
+    const batch = await prisma.batch.update({
+      where: { id },
+      data: {
+        ...(body.name ? { name: body.name } : {}),
+        ...(body.branchId ? { branchId: body.branchId } : {}),
+        ...(body.academicYearId ? { academicYearId: body.academicYearId } : {}),
+        ...(body.programId ? { programId: body.programId } : {}),
+        ...(body.startDate ? { startDate: new Date(body.startDate) } : {}),
+        ...(body.endDate ? { endDate: new Date(body.endDate) } : {}),
+        ...(body.capacity !== undefined ? { capacity: body.capacity } : {}),
+        ...(body.rankingEnabled !== undefined ? { rankingEnabled: body.rankingEnabled } : {}),
+        ...(body.status ? { status: body.status } : {}),
+      },
+    });
+    await writeAudit(req, "batch.update", "Batch", id);
+    return batch;
   });
 
   app.post("/batches/:id/enrollments", async (req) => {

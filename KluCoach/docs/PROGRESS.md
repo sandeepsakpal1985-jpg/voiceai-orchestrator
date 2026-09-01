@@ -1,37 +1,42 @@
 # Progress
 
-Updated: 2026-09-01 (Phase 1 security boundary)
+Updated: 2026-09-01 (Phase 2 — core education workflows)
 
 Validation rule: COMPLETE only with execution evidence.
 
 | Feature | Status | Tests | Verified | Notes |
 |---------|--------|-------|----------|-------|
-| Locked foundation `47d1989` | VALIDATED | n/a | git | OSS checkpoint; not rebuilt |
-| Student isolation | VALIDATED | vitest | yes | GET by id → 404 |
-| Parent isolation | VALIDATED | vitest | yes | Child id + GET `/parents/:id` |
-| Attendance isolation | VALIDATED | vitest | yes | studentId + batchId |
-| Results isolation | VALIDATED | vitest | yes | studentId + assessmentId |
-| Search isolation | VALIDATED | vitest | yes | No other-tenant strings |
-| Teacher isolation | VALIDATED | vitest boundary | yes | GET/PATCH, search, foreign batchIds |
-| Assignment isolation | VALIDATED | vitest boundary | yes | GET by id, batch filter, create |
-| Notice isolation | VALIDATED | vitest boundary | yes | GET by id, targeted POST |
-| Report / CSV export isolation | VALIDATED | vitest CSV body | yes | students, attendance, parent-activation |
-| Invitation tenant isolation | VALIDATED | vitest | yes | Foreign studentId → 404 |
-| Auth throttling config | VALIDATED | unit + identical 401 | yes | Live 429 not run in Vitest |
-| Query tenant-scope | VALIDATED | write-path helpers | yes | Admin batch skip + FK ids fixed |
-| Institution (tenant) | VALIDATED | existing + /me | yes | No duplicate Institution table |
-| Branch / program / subject / batch | VALIDATED | GET by id 404 | yes | Configurable; tenant-owned |
-| Teacher / student / parent domain APIs | VALIDATED | isolation + RBAC | yes | PATCH teacher; student archive via status |
-| Password reset | NOT STARTED | | | No endpoints |
-| Playwright admin create-branch workflow | NOT STARTED | | | Deferred per Phase 1 prompt |
+| Locked foundation `47d1989` | VALIDATED | n/a | git | Not rebuilt |
+| Phase 1 security gate `70a9ecc` | VALIDATED | vitest 35 | yes | Permanent regression |
+| Parent invitation E2E | VALIDATED | playwright | yes | Admin → invite → activate → child |
+| Parent activation | VALIDATED | playwright | yes | Token shown in UI; not logged |
+| Parent sees correct child | VALIDATED | playwright | yes | Seeded unique student |
+| Cross-tenant parent access | VALIDATED | playwright + vitest | yes | Foreign studentId → 404 |
+| Invitation reuse / expiry / invalid | VALIDATED | vitest + playwright | yes | 401; accept 401 no longer bounces to login |
+| Assessment creation | VALIDATED | playwright | yes | Teacher, JEE batch, Physics |
+| Marks entry | VALIDATED | playwright | yes | Aarav 91 |
+| Invalid marks rejected | VALIDATED | playwright + vitest | yes | 101 and negative |
+| Parent sees result | VALIDATED | playwright | yes | Name + 91% |
+| Cross-tenant assessment access | VALIDATED | vitest | yes | 404 on foreign assessment/results |
+| Shared DataTable | VALIDATED | playwright students + vitest pages | yes | One `DataTable`; server page/search/sort |
+| Parents table | VALIDATED | vitest paged isolation | yes | Shared DataTable |
+| Teachers table | VALIDATED | vitest paged isolation | yes | Shared DataTable; no hard-delete |
+| Batches table | VALIDATED | vitest paged isolation | yes | Shared DataTable; FK checks |
+| Students table | VALIDATED | playwright create + vitest | yes | Shared DataTable; Student 360 route |
+| Attendance workflow | VALIDATED | vitest teacher 403 | yes | Batch roster from API; teacher assigned batches only |
+| Teacher batch authorization | VALIDATED | vitest | yes | Unassigned batch → 403 on write; omitted from GET /batches |
+| Tenant isolation regression | VALIDATED | vitest 42/42 | yes | Previous 35 plus workflow cases |
+| Password reset | NOT STARTED | | | Backlog |
+| PDF/XLSX export | NOT STARTED | | | Backlog |
+| Playwright admin create-branch | NOT STARTED | | | Deferred |
 | Production deployment | NOT STARTED | | | BLOCKED — no production host |
 
-## Session summary (Phase 1)
+## Session summary (Phase 2)
 
-1. **Starting commit:** `47d1989`
-2. **Security gaps found:** admin skip of batch ownership; create/filter paths accepting foreign FKs; invitations accepting foreign student/guardian/teacher ids; query filters returning empty instead of 404
-3. **Security gaps fixed:** `*InTenant` helpers; `assertTeacherBatchAccess` always checks batch tenant; invitation create/accept checks; generic login-failure audit
-4. **Tests executed:** Vitest (isolation + boundary + import + RBAC + rate-limit config)
-5. **Tests blocked:** none for Vitest. Playwright not re-run this phase
-6. **Security gate:** PASS — see docs/SECURITY_GATE_PHASE1.md
-7. **Exact next step:** Playwright for parent invitation activation + assessment marks entry; then remaining admin lists on DataTable
+1. **Starting commit:** `70a9ecc`
+2. **Parent invitation:** Playwright executed and passed
+3. **Assessment/marks:** Playwright executed and passed
+4. **DataTable:** one TanStack Table v9 wrapper used by Students, Parents, Teachers, Batches
+5. **Tests executed:** Vitest 42/42; Playwright 7/7
+6. **Tests blocked:** none
+7. **Exact next step:** Timetable and assignments screens on the same DataTable pattern; do not start password reset or PDF export

@@ -134,6 +134,19 @@ h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.03em; }
 }
 .pill.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 .hint { color: var(--muted); font-size: 0.9rem; }
+.datatable-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.datatable-bulk { margin-bottom: 12px; }
+.table-wrap { overflow-x: auto; }
+.table-row-click { cursor: pointer; }
+.table-row-click:hover { background: rgba(15, 42, 36, 0.04); }
+.column-menu { margin-left: auto; }
+.column-menu-list { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }

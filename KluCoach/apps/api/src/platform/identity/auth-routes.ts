@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "@klunex-edu/database";
 import {
   acceptInvitationSchema,
+  invitationCreateSchema,
   loginSchema,
   registerInstitutionSchema,
 } from "@klunex-edu/shared";
@@ -203,17 +204,33 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/invitations", { config: { rateLimit: rateLimits.inviteCreate } }, async (req, reply) => {
     const user = requireUser(req);
     if (!can(user.role, "invitations:write") || !user.institutionId) throw unauthorized();
-    const body = req.body as {
-      type: "PARENT" | "STUDENT" | "TEACHER";
-      email?: string;
-      phone?: string;
-      studentId?: string;
-      guardianId?: string;
-      teacherId?: string;
-    };
+    const body = parse(invitationCreateSchema, req.body);
+    if (body.type === "PARENT" && !body.studentId) {
+      throw validationError("studentId required for parent invitation");
+    }
     if (body.studentId) await studentInTenant(user.institutionId, body.studentId);
     if (body.guardianId) await guardianInTenant(user.institutionId, body.guardianId);
     if (body.teacherId) await teacherInTenant(user.institutionId, body.teacherId);
+    let guardianId = body.guardianId;
+    if (body.type === "PARENT" && body.studentId && !guardianId) {
+      const guardian = await prisma.guardian.create({
+        data: {
+          institutionId: user.institutionId,
+          name: body.email?.split("@")[0] ?? "Parent",
+          email: body.email?.toLowerCase(),
+          phone: body.phone,
+        },
+      });
+      await prisma.studentGuardian.create({
+        data: {
+          studentId: body.studentId,
+          guardianId: guardian.id,
+          relationship: "GUARDIAN",
+          isPrimary: false,
+        },
+      });
+      guardianId = guardian.id;
+    }
     const token = newToken();
     const invite = await prisma.invitation.create({
       data: {
@@ -224,7 +241,7 @@ export async function authRoutes(app: FastifyInstance) {
         tokenHash: hashToken(token),
         expiresAt: new Date(Date.now() + 14 * 24 * 3600 * 1000),
         studentId: body.studentId,
-        guardianId: body.guardianId,
+        guardianId,
         teacherId: body.teacherId,
         invitedById: user.id,
       },
@@ -235,12 +252,12 @@ export async function authRoutes(app: FastifyInstance) {
         institutionId: user.institutionId,
         userId: user.id,
         title: "Invitation created",
-        body: `Invite link for ${body.email}: ${acceptUrl}`,
+        body: `Invitation created for ${body.email}`,
         channels: ["IN_APP", "EMAIL"],
         email: body.email,
       });
     }
-    await writeAudit(req, "invitation.create", "Invitation", invite.id);
+    await writeAudit(req, "invitation.create", "Invitation", invite.id, { type: body.type });
     return reply.code(201).send({ id: invite.id, acceptUrl, token });
   });
 }

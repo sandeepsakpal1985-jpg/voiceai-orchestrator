@@ -118,9 +118,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
   app.get("/dashboard/parent", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "dashboard:parent");
-    const ids = await parentStudentIds(tenant);
     const query = req.query as { studentId?: string };
-    const studentId = query.studentId && ids.includes(query.studentId) ? query.studentId : ids[0];
+    const ids = await parentStudentIds(tenant);
+    if (query.studentId) {
+      if (!ids.includes(query.studentId)) throw notFound();
+    }
+    const studentId = query.studentId ?? ids[0];
     if (!studentId) return { children: [], snapshot: null };
     const children = await prisma.student.findMany({
       where: { id: { in: ids }, institutionId: tenant.institutionId },

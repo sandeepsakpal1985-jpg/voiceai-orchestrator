@@ -6,12 +6,15 @@ import { ParentDashboard } from "./dashboard/ParentDashboard";
 import { StudentDashboard } from "./dashboard/StudentDashboard";
 import { AdminDashboard } from "./dashboard/AdminDashboard";
 import { StudentsPage } from "./students/StudentsPage";
+import { StudentDetailPage } from "./students/StudentDetailPage";
 import { AttendancePage } from "./attendance/AttendancePage";
 import { AssessmentsPage } from "./assessments/AssessmentsPage";
 import { NoticesPage } from "./notices/NoticesPage";
 import { ImportPage } from "./reports/ImportPage";
 import { TimetablePage } from "./timetable/TimetablePage";
 import { BatchesPage } from "./batches/BatchesPage";
+import { ParentsPage } from "./parents/ParentsPage";
+import { TeachersPage } from "./teachers/TeachersPage";
 
 export function App() {
   return (
@@ -24,6 +27,9 @@ export function App() {
         <Route path="/student" element={<StudentDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/students" element={<StudentsPage />} />
+        <Route path="/students/:id" element={<StudentDetailPage />} />
+        <Route path="/parents" element={<ParentsPage />} />
+        <Route path="/teachers" element={<TeachersPage />} />
         <Route path="/batches" element={<BatchesPage />} />
         <Route path="/attendance" element={<AttendancePage />} />
         <Route path="/assessments" element={<AssessmentsPage />} />
@@ -34,4 +40,3 @@ export function App() {
     </Routes>
   );
 }
-

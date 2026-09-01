@@ -10,7 +10,7 @@ import {
 import { writeAudit } from "../audit/write.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
-import { assertTeacherBatchAccess, parentStudentIds, studentSelfId } from "../identity/scope.js";
+import { assertTeacherBatchAccess, parentStudentIds, studentSelfId, teacherAssignedBatchIds } from "../identity/scope.js";
 import {
   assessmentInTenant,
   assignmentInTenant,
@@ -64,6 +64,10 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     await assertTeacherBatchAccess(tenant, body.batchId);
     for (const rec of body.records) {
       await studentInTenant(tenant.institutionId, rec.studentId);
+      const enrolled = await prisma.batchEnrollment.findFirst({
+        where: { batchId: body.batchId, studentId: rec.studentId },
+      });
+      if (!enrolled) throw notFound();
     }
     const date = new Date(body.date);
     const rows = [];
@@ -93,11 +97,60 @@ export async function academicWorkRoutes(app: FastifyInstance) {
   app.get("/assessments", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "assessments:read");
+    let batchIds: string[] | undefined;
+    if (tenant.role === "TEACHER") batchIds = await teacherAssignedBatchIds(tenant);
+    if (tenant.role === "PARENT") {
+      const ids = await parentStudentIds(tenant);
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: { in: ids } } });
+      batchIds = enrolls.map((e) => e.batchId);
+    }
+    if (tenant.role === "STUDENT") {
+      const sid = await studentSelfId(tenant);
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: sid } });
+      batchIds = enrolls.map((e) => e.batchId);
+    }
     return prisma.assessment.findMany({
-      where: { institutionId: tenant.institutionId },
+      where: {
+        institutionId: tenant.institutionId,
+        ...(batchIds ? { batchId: { in: batchIds } } : {}),
+      },
       include: { subject: true, batch: true, _count: { select: { results: true } } },
       orderBy: { date: "desc" },
     });
+  });
+
+  app.get("/assessments/:id", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "assessments:read");
+    const { id } = req.params as { id: string };
+    const assessment = await prisma.assessment.findFirst({
+      where: { id, institutionId: tenant.institutionId },
+      include: {
+        subject: true,
+        batch: true,
+        results: { include: { student: { select: { id: true, firstName: true, lastName: true } } } },
+      },
+    });
+    if (!assessment) throw notFound();
+    if (tenant.role === "TEACHER") {
+      const assigned = await teacherAssignedBatchIds(tenant);
+      if (!assigned.includes(assessment.batchId)) throw notFound();
+    }
+    if (tenant.role === "PARENT") {
+      const ids = await parentStudentIds(tenant);
+      const enroll = await prisma.batchEnrollment.findFirst({
+        where: { batchId: assessment.batchId, studentId: { in: ids } },
+      });
+      if (!enroll) throw notFound();
+    }
+    if (tenant.role === "STUDENT") {
+      const sid = await studentSelfId(tenant);
+      const enroll = await prisma.batchEnrollment.findFirst({
+        where: { batchId: assessment.batchId, studentId: sid },
+      });
+      if (!enroll) throw notFound();
+    }
+    return assessment;
   });
 
   app.post("/assessments", async (req, reply) => {
@@ -159,10 +212,15 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     if (!assessment) throw notFound();
     await assertTeacherBatchAccess(tenant, assessment.batchId);
     const body = parse(resultsUpsertSchema, req.body);
+    const max = Number(assessment.maxMarks);
     for (const rec of body.results) {
       await studentInTenant(tenant.institutionId, rec.studentId);
+      if (rec.marks > max) throw validationError(`marks cannot exceed ${max}`);
+      const enrolled = await prisma.batchEnrollment.findFirst({
+        where: { batchId: assessment.batchId, studentId: rec.studentId },
+      });
+      if (!enrolled) throw notFound();
     }
-    const max = Number(assessment.maxMarks);
     const rankingEnabled = assessment.batch.rankingEnabled;
     const computed = body.results.map((r) => ({
       ...r,

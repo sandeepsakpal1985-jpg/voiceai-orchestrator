@@ -4,6 +4,18 @@ Items here are **not** in the current build phase. Do not implement them because
 
 ---
 
+## Phase 2 deferred
+
+Do not interrupt core education workflows for:
+
+- Password reset
+- PDF / XLSX export
+- Assignment submit-by-id
+- Teacher hard-delete
+- Full Playwright suite beyond the two critical workflows
+
+---
+
 ## After MVP (KluCoach)
 
 - Performance trends, improvement score, risk indicators

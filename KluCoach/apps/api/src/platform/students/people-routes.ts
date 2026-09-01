@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@klunex-edu/database";
-import { studentCreateSchema, studentPatchSchema, teacherCreateSchema } from "@klunex-edu/shared";
+import { parentCreateSchema, studentCreateSchema, studentPatchSchema, teacherCreateSchema, teacherPatchSchema } from "@klunex-edu/shared";
 import { writeAudit } from "../audit/write.js";
+import { listSkipTake, orderBy, parseListQuery, sendList } from "../../lib/listQuery.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
-import { parentStudentIds } from "../identity/scope.js";
-import { batchInTenant, branchInTenant, studentInTenant, subjectInTenant, teacherInTenant } from "../tenancy/scope.js";
+import { parentStudentIds, teacherAssignedBatchIds } from "../identity/scope.js";
+import { batchInTenant, branchInTenant, guardianInTenant, studentInTenant, subjectInTenant, teacherInTenant } from "../tenancy/scope.js";
 
 function parse<T>(schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { message: string }[] } } }, body: unknown): T {
   const result = schema.safeParse(body);
@@ -31,25 +32,50 @@ export async function peopleRoutes(app: FastifyInstance) {
         include: { enrollments: { include: { batch: true } } },
       });
     }
-    const q = (req.query as { q?: string }).q;
-    return prisma.student.findMany({
-      where: {
-        institutionId: tenant.institutionId,
-        archivedAt: null,
-        ...(q
-          ? {
-              OR: [
-                { firstName: { contains: q, mode: "insensitive" } },
-                { lastName: { contains: q, mode: "insensitive" } },
-                { admissionNumber: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      include: { enrollments: { include: { batch: true } }, branch: true },
-      orderBy: { firstName: "asc" },
-      take: 200,
-    });
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
+    if (list.batchId) await batchInTenant(tenant.institutionId, list.batchId);
+    if (list.branchId) await branchInTenant(tenant.institutionId, list.branchId);
+    let teacherBatchIds: string[] | undefined;
+    if (user.role === "TEACHER") {
+      teacherBatchIds = await teacherAssignedBatchIds(user);
+      if (list.batchId && !teacherBatchIds.includes(list.batchId)) throw notFound();
+    }
+    const where = {
+      institutionId: tenant.institutionId,
+      archivedAt: null,
+      ...(list.status ? { status: list.status as "ACTIVE" } : {}),
+      ...(list.branchId ? { branchId: list.branchId } : {}),
+      ...(list.batchId || teacherBatchIds
+        ? {
+            enrollments: {
+              some: {
+                ...(list.batchId ? { batchId: list.batchId } : { batchId: { in: teacherBatchIds } }),
+              },
+            },
+          }
+        : {}),
+      ...(list.q
+        ? {
+            OR: [
+              { firstName: { contains: list.q, mode: "insensitive" as const } },
+              { lastName: { contains: list.q, mode: "insensitive" as const } },
+              { admissionNumber: { contains: list.q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.student.findMany({
+        where,
+        include: { enrollments: { include: { batch: true } }, branch: true },
+        orderBy: orderBy(list.sort, list.dir, ["firstName", "lastName", "admissionNumber", "status", "createdAt"] as const, "firstName"),
+        skip,
+        take,
+      }),
+      prisma.student.count({ where }),
+    ]);
+    return sendList(list, items, total);
   });
 
   app.post("/students", async (req, reply) => {
@@ -159,12 +185,88 @@ export async function peopleRoutes(app: FastifyInstance) {
   app.get("/parents", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "parents:read");
-    return prisma.guardian.findMany({
-      where: { institutionId: tenant.institutionId },
-      include: { students: { include: { student: true } }, user: true },
-      take: 200,
-      orderBy: { name: "asc" },
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
+    const where = {
+      institutionId: tenant.institutionId,
+      ...(list.q
+        ? {
+            OR: [
+              { name: { contains: list.q, mode: "insensitive" as const } },
+              { email: { contains: list.q, mode: "insensitive" as const } },
+              { phone: { contains: list.q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.guardian.findMany({
+        where,
+        include: {
+          students: { include: { student: { select: { id: true, firstName: true, lastName: true, admissionNumber: true } } } },
+          user: { select: { id: true, email: true, status: true } },
+          invitations: { orderBy: { createdAt: "desc" }, take: 3, select: { id: true, acceptedAt: true, expiresAt: true, email: true, createdAt: true } },
+        },
+        orderBy: orderBy(list.sort, list.dir, ["name", "email", "createdAt"] as const, "name"),
+        skip,
+        take,
+      }),
+      prisma.guardian.count({ where }),
+    ]);
+    return sendList(list, items, total);
+  });
+
+  app.post("/parents", async (req, reply) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "parents:write");
+    const body = parse(parentCreateSchema, req.body);
+    if (body.studentId) await studentInTenant(tenant.institutionId, body.studentId);
+    const guardian = await prisma.$transaction(async (tx) => {
+      const created = await tx.guardian.create({
+        data: {
+          institutionId: tenant.institutionId,
+          name: body.name,
+          email: body.email?.toLowerCase(),
+          phone: body.phone,
+        },
+      });
+      if (body.studentId) {
+        await tx.studentGuardian.create({
+          data: {
+            studentId: body.studentId,
+            guardianId: created.id,
+            relationship: body.relationship ?? "GUARDIAN",
+            isPrimary: body.isPrimary ?? false,
+          },
+        });
+      }
+      return created;
     });
+    await writeAudit(req, "parent.create", "Guardian", guardian.id);
+    return reply.code(201).send(guardian);
+  });
+
+  app.post("/parents/:id/children", async (req, reply) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "parents:write");
+    const { id } = req.params as { id: string };
+    await guardianInTenant(tenant.institutionId, id);
+    const body = req.body as { studentId?: string; relationship?: "MOTHER" | "FATHER" | "GUARDIAN" | "OTHER"; isPrimary?: boolean };
+    if (!body.studentId) throw validationError("studentId required");
+    await studentInTenant(tenant.institutionId, body.studentId);
+    const relationship = body.relationship ?? "GUARDIAN";
+    const link = await prisma.studentGuardian.upsert({
+      where: { studentId_guardianId: { studentId: body.studentId, guardianId: id } },
+      update: { relationship, isPrimary: body.isPrimary ?? false },
+      create: {
+        studentId: body.studentId,
+        guardianId: id,
+        relationship,
+        isPrimary: body.isPrimary ?? false,
+      },
+    });
+    await writeAudit(req, "parent.link", "StudentGuardian", link.id);
+    return reply.code(201).send(link);
   });
 
   app.get("/parents/:id", async (req) => {
@@ -182,11 +284,36 @@ export async function peopleRoutes(app: FastifyInstance) {
   app.get("/teachers", async (req) => {
     const tenant = requireTenant(req);
     requirePermission(req, "teachers:read");
-    return prisma.teacher.findMany({
-      where: { institutionId: tenant.institutionId },
-      include: { batches: true, subjects: true, branches: true },
-      orderBy: { name: "asc" },
-    });
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
+    const where = {
+      institutionId: tenant.institutionId,
+      ...(list.status ? { status: list.status as "ACTIVE" } : {}),
+      ...(list.q
+        ? {
+            OR: [
+              { name: { contains: list.q, mode: "insensitive" as const } },
+              { email: { contains: list.q, mode: "insensitive" as const } },
+              { employeeId: { contains: list.q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.teacher.findMany({
+        where,
+        include: {
+          batches: { include: { batch: { select: { id: true, name: true } } } },
+          subjects: { include: { subject: { select: { id: true, name: true } } } },
+          branches: { include: { branch: { select: { id: true, name: true } } } },
+        },
+        orderBy: orderBy(list.sort, list.dir, ["name", "employeeId", "status", "createdAt"] as const, "name"),
+        skip,
+        take,
+      }),
+      prisma.teacher.count({ where }),
+    ]);
+    return sendList(list, items, total);
   });
 
   app.post("/teachers", async (req, reply) => {
@@ -218,7 +345,11 @@ export async function peopleRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const teacher = await prisma.teacher.findFirst({
       where: { id, institutionId: tenant.institutionId },
-      include: { batches: true, subjects: true, branches: true },
+      include: {
+        batches: { include: { batch: { select: { id: true, name: true } } } },
+        subjects: { include: { subject: { select: { id: true, name: true } } } },
+        branches: { include: { branch: { select: { id: true, name: true } } } },
+      },
     });
     if (!teacher) throw notFound();
     return teacher;
@@ -229,17 +360,54 @@ export async function peopleRoutes(app: FastifyInstance) {
     requirePermission(req, "teachers:write");
     const { id } = req.params as { id: string };
     await teacherInTenant(tenant.institutionId, id);
-    const body = req.body as { name?: string; phone?: string; email?: string; status?: "ACTIVE" | "INACTIVE" };
+    const body = parse(teacherPatchSchema, req.body);
     const teacher = await prisma.teacher.update({
       where: { id },
       data: {
         ...(body.name ? { name: body.name } : {}),
         ...(body.phone !== undefined ? { phone: body.phone } : {}),
         ...(body.email !== undefined ? { email: body.email } : {}),
+        ...(body.employeeId !== undefined ? { employeeId: body.employeeId } : {}),
         ...(body.status ? { status: body.status } : {}),
       },
     });
     await writeAudit(req, "teacher.update", "Teacher", id);
     return teacher;
+  });
+
+  app.get("/invitations", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "parents:read");
+    const list = parseListQuery((req.query ?? {}) as Record<string, unknown>);
+    const query = req.query as { studentId?: string; guardianId?: string };
+    if (query.studentId) await studentInTenant(tenant.institutionId, query.studentId);
+    if (query.guardianId) await guardianInTenant(tenant.institutionId, query.guardianId);
+    const where = {
+      institutionId: tenant.institutionId,
+      ...(query.studentId ? { studentId: query.studentId } : {}),
+      ...(query.guardianId ? { guardianId: query.guardianId } : {}),
+    };
+    const { skip, take } = listSkipTake(list);
+    const [items, total] = await Promise.all([
+      prisma.invitation.findMany({
+        where,
+        select: {
+          id: true,
+          type: true,
+          email: true,
+          acceptedAt: true,
+          expiresAt: true,
+          createdAt: true,
+          studentId: true,
+          guardianId: true,
+          student: { select: { id: true, firstName: true, lastName: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+      }),
+      prisma.invitation.count({ where }),
+    ]);
+    return sendList(list, items, total);
   });
 }
