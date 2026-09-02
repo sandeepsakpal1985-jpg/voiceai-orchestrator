@@ -30,12 +30,12 @@ Validation rule: COMPLETE only with execution evidence.
 - [x] Phase 4 journeys still pass
 - [x] Vitest 74/74, Playwright 21/21, typecheck, build, lint
 - [x] BILLING.md + ADR-013
-- [ ] Git tree clean (this session’s KluCoach commits)
+- [x] Git tree clean (KluCoach paths; docs SHA `95c788f`)
 
 ## Session summary (Phase 5)
 
 1. **Starting commit:** `b55d86d`
-2. **Ending commit:** docs commit after billing e2e
+2. **Ending commit:** `95c788f` (`docs: document billing and subscription architecture`)
 3. **Subscription architecture:** VALIDATED — plan catalog + tenant snapshot + statuses
 4. **Pricing:** VALIDATED — integer paise; 100/1000 student cases from snapshot
 5. **Student entitlement:** VALIDATED — EntitlementService; NON_BILLABLE demo bypass is explicit
