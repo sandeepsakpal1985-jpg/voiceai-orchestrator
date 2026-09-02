@@ -4,6 +4,7 @@ import { notFound, validationError } from "../../lib/errors.js";
 import { rateLimits } from "../../lib/rateLimits.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { studentInTenant } from "../tenancy/scope.js";
+import { parentStudentIds, assertParentOwnsStudent } from "../identity/scope.js";
 import { writeAudit } from "../audit/write.js";
 import { parseSpreadsheet, SpreadsheetParseError } from "../import/parseSpreadsheet.js";
 import {
@@ -218,6 +219,20 @@ export async function opsRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "fees:read");
     const query = req.query as { studentId?: string };
+    if (tenant.role === "PARENT") {
+      const ids = await parentStudentIds(tenant);
+      if (query.studentId) {
+        await assertParentOwnsStudent(tenant, query.studentId);
+      }
+      return prisma.feeInvoice.findMany({
+        where: {
+          institutionId: tenant.institutionId,
+          studentId: { in: query.studentId ? [query.studentId] : ids },
+        },
+        take: 100,
+        orderBy: { createdAt: "desc" },
+      });
+    }
     if (query.studentId) await studentInTenant(tenant.institutionId, query.studentId);
     return prisma.feeInvoice.findMany({
       where: {

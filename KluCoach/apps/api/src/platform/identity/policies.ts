@@ -21,6 +21,8 @@ export const PERMISSIONS = [
   "timetable:write",
   "fees:read",
   "fees:write",
+  "billing:read",
+  "billing:write",
   "reports:read",
   "import:write",
   "invitations:write",
@@ -37,7 +39,9 @@ const ALL: Permission[] = [...PERMISSIONS];
 
 const MATRIX: Record<UserRole, Permission[]> = {
   SUPER_ADMIN: ALL,
-  INSTITUTION_ADMIN: ALL.filter((p) => p !== "dashboard:parent" && p !== "dashboard:student"),
+  INSTITUTION_ADMIN: ALL.filter(
+    (p) => p !== "dashboard:parent" && p !== "dashboard:student" && p !== "billing:write",
+  ),
   TEACHER: [
     "students:read",
     "parents:read",
@@ -68,7 +72,6 @@ const MATRIX: Record<UserRole, Permission[]> = {
     "notices:read",
     "notices:write",
     "timetable:read",
-    "fees:read",
     "search:read",
     "invitations:write",
   ],

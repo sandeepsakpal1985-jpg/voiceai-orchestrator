@@ -47,14 +47,25 @@ export async function authRoutes(app: FastifyInstance) {
           type: body.type,
           city: body.city,
           state: body.state,
+          billingMode: "LIVE",
         },
       });
       if (partner) {
+        const cfg = await tx.platformBillingConfig.findUnique({ where: { id: "platform" } });
+        const periodEnd = new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000);
         await tx.tenantSubscription.create({
           data: {
             institutionId: institution.id,
             planId: partner.id,
             startsAt: new Date(),
+            endsAt: periodEnd,
+            renewalDate: periodEnd,
+            gracePeriodDays: cfg?.gracePeriodDays ?? 7,
+            currency: partner.currency,
+            commercialMode: partner.commercialMode,
+            studentUnitPricePaise: partner.amountPaisePerStudentYear,
+            klunexUnitRealizationPaise: partner.klunexSharePaise,
+            partnerUnitSharePaise: partner.partnerSharePaise,
           },
         });
       }

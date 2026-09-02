@@ -293,7 +293,9 @@ export const student360Schema = z.object({
   fees: z
     .object({
       status: z.string(),
-      pendingPaise: z.number(),
+      label: z.string(),
+      pendingPaise: z.number().int(),
+      totalPaise: z.number().int(),
       dueDate: z.string().nullable(),
     })
     .nullable(),

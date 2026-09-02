@@ -208,7 +208,9 @@ export async function assembleStudent360(institutionId: string, studentId: strin
       ? {
           status: invoice.status,
           pendingPaise: invoice.totalPaise - invoice.paidPaise,
+          totalPaise: invoice.totalPaise,
           dueDate: invoice.dueDate ? isoDate(invoice.dueDate) : null,
+          label: invoice.totalPaise - invoice.paidPaise <= 0 ? "Paid" : "Pending",
         }
       : null,
     metadata: { generatedAt: new Date().toISOString() },

@@ -44,6 +44,8 @@ export const NOTIFICATION_TYPES = [
   "ASSIGNMENT_CREATED",
   "NOTICE_PUBLISHED",
   "TIMETABLE_CHANGED",
+  "INVOICE_ISSUED",
+  "SUBSCRIPTION_RENEWAL_DUE",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 export const NOTIFICATION_RETENTION_DAYS = 90;

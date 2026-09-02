@@ -134,6 +134,8 @@ export async function peopleRoutes(app: FastifyInstance) {
       return created;
     });
     await writeAudit(req, "student.create", "Student", student.id);
+    const { entitleStudent } = await import("../billing/entitlement-service.js");
+    await entitleStudent(tenant.institutionId, student.id);
     return reply.code(201).send(student);
   });
 

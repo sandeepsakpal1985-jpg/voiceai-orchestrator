@@ -41,6 +41,12 @@ export function requireTenant(req: FastifyRequest): AuthUser & { institutionId: 
   return user as AuthUser & { institutionId: string };
 }
 
+export function requireSuperAdmin(req: FastifyRequest): AuthUser {
+  const user = requireUser(req);
+  if (user.role !== "SUPER_ADMIN") throw forbidden();
+  return user;
+}
+
 export function requirePermission(req: FastifyRequest, permission: Permission): AuthUser {
   const user = requireUser(req);
   if (!can(user.role as UserRole, permission)) throw forbidden();
