@@ -25,6 +25,7 @@ export function LoginPage() {
       if (res.user.role === "PARENT") navigate("/parent");
       else if (res.user.role === "STUDENT") navigate("/student");
       else if (res.user.role === "TEACHER") navigate("/attendance");
+      else if (res.user.role === "SUPER_ADMIN") navigate("/commercial");
       else navigate("/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

@@ -23,18 +23,17 @@ export function FeeStatus({ fees }: { fees: Student360["fees"] }) {
         Fees
       </h2>
       {!fees ? (
-        <p className="hint">Fees not configured.</p>
-      ) : fees.pendingPaise <= 0 ? (
-        <>
-          <div className="value">Paid</div>
-          <p className="hint">₹0 pending</p>
-        </>
+        <p className="hint">Fees not configured</p>
       ) : (
         <>
-          <div className="value">₹{(fees.pendingPaise / 100).toLocaleString("en-IN")}</div>
+          <div className="value" data-testid="fee-status">
+            {fees.label}
+          </div>
           <p className="hint">
-            {fees.status}
-            {fees.dueDate ? ` · due ${fees.dueDate}` : ""}
+            {fees.label === "Paid"
+              ? "No amount due"
+              : `₹${(fees.pendingPaise / 100).toLocaleString("en-IN")} due`}
+            {fees.dueDate ? ` · ${fees.dueDate}` : ""}
           </p>
         </>
       )}

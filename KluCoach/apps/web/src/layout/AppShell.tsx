@@ -12,6 +12,7 @@ import {
   LogOut,
   Upload,
   Users,
+  Wallet,
 } from "lucide-react";
 import { api, auth, setCsrf, type Me } from "../api";
 import { useUnreadCount } from "../notifications/NotificationCenter";
@@ -20,7 +21,7 @@ export function AppShell() {
   const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState("");
   const navigate = useNavigate();
-  const unread = useUnreadCount(Boolean(me));
+  const unread = useUnreadCount(Boolean(me?.institution));
   const unreadCount = unread.data?.unreadCount ?? 0;
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export function AppShell() {
           if (data.user.role === "PARENT") navigate("/parent", { replace: true });
           else if (data.user.role === "STUDENT") navigate("/student", { replace: true });
           else if (data.user.role === "TEACHER") navigate("/attendance", { replace: true });
+          else if (data.user.role === "SUPER_ADMIN") navigate("/commercial", { replace: true });
           else navigate("/admin", { replace: true });
         }
       })
@@ -46,7 +48,8 @@ export function AppShell() {
   if (!me) return <div className="main">Loading…</div>;
 
   const role = me.user.role;
-  const adminish = ["INSTITUTION_ADMIN", "TEACHER", "STAFF", "SUPER_ADMIN"].includes(role);
+  const platform = role === "SUPER_ADMIN" && !me.institution;
+  const adminish = ["INSTITUTION_ADMIN", "TEACHER", "STAFF"].includes(role);
 
   return (
     <div className="shell">
@@ -57,6 +60,11 @@ export function AppShell() {
         <div className="hint" style={{ color: "#cfc3ad", padding: "8px 12px" }}>
           {me.institution?.name}
         </div>
+        {platform && (
+          <NavLink to="/commercial">
+            <Wallet size={16} aria-hidden /> Commercial
+          </NavLink>
+        )}
         {role === "PARENT" && (
           <NavLink to="/parent">
             <Home size={16} aria-hidden /> Home
@@ -67,10 +75,17 @@ export function AppShell() {
             <Home size={16} aria-hidden /> Home
           </NavLink>
         )}
+        {!platform && (
         <NavLink to="/notifications" aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}>
           <Bell size={16} aria-hidden /> Notifications
           {unreadCount ? <span className="badge">{unreadCount}</span> : null}
         </NavLink>
+        )}
+        {role === "INSTITUTION_ADMIN" && (
+          <NavLink to="/billing">
+            <Wallet size={16} aria-hidden /> Billing
+          </NavLink>
+        )}
         {adminish && (
           <NavLink to="/admin">
             <LayoutDashboard size={16} aria-hidden /> Dashboard
@@ -81,12 +96,12 @@ export function AppShell() {
             <Users size={16} aria-hidden /> Students
           </NavLink>
         )}
-        {["INSTITUTION_ADMIN", "STAFF", "SUPER_ADMIN"].includes(role) && (
+        {["INSTITUTION_ADMIN", "STAFF"].includes(role) && (
           <NavLink to="/parents">
             <Users size={16} aria-hidden /> Parents
           </NavLink>
         )}
-        {["INSTITUTION_ADMIN", "STAFF", "SUPER_ADMIN"].includes(role) && (
+        {["INSTITUTION_ADMIN", "STAFF"].includes(role) && (
           <NavLink to="/teachers">
             <Users size={16} aria-hidden /> Teachers
           </NavLink>
@@ -106,15 +121,21 @@ export function AppShell() {
             <ClipboardList size={16} aria-hidden /> Tests
           </NavLink>
         )}
-        <NavLink to="/timetable">
-          <Calendar size={16} aria-hidden /> Timetable
-        </NavLink>
-        <NavLink to="/assignments">
-          <BookOpen size={16} aria-hidden /> Assignments
-        </NavLink>
-        <NavLink to="/notices">
-          <Bell size={16} aria-hidden /> Notices
-        </NavLink>
+        {!platform && (
+          <NavLink to="/timetable">
+            <Calendar size={16} aria-hidden /> Timetable
+          </NavLink>
+        )}
+        {!platform && (
+          <NavLink to="/assignments">
+            <BookOpen size={16} aria-hidden /> Assignments
+          </NavLink>
+        )}
+        {!platform && (
+          <NavLink to="/notices">
+            <Bell size={16} aria-hidden /> Notices
+          </NavLink>
+        )}
         {role === "INSTITUTION_ADMIN" && (
           <NavLink to="/import">
             <Upload size={16} aria-hidden /> Import

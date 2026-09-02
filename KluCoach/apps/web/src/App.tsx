@@ -17,6 +17,8 @@ import { ParentsPage } from "./parents/ParentsPage";
 import { TeachersPage } from "./teachers/TeachersPage";
 import { AssignmentsPage } from "./assignments/AssignmentsPage";
 import { NotificationCenter } from "./notifications/NotificationCenter";
+import { InstitutionBillingPage } from "./billing/InstitutionBillingPage";
+import { CommercialReportPage } from "./billing/CommercialReportPage";
 
 export function App() {
   return (
@@ -39,6 +41,8 @@ export function App() {
         <Route path="/timetable" element={<TimetablePage />} />
         <Route path="/assignments" element={<AssignmentsPage />} />
         <Route path="/notifications" element={<NotificationCenter />} />
+        <Route path="/billing" element={<InstitutionBillingPage />} />
+        <Route path="/commercial" element={<CommercialReportPage />} />
         <Route path="/import" element={<ImportPage />} />
       </Route>
     </Routes>
