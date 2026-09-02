@@ -37,6 +37,10 @@ async function main() {
   await prisma.studentGuardian.deleteMany();
   await prisma.invitation.deleteMany();
   await prisma.studentEntitlement.deleteMany();
+  await prisma.billingRefund.deleteMany();
+  await prisma.billingPayment.deleteMany();
+  await prisma.billingInvoiceLine.deleteMany();
+  await prisma.billingInvoice.deleteMany();
   await prisma.receipt.deleteMany();
   await prisma.feeRefund.deleteMany();
   await prisma.feeDiscount.deleteMany();
@@ -56,21 +60,38 @@ async function main() {
   await prisma.tenantSubscription.deleteMany();
   await prisma.user.deleteMany();
   await prisma.institution.deleteMany();
+  await prisma.platformBillingConfig.deleteMany();
   await prisma.subscriptionPlan.deleteMany();
+
+  await prisma.platformBillingConfig.create({
+    data: { id: "platform", currency: "INR", billingPeriod: "ANNUAL", gracePeriodDays: 7, billableStudentStatuses: ["ACTIVE"] },
+  });
 
   const direct = await prisma.subscriptionPlan.create({
     data: {
       code: "DIRECT",
       name: "Direct",
+      description: "Direct / public list reference. Amounts are configuration, not code.",
+      product: "KLUCOACH",
+      billingPeriod: "ANNUAL",
+      currency: "INR",
+      commercialMode: "DIRECT",
+      listPricePaise: 199900,
       amountPaisePerStudentYear: 199900,
       klunexSharePaise: 199900,
       partnerSharePaise: 0,
     },
   });
-  await prisma.subscriptionPlan.create({
+  const partner = await prisma.subscriptionPlan.create({
     data: {
       code: "PARTNER",
       name: "Partner",
+      description: "Institution partner plan (demo configuration).",
+      product: "KLUCOACH",
+      billingPeriod: "ANNUAL",
+      currency: "INR",
+      commercialMode: "PARTNER",
+      listPricePaise: 199900,
       amountPaisePerStudentYear: 99900,
       klunexSharePaise: 50000,
       partnerSharePaise: 49900,
@@ -80,6 +101,12 @@ async function main() {
     data: {
       code: "PREMIUM",
       name: "Premium",
+      description: "Premium direct plan.",
+      product: "KLUCOACH",
+      billingPeriod: "ANNUAL",
+      currency: "INR",
+      commercialMode: "DIRECT",
+      listPricePaise: 299900,
       amountPaisePerStudentYear: 299900,
       klunexSharePaise: 299900,
       partnerSharePaise: 0,
@@ -102,7 +129,8 @@ async function main() {
     city: "Mumbai",
     state: "Maharashtra",
     passwordHash,
-    planId: direct.id,
+    plan: partner,
+    billingMode: "NON_BILLABLE",
     primary: true,
   });
 
@@ -111,7 +139,8 @@ async function main() {
     city: "Pune",
     state: "Maharashtra",
     passwordHash,
-    planId: direct.id,
+    plan: direct,
+    billingMode: "NON_BILLABLE",
     primary: false,
   });
 
@@ -125,7 +154,16 @@ async function seedTenant(opts: {
   city: string;
   state: string;
   passwordHash: string;
-  planId: string;
+  plan: {
+    id: string;
+    currency: string;
+    commercialMode: string;
+    amountPaisePerStudentYear: number;
+    klunexSharePaise: number;
+    partnerSharePaise: number;
+    name: string;
+  };
+  billingMode: string;
   primary: boolean;
 }) {
   const institution = await prisma.institution.create({
@@ -141,15 +179,26 @@ async function seedTenant(opts: {
       email: opts.primary ? "hello@demo.example.test" : "hello@other.example.test",
       phone: opts.primary ? "+910000000001" : "+910000000002",
       status: "ACTIVE",
+      billingMode: opts.billingMode,
     },
   });
 
-  await prisma.tenantSubscription.create({
+  const startsAt = date("2026-04-01");
+  const endsAt = date("2027-03-31");
+  const subscription = await prisma.tenantSubscription.create({
     data: {
       institutionId: institution.id,
-      planId: opts.planId,
-      startsAt: new Date(),
+      planId: opts.plan.id,
+      startsAt,
+      endsAt,
+      renewalDate: date("2027-04-01"),
       status: "ACTIVE",
+      currency: opts.plan.currency,
+      commercialMode: opts.plan.commercialMode,
+      studentUnitPricePaise: opts.plan.amountPaisePerStudentYear,
+      klunexUnitRealizationPaise: opts.plan.klunexSharePaise,
+      partnerUnitSharePaise: opts.plan.partnerSharePaise,
+      gracePeriodDays: 7,
     },
   });
 
@@ -557,6 +606,91 @@ async function seedTenant(opts: {
       status: "PARTIAL",
     },
   });
+
+  for (const row of students) {
+    await prisma.studentEntitlement.create({
+      data: {
+        institutionId: institution.id,
+        studentId: row.student.id,
+        subscriptionId: subscription.id,
+        startsAt,
+        endsAt,
+        unitPricePaise: opts.plan.amountPaisePerStudentYear,
+        status: "ACTIVE",
+      },
+    });
+  }
+
+  const billable = students.length;
+  const unit = opts.plan.amountPaisePerStudentYear;
+  const gross = billable * unit;
+  const issued = await prisma.billingInvoice.create({
+    data: {
+      institutionId: institution.id,
+      subscriptionId: subscription.id,
+      invoiceNumber: opts.primary ? "KC-2026-0001" : "KC-2026-B001",
+      issueDate: date("2026-04-01"),
+      dueDate: date("2026-04-15"),
+      currency: opts.plan.currency,
+      subtotalPaise: gross,
+      totalPaise: gross,
+      paidPaise: 0,
+      status: "ISSUED",
+      dedupeKey: `issue:${subscription.id}:2026-04-01:2027-03-31`,
+      lines: {
+        create: {
+          description: `KluCoach student subscription (${opts.plan.name}) — demo data`,
+          studentCount: billable,
+          unitPricePaise: unit,
+          amountPaise: gross,
+          periodStart: date("2026-04-01"),
+          periodEnd: date("2027-03-31"),
+        },
+      },
+    },
+  });
+
+  const priorGross = unit * Math.min(2, billable);
+  const paidInv = await prisma.billingInvoice.create({
+    data: {
+      institutionId: institution.id,
+      subscriptionId: subscription.id,
+      invoiceNumber: opts.primary ? "KC-2025-0001" : "KC-2025-B001",
+      issueDate: date("2025-04-01"),
+      dueDate: date("2025-04-15"),
+      currency: opts.plan.currency,
+      subtotalPaise: priorGross,
+      totalPaise: priorGross,
+      paidPaise: priorGross,
+      status: "PAID",
+      dedupeKey: `issue:${subscription.id}:2025-04-01:2026-03-31`,
+      lines: {
+        create: {
+          description: `KluCoach student subscription (${opts.plan.name}) — prior period demo`,
+          studentCount: Math.min(2, billable),
+          unitPricePaise: unit,
+          amountPaise: priorGross,
+          periodStart: date("2025-04-01"),
+          periodEnd: date("2026-03-31"),
+        },
+      },
+    },
+  });
+  await prisma.billingPayment.create({
+    data: {
+      institutionId: institution.id,
+      invoiceId: paidInv.id,
+      amountPaise: priorGross,
+      currency: opts.plan.currency,
+      paymentDate: date("2025-04-10"),
+      method: "MANUAL",
+      status: "SUCCESS",
+      provider: "MANUAL",
+      providerReference: "DEMO-MANUAL",
+      dedupeKey: `pay:${paidInv.id}:seed`,
+    },
+  });
+  void issued;
 
   return { institutionId: institution.id };
 }

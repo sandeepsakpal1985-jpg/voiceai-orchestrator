@@ -144,8 +144,35 @@ enum InvoiceStatus {
 
 enum EntitlementStatus {
   ACTIVE
+  GRACE
   EXPIRED
   CANCELLED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  EXPIRED
+  CANCELLED
+}
+
+enum BillingInvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+  REFUNDED
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
 }
 
 enum ImportJobStatus {
@@ -181,6 +208,7 @@ model Institution {
   website     String?
   logoFileId  String?           @map("logo_file_id")
   status      InstitutionStatus @default(ACTIVE)
+  billingMode String            @default("LIVE") @map("billing_mode")
   settings    Json              @default("{}")
   createdAt   DateTime          @default(now()) @map("created_at")
   updatedAt   DateTime          @updatedAt @map("updated_at")
@@ -209,6 +237,8 @@ model Institution {
   feeInvoices          FeeInvoice[]
   tenantSubscription   TenantSubscription?
   studentEntitlements  StudentEntitlement[]
+  billingInvoices      BillingInvoice[]
+  billingPayments      BillingPayment[]
   auditLogs            AuditLog[]
   importJobs           ImportJob[]
 
@@ -946,15 +976,23 @@ model FeeRefund {
 }
 
 model SubscriptionPlan {
-  id                         String   @id @default(cuid())
-  code                       String   @unique
-  name                       String
-  amountPaisePerStudentYear  Int      @map("amount_paise_per_student_year")
-  klunexSharePaise           Int      @map("klunex_share_paise")
-  partnerSharePaise          Int      @map("partner_share_paise")
-  isActive                   Boolean  @default(true) @map("is_active")
-  createdAt                  DateTime @default(now()) @map("created_at")
-  updatedAt                  DateTime @updatedAt @map("updated_at")
+  id                        String    @id @default(cuid())
+  code                      String    @unique
+  name                      String
+  description               String    @default("")
+  product                   String    @default("KLUCOACH")
+  billingPeriod             String    @default("ANNUAL") @map("billing_period")
+  currency                  String    @default("INR")
+  commercialMode            String    @default("PARTNER") @map("commercial_mode")
+  listPricePaise            Int       @map("list_price_paise")
+  amountPaisePerStudentYear Int       @map("amount_paise_per_student_year")
+  klunexSharePaise          Int       @map("klunex_share_paise")
+  partnerSharePaise         Int       @map("partner_share_paise")
+  isActive                  Boolean   @default(true) @map("is_active")
+  effectiveFrom             DateTime? @map("effective_from")
+  effectiveTo               DateTime? @map("effective_to")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
 
   tenantSubscriptions TenantSubscription[]
 
@@ -962,39 +1000,154 @@ model SubscriptionPlan {
 }
 
 model TenantSubscription {
-  id            String             @id @default(cuid())
-  institutionId String             @unique @map("institution_id")
-  planId        String             @map("plan_id")
-  startsAt      DateTime           @map("starts_at")
-  endsAt        DateTime?          @map("ends_at")
-  status        EntitlementStatus  @default(ACTIVE)
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
+  id                         String             @id @default(cuid())
+  institutionId              String             @unique @map("institution_id")
+  planId                     String             @map("plan_id")
+  status                     SubscriptionStatus @default(ACTIVE)
+  startsAt                   DateTime           @map("starts_at")
+  endsAt                     DateTime?          @map("ends_at")
+  renewalDate                DateTime?          @map("renewal_date") @db.Date
+  currency                   String             @default("INR")
+  commercialMode             String             @default("PARTNER") @map("commercial_mode")
+  studentUnitPricePaise      Int                @map("student_unit_price_paise")
+  klunexUnitRealizationPaise Int                @map("klunex_unit_realization_paise")
+  partnerUnitSharePaise      Int                @map("partner_unit_share_paise")
+  includedStudents           Int?               @map("included_students")
+  gracePeriodDays            Int                @default(7) @map("grace_period_days")
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
 
   institution  Institution          @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   plan         SubscriptionPlan     @relation(fields: [planId], references: [id], onDelete: Restrict)
   entitlements StudentEntitlement[]
+  invoices     BillingInvoice[]
 
+  @@index([status])
   @@map("tenant_subscriptions")
 }
 
 model StudentEntitlement {
-  id            String            @id @default(cuid())
-  institutionId String            @map("institution_id")
-  studentId     String            @map("student_id")
-  subscriptionId String           @map("subscription_id")
-  startsAt      DateTime          @map("starts_at")
-  endsAt        DateTime?         @map("ends_at")
-  status        EntitlementStatus @default(ACTIVE)
-  createdAt     DateTime          @default(now()) @map("created_at")
+  id             String            @id @default(cuid())
+  institutionId  String            @map("institution_id")
+  studentId      String            @map("student_id")
+  subscriptionId String            @map("subscription_id")
+  status         EntitlementStatus @default(ACTIVE)
+  startsAt       DateTime          @map("starts_at")
+  endsAt         DateTime?         @map("ends_at")
+  unitPricePaise Int               @map("unit_price_paise")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
 
-  institution  Institution         @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  student      Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subscription TenantSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  institution  Institution        @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subscription TenantSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
-  @@index([institutionId])
+  @@unique([subscriptionId, studentId])
+  @@index([institutionId, status])
   @@index([studentId])
   @@map("student_entitlements")
+}
+
+model PlatformBillingConfig {
+  id                      String   @id @default("platform")
+  currency                String   @default("INR")
+  billingPeriod           String   @default("ANNUAL") @map("billing_period")
+  gracePeriodDays         Int      @default(7) @map("grace_period_days")
+  billableStudentStatuses String[] @default(["ACTIVE"]) @map("billable_student_statuses")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_billing_config")
+}
+
+model BillingInvoice {
+  id             String               @id @default(cuid())
+  institutionId  String               @map("institution_id")
+  subscriptionId String               @map("subscription_id")
+  invoiceNumber  String               @map("invoice_number")
+  issueDate      DateTime             @map("issue_date") @db.Date
+  dueDate        DateTime?            @map("due_date") @db.Date
+  currency       String               @default("INR")
+  subtotalPaise  Int                  @map("subtotal_paise")
+  discountPaise  Int                  @default(0) @map("discount_paise")
+  taxPaise       Int                  @default(0) @map("tax_paise")
+  taxRateBps     Int                  @default(0) @map("tax_rate_bps")
+  taxInclusive   Boolean              @default(false) @map("tax_inclusive")
+  totalPaise     Int                  @map("total_paise")
+  paidPaise      Int                  @default(0) @map("paid_paise")
+  status         BillingInvoiceStatus @default(DRAFT)
+  dedupeKey      String               @map("dedupe_key")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  institution  Institution        @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  subscription TenantSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  lines        BillingInvoiceLine[]
+  payments     BillingPayment[]
+  refunds      BillingRefund[]
+
+  @@unique([institutionId, invoiceNumber])
+  @@unique([institutionId, dedupeKey])
+  @@index([institutionId, createdAt])
+  @@index([status])
+  @@map("billing_invoices")
+}
+
+model BillingInvoiceLine {
+  id             String   @id @default(cuid())
+  invoiceId      String   @map("invoice_id")
+  description    String
+  studentCount   Int      @map("student_count")
+  unitPricePaise Int      @map("unit_price_paise")
+  amountPaise    Int      @map("amount_paise")
+  periodStart    DateTime @map("period_start") @db.Date
+  periodEnd      DateTime @map("period_end") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  invoice BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("billing_invoice_lines")
+}
+
+model BillingPayment {
+  id                String               @id @default(cuid())
+  institutionId     String               @map("institution_id")
+  invoiceId         String               @map("invoice_id")
+  amountPaise       Int                  @map("amount_paise")
+  currency          String               @default("INR")
+  paymentDate       DateTime             @map("payment_date") @db.Date
+  method            String               @default("MANUAL")
+  status            BillingPaymentStatus @default(SUCCESS)
+  provider          String               @default("MANUAL")
+  providerReference String?              @map("provider_reference")
+  dedupeKey         String               @map("dedupe_key")
+  createdAt         DateTime             @default(now()) @map("created_at")
+
+  institution Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  invoice     BillingInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  refunds     BillingRefund[]
+
+  @@unique([institutionId, dedupeKey])
+  @@index([institutionId])
+  @@index([invoiceId])
+  @@map("billing_payments")
+}
+
+model BillingRefund {
+  id          String   @id @default(cuid())
+  invoiceId   String   @map("invoice_id")
+  paymentId   String   @map("payment_id")
+  amountPaise Int      @map("amount_paise")
+  reason      String?
+  dedupeKey   String   @map("dedupe_key")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  invoice BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  payment BillingPayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, dedupeKey])
+  @@index([invoiceId])
+  @@map("billing_refunds")
 }
 
 model AuditLog {
