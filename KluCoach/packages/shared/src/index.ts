@@ -10,6 +10,8 @@ export {
   STUDENT_360_STATUSES,
   STUDENT_360_TRENDS,
   NOTICE_AUDIENCES,
+  NOTIFICATION_TYPES,
+  NOTIFICATION_RETENTION_DAYS,
   GUARDIAN_RELATIONSHIPS,
   DAYS_OF_WEEK,
   SESSION_COOKIE,
@@ -17,5 +19,5 @@ export {
   CSRF_HEADER,
   ERROR_CODES,
 } from "./constants.js";
-export type { UserRole, InstitutionType, AttendanceStatus } from "./constants.js";
+export type { UserRole, InstitutionType, AttendanceStatus, NotificationType } from "./constants.js";
 export * from "./schemas.js";

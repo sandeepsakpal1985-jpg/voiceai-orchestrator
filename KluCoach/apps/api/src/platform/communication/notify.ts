@@ -3,21 +3,23 @@ import type { NotificationChannel } from "@klunex-edu/database";
 
 export interface NotificationProvider {
   channel: NotificationChannel;
-  send(input: { to: string; title: string; body: string }): Promise<void>;
+  send(input: { to: string; title: string }): Promise<void>;
 }
 
 class InAppProvider implements NotificationProvider {
   channel = "IN_APP" as const;
   async send() {
-    /* persisted separately */
+    /* persisted by NotificationService */
   }
 }
 
 class EmailProvider implements NotificationProvider {
   channel = "EMAIL" as const;
-  async send(input: { to: string; title: string; body: string }) {
-    if (!process.env.SMTP_HOST) {
-      console.info(JSON.stringify({ msg: "email_skipped", to: input.to, title: input.title }));
+  configured() {
+    return Boolean(process.env.SMTP_HOST);
+  }
+  async send(input: { to: string; title: string }) {
+    if (!this.configured()) {
       return;
     }
     console.info(JSON.stringify({ msg: "email_queued", to: input.to, title: input.title }));
@@ -27,17 +29,20 @@ class EmailProvider implements NotificationProvider {
 class NotConfiguredProvider implements NotificationProvider {
   constructor(public channel: NotificationChannel) {}
   async send() {
-    console.info(JSON.stringify({ msg: "channel_not_configured", channel: this.channel }));
+    /* SMS / WhatsApp / push are not instantiated for delivery */
   }
 }
 
-const providers: Record<NotificationChannel, NotificationProvider> = {
+export const emailProvider = new EmailProvider();
+
+export const providers: Record<NotificationChannel, NotificationProvider> = {
   IN_APP: new InAppProvider(),
-  EMAIL: new EmailProvider(),
+  EMAIL: emailProvider,
   SMS: new NotConfiguredProvider("SMS"),
   WHATSAPP: new NotConfiguredProvider("WHATSAPP"),
 };
 
+/** Legacy helper used by invitation creation. Deduped per invitation. */
 export async function notifyUser(opts: {
   institutionId: string;
   userId: string;
@@ -45,22 +50,18 @@ export async function notifyUser(opts: {
   body: string;
   channels?: NotificationChannel[];
   email?: string | null;
+  dedupeKey?: string;
 }) {
-  const channels = opts.channels ?? ["IN_APP"];
-  if (channels.includes("IN_APP")) {
-    await prisma.notification.create({
-      data: {
-        institutionId: opts.institutionId,
-        userId: opts.userId,
-        channel: "IN_APP",
-        title: opts.title,
-        body: opts.body,
-      },
-    });
-  }
-  if (channels.includes("EMAIL") && opts.email) {
-    await providers.EMAIL.send({ to: opts.email, title: opts.title, body: opts.body });
-  }
+  const { deliverNotification } = await import("./notification-service.js");
+  await deliverNotification({
+    institutionId: opts.institutionId,
+    userId: opts.userId,
+    type: "GENERIC",
+    title: opts.title,
+    body: opts.body,
+    href: "",
+    dedupeKey: opts.dedupeKey ?? `GENERIC:${opts.userId}:${opts.title}`,
+    email: opts.email,
+    channels: (opts.channels ?? ["IN_APP"]).filter((c): c is "IN_APP" | "EMAIL" => c === "IN_APP" || c === "EMAIL"),
+  });
 }
-
-export { providers };

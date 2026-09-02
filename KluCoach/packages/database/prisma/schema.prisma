@@ -203,6 +203,7 @@ model Institution {
   assignments          Assignment[]
   notices              Notice[]
   notifications        Notification[]
+  notificationPreferences NotificationPreference[]
   fileObjects          FileObject[]
   feePlans             FeePlan[]
   feeInvoices          FeeInvoice[]
@@ -264,6 +265,7 @@ model User {
   createdAssignments   Assignment[]       @relation("AssignmentCreator")
   createdNotices       Notice[]           @relation("NoticeCreator")
   notifications        Notification[]
+  notificationPreference NotificationPreference?
   uploadedFiles        FileObject[]       @relation("FileUploader")
   auditLogs            AuditLog[]
   createdImportJobs    ImportJob[]
@@ -378,6 +380,7 @@ model Student {
   invitations      Invitation[]
   entitlements     StudentEntitlement[]
   feeInvoices      FeeInvoice[]
+  notifications    Notification[]
 
   @@unique([institutionId, admissionNumber])
   @@index([institutionId])
@@ -792,18 +795,47 @@ model Notification {
   id            String              @id @default(cuid())
   institutionId String              @map("institution_id")
   userId        String              @map("user_id")
+  studentId     String?             @map("student_id")
   channel       NotificationChannel @default(IN_APP)
+  type          String              @default("GENERIC")
   title         String
   body          String
+  href          String              @default("")
+  dedupeKey     String              @map("dedupe_key")
   readAt        DateTime?           @map("read_at")
   payload       Json                @default("{}")
   createdAt     DateTime            @default(now()) @map("created_at")
 
   institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student     Student?    @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
+  @@unique([institutionId, userId, dedupeKey])
   @@index([institutionId, userId, createdAt])
+  @@index([institutionId, userId, readAt])
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id               String   @id @default(cuid())
+  institutionId    String   @map("institution_id")
+  userId           String   @unique @map("user_id")
+  attendanceAlerts Boolean  @default(true) @map("attendance_alerts")
+  resultAlerts     Boolean  @default(true) @map("result_alerts")
+  assignmentAlerts Boolean  @default(true) @map("assignment_alerts")
+  noticeAlerts     Boolean  @default(true) @map("notice_alerts")
+  timetableAlerts  Boolean  @default(true) @map("timetable_alerts")
+  feeAlerts        Boolean  @default(false) @map("fee_alerts")
+  channelInApp     Boolean  @default(true) @map("channel_in_app")
+  channelEmail     Boolean  @default(true) @map("channel_email")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+  @@map("notification_preferences")
 }
 
 model FileObject {

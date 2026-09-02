@@ -8,6 +8,7 @@ import {
   GUARDIAN_RELATIONSHIPS,
   INSTITUTION_TYPES,
   NOTICE_AUDIENCES,
+  NOTIFICATION_TYPES,
   STAFF_STATUSES,
   STUDENT_360_STATUSES,
   STUDENT_360_TRENDS,
@@ -299,3 +300,29 @@ export const student360Schema = z.object({
   metadata: z.object({ generatedAt: z.string() }),
 });
 export type Student360 = z.infer<typeof student360Schema>;
+
+export const notificationPreferenceSchema = z.object({
+  attendanceAlerts: z.boolean(),
+  resultAlerts: z.boolean(),
+  assignmentAlerts: z.boolean(),
+  noticeAlerts: z.boolean(),
+  timetableAlerts: z.boolean(),
+  feeAlerts: z.boolean(),
+  channelInApp: z.boolean(),
+  channelEmail: z.boolean(),
+});
+export const notificationPreferencePatchSchema = notificationPreferenceSchema.partial();
+export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;
+
+export const notificationItemSchema = z.object({
+  id: z.string(),
+  type: z.enum(NOTIFICATION_TYPES),
+  title: z.string(),
+  body: z.string(),
+  href: z.string(),
+  studentId: z.string().nullable(),
+  studentName: z.string().nullable(),
+  readAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type NotificationItem = z.infer<typeof notificationItemSchema>;

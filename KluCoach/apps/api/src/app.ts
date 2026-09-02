@@ -17,6 +17,7 @@ import { academicsRoutes } from "./platform/academics/academics-routes.js";
 import { academicWorkRoutes } from "./platform/academics/academic-work-routes.js";
 import { dashboardRoutes } from "./platform/dashboard/dashboard-routes.js";
 import { opsRoutes } from "./platform/ops/ops-routes.js";
+import { notificationRoutes } from "./platform/communication/notification-routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -79,6 +80,7 @@ export async function buildApp() {
   await app.register(academicsRoutes);
   await app.register(academicWorkRoutes);
   await app.register(dashboardRoutes);
+  await app.register(notificationRoutes);
   await app.register(opsRoutes);
 
   return app;

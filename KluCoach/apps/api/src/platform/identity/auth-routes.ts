@@ -255,6 +255,7 @@ export async function authRoutes(app: FastifyInstance) {
         body: `Invitation created for ${body.email}`,
         channels: ["IN_APP", "EMAIL"],
         email: body.email,
+        dedupeKey: `GENERIC:invitation:${invite.id}`,
       });
     }
     await writeAudit(req, "invitation.create", "Invitation", invite.id, { type: body.type });
