@@ -158,10 +158,21 @@ See [ADR-001](./adr/ADR-001-multi-tenancy.md), [ADR-003](./adr/ADR-003-authentic
 Ports, not vendors:
 
 - `FileStorage` — local filesystem implementation in MVP
-- `NotificationProvider` — `InAppProvider` + `EmailProvider` (console/log if SMTP unset)
-- SMS/WhatsApp — interfaces only
+- `NotificationProvider` — `InAppProvider` + `EmailProvider` (no-op without `SMTP_HOST`)
+- SMS/WhatsApp — interfaces only; not instantiated for delivery
 
-See [ADR-005](./adr/ADR-005-file-storage.md), [ADR-006](./adr/ADR-006-notification-architecture.md).
+Engagement path (Phase 4):
+
+```
+domain write (attendance / results / assignment / notice / session)
+  → on* event in notification-events.ts
+  → NotificationService.deliverNotification
+       (prefs + recipient from session tenant + relationships)
+  → IN_APP row (deduped)
+  → parent/student NotificationCenter → ordinary authorized route
+```
+
+See [ADR-005](./adr/ADR-005-file-storage.md), [ADR-006](./adr/ADR-006-notification-architecture.md), [ADR-012](./adr/ADR-012-notification-engagement.md).
 
 ---
 
@@ -175,6 +186,7 @@ apps/web/src/
   klucoach/     product components (StudentStatusCard, DataTable usage)
   students/     queries + pages
   student360/   parent/student aggregation view (ChildSelector, cards)
+  notifications/  in-app center + recent activity
   …
 ```
 
@@ -243,4 +255,12 @@ Overall status labels: Doing Well, On Track, Needs Attention, Not enough data. E
 
 Multi-child: one parent account, many `StudentGuardian` rows, same institution. Child selector is the parent home control; students have no selector.
 
-Future AI (Phase 4+ later) may summarize this DTO. It must not compute authorization or replace the status engine.
+Future AI may summarize this DTO. It must not compute authorization or replace the status engine.
+
+---
+
+## 13. Communication
+
+Notifications are tenant-scoped rows for a **session user**, optionally with `studentId` so a multi-child parent opens the correct Student 360. Recipients are never taken from the client. Pagination is server-side (`page`, `pageSize` ≤ 50) with indexes on `(institutionId, userId, createdAt)` and `(institutionId, userId, readAt)`.
+
+Retention: 90 days via `purgeExpiredNotifications` (callable; not a running scheduler). Assignment reminders are a stub until a job runner exists.

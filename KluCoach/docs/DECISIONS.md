@@ -15,6 +15,7 @@ Index of architectural decision records.
 | [ADR-009](./adr/ADR-009-operating-cost-discipline.md) | No unfunded per-student variable cost | Accepted |
 | [ADR-010](./adr/ADR-010-commodity-oss.md) | Commodity OSS vs owned domain | Accepted |
 | [ADR-011](./adr/ADR-011-student-360-aggregation.md) | Student 360 aggregation | Accepted |
+| [ADR-012](./adr/ADR-012-notification-engagement.md) | Notification engagement | Accepted |
 
 KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital schema.
 
@@ -25,3 +26,5 @@ The tenant **is** `Institution`. We did not add a second Institution table. `*In
 Phase 2: one shared DataTable; list endpoints accept optional `page` (envelope `{ items, total, page, pageSize }`) and keep unpaged array responses for compatibility. Parent invitations auto-create a guardian when `guardianId` is omitted. Marks above `maxMarks` are rejected server-side.
 
 Phase 3: Student 360 is a typed aggregation over existing domain rows (`GET /students/:id/360`). Status is deterministic (`student360-status.ts`). No AI, no Redis, no billing rebuild. See [ADR-011](./adr/ADR-011-student-360-aggregation.md).
+
+Phase 4: Domain events (absence, published results, assignment created, notice published, meaningful timetable change) go through `NotificationService`. Recipients are derived server-side. In-app is the executed channel. Email is a port (no live SMTP in this phase). SMS/WhatsApp/push are not implemented. See [ADR-012](./adr/ADR-012-notification-engagement.md). ADR-006 remains the channel-port decision.

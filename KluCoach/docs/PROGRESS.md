@@ -1,6 +1,6 @@
 # Progress
 
-Updated: 2026-09-01 (Phase 3 COMPLETE — Student 360 + parent experience)
+Updated: 2026-09-02 (Phase 4 COMPLETE — Communication, Engagement & Notifications)
 
 Validation rule: COMPLETE only with execution evidence.
 
@@ -9,82 +9,90 @@ Validation rule: COMPLETE only with execution evidence.
 | Locked foundation `47d1989` | VALIDATED | n/a | git | Not rebuilt |
 | Phase 1 security gate `70a9ecc` | VALIDATED | vitest | yes | Permanent regression |
 | Phase 2 workflows `60534fe` | VALIDATED | vitest + playwright | yes | Start of Phase 3 |
-| Student 360 aggregation API | VALIDATED | vitest | yes | `GET /students/:id/360`; Zod `student360Schema` |
-| Parent own-child / multi-child auth | VALIDATED | vitest | yes | Aarav + Diya 200; foreign / Tenant B → 404 |
-| Student own 360 / deny other | VALIDATED | vitest + playwright | yes | Own 200; sibling 360 404 |
-| Teacher assigned / unassigned | VALIDATED | vitest | yes | Assigned 200; unassigned same-tenant → 404 |
-| Admin in-tenant / cross-tenant | VALIDATED | vitest | yes | In-tenant 200; Tenant B → 404 |
-| Empty-state sibling (Diya) | VALIDATED | vitest + playwright | yes | `INSUFFICIENT_DATA`; `percent` null; no invented 0% |
-| Deterministic overall status | VALIDATED | vitest unit | yes | `student360-status.ts`; ADR-011 |
-| Parent Student 360 UI | VALIDATED | playwright | yes | One `/dashboard/parent` request; mobile 390×844 |
-| Multi-child parent E2E | VALIDATED | playwright | yes | Aarav ↔ Diya; URL / Tenant B 360 404 |
-| Student 360 E2E | VALIDATED | playwright | yes | No child switcher; timetable/assignments still reachable |
-| Phase 2 Playwright regression | VALIDATED | playwright | yes | Invite, marks, attendance, assignment, timetable, notice |
+| Phase 3 Student 360 `345f8c5` | VALIDATED | vitest + playwright | yes | Start of Phase 4 |
+| Notification model + service | VALIDATED | vitest | yes | Tenant-scoped; no client create |
+| In-app notification center | VALIDATED | playwright | yes | All / Unread; mark read; mark all read |
+| Parent notification UI | VALIDATED | playwright | yes | Bell + recent activity + Student 360 deep link |
+| Student notification UI | VALIDATED | playwright | yes | Assignment created → Assignments |
+| Attendance absence alerts | VALIDATED | vitest + playwright | yes | ABSENT only; PRESENT/LATE/EXCUSED silent |
+| Result published alerts | VALIDATED | vitest + playwright | yes | Deduped per assessment+student |
+| Assignment created alerts | VALIDATED | vitest + playwright | yes | Student + parent; unique title |
+| Notice published alerts | VALIDATED | vitest | yes | Audience computed server-side |
+| Timetable change alerts | VALIDATED | vitest | yes | Date/time/room/status/batch only |
+| Multi-child notification context | VALIDATED | playwright | yes | Aarav vs Diya href + heading |
+| Notification authorization | VALIDATED | vitest | yes | Parent/student/teacher/admin + 404 |
+| Cross-tenant notification isolation | VALIDATED | vitest | yes | Parent B / admin B 404 |
+| Deduplication | VALIDATED | vitest | yes | Unique `(institution, user, dedupeKey)` |
+| Email delivery | IMPLEMENTED — PROVIDER NOT CONFIGURED | n/a | no live SMTP | Port no-ops without `SMTP_HOST`; title-only log if set |
+| SMS / WhatsApp / Push | NOT IMPLEMENTED | n/a | n/a | Interface only |
+| Assignment due/overdue reminders | NOT IMPLEMENTED | vitest | yes | `scheduled: false`; no job runner |
+| Fee due notifications | NOT IMPLEMENTED | n/a | n/a | No fake payment alerts |
 | Password reset | NOT STARTED | | | Backlog |
 | PDF/XLSX export | NOT STARTED | | | Backlog |
-| AI assistant / LLM summaries | NOT IMPLEMENTED | | | Explicitly out of Phase 3 |
-| Payment gateway | NOT IMPLEMENTED | | | Fee invoice read-only only |
+| AI assistant / LLM summaries | NOT IMPLEMENTED | | | Out of Phase 4 |
+| Payment gateway | NOT IMPLEMENTED | | | Next phase is billing economics, not gateway yet |
 | Production deployment | NOT STARTED | | | BLOCKED — no production host |
 
-## Phase 3 exit checklist
+## Phase 4 exit checklist
 
-- [x] Student 360 aggregation API exists
-- [x] API is typed/validated
-- [x] Parent own-child access works
-- [x] Parent foreign-child access denied
-- [x] Cross-tenant access denied
-- [x] Multiple children supported
-- [x] Student own Student 360 works
-- [x] Student cannot access another student
-- [x] Teacher authorized access works
-- [x] Teacher unauthorized access denied
-- [x] Admin authorized access works
-- [x] Attendance displayed
-- [x] Academic performance displayed
-- [x] Recent results displayed
-- [x] Upcoming classes displayed
-- [x] Assignments displayed
-- [x] Notices displayed
-- [x] Fee/status displayed if available
-- [x] Empty states handled
-- [x] Overall status deterministic
-- [x] Status rules documented
-- [x] Parent mobile experience works
-- [x] Parent Playwright passes
-- [x] Multiple-child Playwright passes
-- [x] Student Playwright passes
-- [x] Existing Phase 2 Playwright workflows still pass
-- [x] Full Vitest passes (58/58)
-- [x] Full Playwright passes (13/13)
+- [x] Notification model implemented
+- [x] Notification service implemented
+- [x] In-app notification channel works
+- [x] Parent notification center works
+- [x] Student notification center works
+- [x] Read/unread state works
+- [x] Mark-all-read works
+- [x] Attendance absence notification works
+- [x] Result notification works
+- [x] Assignment notification works
+- [x] Notice notification works
+- [x] Timetable notification works (Vitest; meaningful session edits only)
+- [x] Multiple-child context works
+- [x] Deep links work
+- [x] Notification authorization tested
+- [x] Cross-tenant notification isolation tested
+- [x] ID manipulation tested (foreign notification id → 404)
+- [x] Recipient manipulation tested (no client `POST /notifications`)
+- [x] Notification deduplication tested
+- [x] Parent Playwright notification workflow passes
+- [x] Multiple-child notification Playwright passes
+- [x] Existing Phase 3 workflows still pass
+- [x] Full Vitest passes
+- [x] Full Playwright passes
 - [x] Typecheck passes
 - [x] Build passes
 - [x] Lint passes (`pnpm lint` — no package lint scripts; `--if-present` no-op)
-- [x] No critical/high security issue
+- [x] No critical/high security regression
 - [x] Documentation updated
 - [ ] Git tree clean (this session’s KluCoach commits; parent monorepo may have unrelated dirty files)
 
-## Session summary (Phase 3)
+## Session summary (Phase 4)
 
-1. **Starting commit:** `60534fe`
-2. **Ending commit:** this documentation commit on master (after `8e90c91`)
-3. **Student 360 API:** VALIDATED — `GET /students/:id/360` + parent/student dashboard wrappers
-4. **Parent experience:** VALIDATED — child selector + aggregated home
-5. **Multiple-child:** VALIDATED — Aarav and Diya; unrelated/Tenant B 404
-6. **Student experience:** VALIDATED — own 360; no sibling switch
-7. **Attendance:** VALIDATED — existing `AttendanceRecord` rows
-8. **Academic:** VALIDATED — existing results; no ranking
-9. **Assignments:** VALIDATED — existing submissions
-10. **Timetable:** VALIDATED — upcoming `SCHEDULED` sessions
-11. **Notices:** VALIDATED — existing notice model, audience-filtered
-12. **Fees:** VALIDATED — latest invoice or `null` / “Fees not configured”
-13. **Security tests:** VALIDATED — Vitest matrix + Playwright URL/API deny
-14. **Vitest:** 58/58 PASS
-15. **Playwright:** 13/13 PASS
-16. **Typecheck:** PASS
-17. **Build:** PASS
-18. **Lint:** `pnpm lint` `--if-present` no-op PASS
-19. **Tests blocked:** none
-20. **Security issues:** none found in this phase’s executed suites
-21. **Documentation:** PROGRESS, ARCHITECTURE, TESTING, ROADMAP, DECISIONS, ADR-011
-22. **Remaining work:** password reset, export, communication/notifications (Phase 4), billing, AI
-23. **Exact next phase:** **Communication / engagement + notifications** — not more admin CRUD
+1. **Starting commit:** `345f8c5`
+2. **Ending commit:** documentation commit on master (after notification e2e)
+3. **Notification architecture:** VALIDATED — domain events → `NotificationService` → IN_APP rows; recipients from relationships
+4. **In-app:** VALIDATED — list, unread count, mark read, mark all read
+5. **Parent experience:** VALIDATED — bell, recent activity, deep link to `/parent?studentId=`
+6. **Student experience:** VALIDATED — assignment/result/notice/timetable in-app; no parent-only fee alerts
+7. **Attendance:** VALIDATED — ABSENT only
+8. **Results:** VALIDATED — published results; deduped on re-save
+9. **Assignments:** VALIDATED — created; reminders NOT IMPLEMENTED
+10. **Notices:** VALIDATED — audience computed server-side
+11. **Timetable:** VALIDATED — Vitest on meaningful session edits
+12. **Email:** IMPLEMENTED — PROVIDER NOT CONFIGURED
+13. **SMS/WhatsApp/Push:** NOT IMPLEMENTED
+14. **Authorization tests:** VALIDATED
+15. **Tenant isolation:** VALIDATED
+16. **Idempotency:** VALIDATED
+17. **Vitest:** 63/63 PASS
+18. **Playwright:** 17/17 PASS
+19. **Typecheck:** PASS
+20. **Build:** PASS
+21. **Lint:** `pnpm lint` `--if-present` no-op PASS
+22. **Security:** no client create; foreign ids 404; deep links re-authorize
+23. **Tests blocked:** none
+24. **Documentation:** PROGRESS, ARCHITECTURE, TESTING, ROADMAP, DECISIONS, ADR-012
+25. **Remaining work:** live email/SMS, assignment job runner, fee alerts, billing phase
+26. **Exact next phase:** **Billing + subscription / partner economics**
+
+PHASE 4 COMPLETE — VALIDATED

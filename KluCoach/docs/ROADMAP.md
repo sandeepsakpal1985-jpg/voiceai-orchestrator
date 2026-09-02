@@ -23,15 +23,28 @@ Aggregation API, deterministic status, parent multi-child home, student own view
 
 ---
 
-## Next major phase — Communication / engagement
+## Phase 4 — Communication / engagement
 
-In-app notifications, unread notices, parent/student engagement around the proven Student 360 data. Not more people/batch CRUD.
+In-app notifications around Student 360 data. See [ADR-012](./adr/ADR-012-notification-engagement.md). Not a chat product.
+
+Deferred from this phase (do not treat as implemented):
+
+- Live SMTP/SMS/WhatsApp/push delivery
+- Assignment due-soon / overdue job runner
+- Fee due notifications
+- Teacher notification dashboard
+- Browser/mobile push
+
+---
+
+## Next major phase — Billing + subscription / partner economics
+
+Secure multi-tenancy + academic workflows + Student 360 + parent engagement is enough product substance to design the ₹999/₹500/student commercial engine. Payment gateway can still come after plan/entitlement work.
 
 ---
 
 ## After that
 
-- Billing / subscriptions / partner economics (payment gateway is still later)
 - AI insights with tenant/role-respecting retrieval (only when cost model allows) — sits on Student 360, does not replace it
 - SMS/WhatsApp providers (institution-paid usage)
 - PDF reports
