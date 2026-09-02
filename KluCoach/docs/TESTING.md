@@ -10,9 +10,10 @@
 
 | Layer | Tool | What |
 |-------|------|------|
-| Unit | Vitest | RBAC policies, spreadsheet parse, student-import validation, rate-limit config |
-| Integration | Vitest + Postgres | auth, tenant isolation, invitation lifecycle, marks validation, teacher-batch denial, attendance upsert, timetable/assignment isolation, assignment submit-by-id |
-| E2E | Playwright | parent invitation, assessment marks, attendance save + parent view, assignment submit, timetable admin slot, smoke/notice, parent Student 360, multi-child switch, student own 360, parent absence/result notifications, multi-child notification context, student assignment notification |
+| Unit | Vitest | RBAC policies, spreadsheet parse, student-import validation, rate-limit config, pricing/grace/invoice totals |
+| Integration | Vitest + Postgres | auth, tenant isolation, invitation lifecycle, marks validation, teacher-batch denial, attendance upsert, timetable/assignment isolation, assignment submit-by-id, billing isolation/idempotency |
+| E2E | Playwright | parent invitation, assessment marks, attendance save + parent view, assignment submit, timetable admin slot, smoke/notice, parent Student 360, multi-child switch, student own 360, parent absence/result notifications, multi-child notification context, student assignment notification, institution billing, parent fee status, subscription asOf expiry, multi-tenant billing 404 |
+| Billing | Vitest | 100/1000 student economics from snapshot; invoice/payment/refund immutability; asOf expiry; super-admin report denial |
 | Student 360 | Vitest | status engine unit tests; parent/student/teacher/admin authorization; empty-state student (created in-test); schema parse |
 | Notifications | Vitest | list/get 404 isolation; recipient POST denied; absence/result/assignment/notice/timetable events; dedupe; mark-all-read; reminder stub; retention does not delete audit logs |
 
@@ -26,7 +27,9 @@ Phase 3 Playwright evidence (2026-09-01): **13/13 passed** — Phase 2 ten workf
 
 Phase 4 Vitest evidence (2026-09-02): **63/63 passed** (58 Phase 3 plus 5 notification authorization/job tests). Empty-state coverage creates a student with no records rather than assuming Diya stays empty after attendance e2e.
 
-Phase 4 Playwright evidence (2026-09-02): **17/17 passed** — Phase 3 thirteen workflows plus parent absence notification, result notification, multi-child notification context, student assignment notification.
+Phase 5 Vitest evidence (2026-09-02): **74/74 passed** (63 Phase 4 plus pricing/lifecycle unit tests, billing isolation/idempotency, billing RBAC).
+
+Phase 5 Playwright evidence (2026-09-02): **21/21 passed** — Phase 4 seventeen workflows plus institution billing, parent fee status, asOf expiry, multi-tenant billing 404.
 
 ## Cross-tenant matrix
 

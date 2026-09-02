@@ -1,98 +1,62 @@
 # Progress
 
-Updated: 2026-09-02 (Phase 4 COMPLETE — Communication, Engagement & Notifications)
+Updated: 2026-09-02 (Phase 5 COMPLETE — Billing, Subscriptions & Partner Economics)
 
 Validation rule: COMPLETE only with execution evidence.
 
 | Feature | Status | Tests | Verified | Notes |
 |---------|--------|-------|----------|-------|
-| Locked foundation `47d1989` | VALIDATED | n/a | git | Not rebuilt |
-| Phase 1 security gate `70a9ecc` | VALIDATED | vitest | yes | Permanent regression |
-| Phase 2 workflows `60534fe` | VALIDATED | vitest + playwright | yes | Start of Phase 3 |
-| Phase 3 Student 360 `345f8c5` | VALIDATED | vitest + playwright | yes | Start of Phase 4 |
-| Notification model + service | VALIDATED | vitest | yes | Tenant-scoped; no client create |
-| In-app notification center | VALIDATED | playwright | yes | All / Unread; mark read; mark all read |
-| Parent notification UI | VALIDATED | playwright | yes | Bell + recent activity + Student 360 deep link |
-| Student notification UI | VALIDATED | playwright | yes | Assignment created → Assignments |
-| Attendance absence alerts | VALIDATED | vitest + playwright | yes | ABSENT only; PRESENT/LATE/EXCUSED silent |
-| Result published alerts | VALIDATED | vitest + playwright | yes | Deduped per assessment+student |
-| Assignment created alerts | VALIDATED | vitest + playwright | yes | Student + parent; unique title |
-| Notice published alerts | VALIDATED | vitest | yes | Audience computed server-side |
-| Timetable change alerts | VALIDATED | vitest | yes | Date/time/room/status/batch only |
-| Multi-child notification context | VALIDATED | playwright | yes | Aarav vs Diya href + heading |
-| Notification authorization | VALIDATED | vitest | yes | Parent/student/teacher/admin + 404 |
-| Cross-tenant notification isolation | VALIDATED | vitest | yes | Parent B / admin B 404 |
-| Deduplication | VALIDATED | vitest | yes | Unique `(institution, user, dedupeKey)` |
-| Email delivery | IMPLEMENTED — PROVIDER NOT CONFIGURED | n/a | no live SMTP | Port no-ops without `SMTP_HOST`; title-only log if set |
-| SMS / WhatsApp / Push | NOT IMPLEMENTED | n/a | n/a | Interface only |
-| Assignment due/overdue reminders | NOT IMPLEMENTED | vitest | yes | `scheduled: false`; no job runner |
-| Fee due notifications | NOT IMPLEMENTED | n/a | n/a | No fake payment alerts |
-| Password reset | NOT STARTED | | | Backlog |
-| PDF/XLSX export | NOT STARTED | | | Backlog |
-| AI assistant / LLM summaries | NOT IMPLEMENTED | | | Out of Phase 4 |
-| Payment gateway | NOT IMPLEMENTED | | | Next phase is billing economics, not gateway yet |
-| Production deployment | NOT STARTED | | | BLOCKED — no production host |
+| Phase 4 checkpoint `b55d86d` | VALIDATED | n/a | git | Start of Phase 5 |
+| SubscriptionPlan + snapshots | VALIDATED | vitest | yes | Configuration, not hard-coded ₹999 |
+| TenantSubscription lifecycle | VALIDATED | vitest + playwright | yes | asOf computes EXPIRED |
+| StudentEntitlement | VALIDATED | vitest | yes | EntitlementService |
+| Demo NON_BILLABLE | VALIDATED | playwright | yes | Academic journeys still pass |
+| Institution invoices + lines | VALIDATED | vitest + playwright | yes | Idempotent issue |
+| Manual payment + refund | VALIDATED | vitest | yes | totalPaise immutable |
+| Partner economics | VALIDATED | vitest + playwright | yes | Super-admin report + CSV |
+| Parent fee card | VALIDATED | playwright | yes | Pending ₹24,000; no KluNex split |
+| Cross-tenant billing | VALIDATED | vitest + playwright | yes | 404 |
+| Payment gateway | NOT IMPLEMENTED | n/a | n/a | MANUAL records only |
 
-## Phase 4 exit checklist
+## Phase 5 exit checklist
 
-- [x] Notification model implemented
-- [x] Notification service implemented
-- [x] In-app notification channel works
-- [x] Parent notification center works
-- [x] Student notification center works
-- [x] Read/unread state works
-- [x] Mark-all-read works
-- [x] Attendance absence notification works
-- [x] Result notification works
-- [x] Assignment notification works
-- [x] Notice notification works
-- [x] Timetable notification works (Vitest; meaningful session edits only)
-- [x] Multiple-child context works
-- [x] Deep links work
-- [x] Notification authorization tested
-- [x] Cross-tenant notification isolation tested
-- [x] ID manipulation tested (foreign notification id → 404)
-- [x] Recipient manipulation tested (no client `POST /notifications`)
-- [x] Notification deduplication tested
-- [x] Parent Playwright notification workflow passes
-- [x] Multiple-child notification Playwright passes
-- [x] Existing Phase 3 workflows still pass
-- [x] Full Vitest passes
-- [x] Full Playwright passes
-- [x] Typecheck passes
-- [x] Build passes
-- [x] Lint passes (`pnpm lint` — no package lint scripts; `--if-present` no-op)
-- [x] No critical/high security regression
-- [x] Documentation updated
-- [ ] Git tree clean (this session’s KluCoach commits; parent monorepo may have unrelated dirty files)
+- [x] Plans, snapshots, subscriptions, entitlements, EntitlementService
+- [x] Lifecycle + grace (documented; apply is callable)
+- [x] Billable rule, invoices, lines, payments, refunds
+- [x] Partner economics, DIRECT vs PARTNER, renewal snapshot
+- [x] Parent fees, institution billing, super-admin report
+- [x] Isolation, RBAC, immutability, idempotency, pricing tests
+- [x] Playwright institution / parent fee / asOf / multi-tenant
+- [x] Phase 4 journeys still pass
+- [x] Vitest 74/74, Playwright 21/21, typecheck, build, lint
+- [x] BILLING.md + ADR-013
+- [ ] Git tree clean (this session’s KluCoach commits)
 
-## Session summary (Phase 4)
+## Session summary (Phase 5)
 
-1. **Starting commit:** `345f8c5`
-2. **Ending commit:** documentation commit on master (after notification e2e)
-3. **Notification architecture:** VALIDATED — domain events → `NotificationService` → IN_APP rows; recipients from relationships
-4. **In-app:** VALIDATED — list, unread count, mark read, mark all read
-5. **Parent experience:** VALIDATED — bell, recent activity, deep link to `/parent?studentId=`
-6. **Student experience:** VALIDATED — assignment/result/notice/timetable in-app; no parent-only fee alerts
-7. **Attendance:** VALIDATED — ABSENT only
-8. **Results:** VALIDATED — published results; deduped on re-save
-9. **Assignments:** VALIDATED — created; reminders NOT IMPLEMENTED
-10. **Notices:** VALIDATED — audience computed server-side
-11. **Timetable:** VALIDATED — Vitest on meaningful session edits
-12. **Email:** IMPLEMENTED — PROVIDER NOT CONFIGURED
-13. **SMS/WhatsApp/Push:** NOT IMPLEMENTED
-14. **Authorization tests:** VALIDATED
-15. **Tenant isolation:** VALIDATED
-16. **Idempotency:** VALIDATED
-17. **Vitest:** 63/63 PASS
-18. **Playwright:** 17/17 PASS
-19. **Typecheck:** PASS
-20. **Build:** PASS
-21. **Lint:** `pnpm lint` `--if-present` no-op PASS
-22. **Security:** no client create; foreign ids 404; deep links re-authorize
-23. **Tests blocked:** none
-24. **Documentation:** PROGRESS, ARCHITECTURE, TESTING, ROADMAP, DECISIONS, ADR-012
-25. **Remaining work:** live email/SMS, assignment job runner, fee alerts, billing phase
-26. **Exact next phase:** **Billing + subscription / partner economics**
-
-PHASE 4 COMPLETE — VALIDATED
+1. **Starting commit:** `b55d86d`
+2. **Ending commit:** docs commit after billing e2e
+3. **Subscription architecture:** VALIDATED — plan catalog + tenant snapshot + statuses
+4. **Pricing:** VALIDATED — integer paise; 100/1000 student cases from snapshot
+5. **Student entitlement:** VALIDATED — EntitlementService; NON_BILLABLE demo bypass is explicit
+6. **Billable students:** VALIDATED — ACTIVE + entitlement; SQL count
+7. **Invoices:** VALIDATED — issued + paid demo rows; line items
+8. **Payments:** VALIDATED — MANUAL SUCCESS; no gateway
+9. **Partner economics:** VALIDATED — report totals from snapshots × count
+10. **Renewal:** IMPLEMENTED — `POST /billing/subscriptions/renew` writes a new snapshot
+11. **Grace:** VALIDATED — 7-day default from config; asOf GRACE/EXPIRED
+12. **Parent fees:** VALIDATED — Paid/Pending on Student 360
+13. **Institution billing:** VALIDATED — plan, status, billable, invoices
+14. **Super-admin report:** VALIDATED
+15–17. Isolation / RBAC / idempotency: VALIDATED
+18. **Vitest:** 74/74 PASS
+19. **Playwright:** 21/21 PASS
+20. **Typecheck:** PASS
+21. **Build:** PASS
+22. **Lint:** `pnpm lint` `--if-present` no-op PASS
+23. **Security:** no client-trusted institutionId; no card data
+24. **Blocked tests:** none
+25. **Docs:** BILLING.md, ADR-013, PROGRESS, ARCHITECTURE, TESTING, ROADMAP, DECISIONS
+26. **Payment gateway:** NOT IMPLEMENTED
+27. **Remaining:** live collection, webhooks, proration, job-runner lifecycle
+28. **Exact next phase:** **Production readiness + real payment collection**

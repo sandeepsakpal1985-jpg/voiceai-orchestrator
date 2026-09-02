@@ -37,9 +37,23 @@ Deferred from this phase (do not treat as implemented):
 
 ---
 
-## Next major phase — Billing + subscription / partner economics
+## Phase 5 — Billing + subscriptions + partner economics
 
-Secure multi-tenancy + academic workflows + Student 360 + parent engagement is enough product substance to design the ₹999/₹500/student commercial engine. Payment gateway can still come after plan/entitlement work.
+Plans, snapshots, entitlements, institution invoices, manual payments, partner report. See [ADR-013](./adr/ADR-013-billing-subscriptions.md) and [BILLING.md](./BILLING.md). Not a payment gateway.
+
+---
+
+## Next major phase — Production readiness + payment collection
+
+Real payment collection (Razorpay/Stripe), webhooks, production hosting. After that: AI insights on Student 360.
+
+Deferred from billing:
+
+- Payment gateway / webhooks
+- Automatic partner payouts
+- GST filing
+- Complex proration / dunning
+- PDF invoices
 
 ---
 

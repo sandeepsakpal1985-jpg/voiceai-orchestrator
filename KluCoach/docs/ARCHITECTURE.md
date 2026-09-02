@@ -133,8 +133,8 @@ Identity in the body (`institutionId`, `role`, `studentId` as “who I am”) is
 | Assignments | Assignment, AssignmentSubmission |
 | Communication | Notice, in-app Notification, provider ports |
 | Files | FileObject metadata + storage port |
-| Billing | FeePlan, FeeInvoice, Payment, Receipt (data model; no gateway in MVP) |
-| Subscriptions | SubscriptionPlan, TenantSubscription, StudentEntitlement, partner share metrics |
+| Billing | FeePlan, FeeInvoice (parent fees); BillingInvoice, line, payment, refund (institution commercial) |
+| Subscriptions | SubscriptionPlan, TenantSubscription snapshots, StudentEntitlement, PlatformBillingConfig |
 | Audit | AuditLog |
 
 KluCoach mode adds coaching-oriented labels and default workflows. It does not duplicate student/attendance tables.
@@ -264,3 +264,9 @@ Future AI may summarize this DTO. It must not compute authorization or replace t
 Notifications are tenant-scoped rows for a **session user**, optionally with `studentId` so a multi-child parent opens the correct Student 360. Recipients are never taken from the client. Pagination is server-side (`page`, `pageSize` ≤ 50) with indexes on `(institutionId, userId, createdAt)` and `(institutionId, userId, readAt)`.
 
 Retention: 90 days via `purgeExpiredNotifications` (callable; not a running scheduler). Assignment reminders are a stub until a job runner exists.
+
+---
+
+## 14. Billing
+
+Institution commercial data is tenant-scoped. Super-admin reporting is the only cross-tenant commercial view. Billable counts use SQL aggregation. Money is integer paise. See [BILLING.md](./BILLING.md) and [ADR-013](./adr/ADR-013-billing-subscriptions.md).
