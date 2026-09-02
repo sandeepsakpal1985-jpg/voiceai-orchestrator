@@ -145,11 +145,40 @@ describe("student 360 authorization", () => {
 });
 
 describe("student 360 empty states", () => {
-  it("does not invent doing well or 0% when a sibling has no academic data", async () => {
-    const home = await app.inject({ method: "GET", url: "/dashboard/parent", headers: parentA.headers });
-    const body = json<{ children: { id: string; firstName: string }[] }>(home);
-    const diya = body.children.find((c) => c.firstName === "Diya")!;
-    const res = await app.inject({ method: "GET", url: `/students/${diya.id}/360`, headers: parentA.headers });
+  it("does not invent doing well or 0% when a student has no academic data", async () => {
+    const branches = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/branches", headers: a.headers }));
+    const years = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/academic-years", headers: a.headers }));
+    const programs = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/programs", headers: a.headers }));
+    const batch = await app.inject({
+      method: "POST",
+      url: "/batches",
+      headers: a.headers,
+      payload: {
+        name: `360 Empty ${Date.now()}`,
+        branchId: branches[0]!.id,
+        academicYearId: years[0]!.id,
+        programId: programs[0]!.id,
+      },
+    });
+    expect(batch.statusCode, batch.body).toBe(201);
+    const created = await app.inject({
+      method: "POST",
+      url: "/students",
+      headers: a.headers,
+      payload: {
+        firstName: "Empty",
+        lastName: "State",
+        admissionNumber: `empty-${Date.now()}`,
+        branchId: branches[0]!.id,
+        batchId: json<{ id: string }>(batch).id,
+      },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const res = await app.inject({
+      method: "GET",
+      url: `/students/${json<{ id: string }>(created).id}/360`,
+      headers: a.headers,
+    });
     expect(res.statusCode).toBe(200);
     const snapshot = json<{
       summary: { status: string };

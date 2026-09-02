@@ -16,6 +16,7 @@ test("teacher can publish a notice and parent can see it", async ({ page, browse
   await loginAs(parent, "parent@example.test");
   await expectHeading(parent, /Aarav/);
   await parent.getByRole("link", { name: "Notices" }).click();
-  await expect(parent.getByText(title)).toBeVisible();
+  await expectHeading(parent, "Notices");
+  await expect(parent.locator(".list .card").filter({ hasText: title })).toBeVisible();
   await parentCtx.close();
 });
