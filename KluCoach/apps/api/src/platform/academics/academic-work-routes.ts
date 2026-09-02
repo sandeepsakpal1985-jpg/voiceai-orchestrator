@@ -10,6 +10,7 @@ import {
   resultsUpsertSchema,
 } from "@klunex-edu/shared";
 import { writeAudit } from "../audit/write.js";
+import { onAttendanceMarked, onResultsPublished, onAssignmentCreated, onNoticePublished } from "../communication/notification-events.js";
 import { listSkipTake, parseListQuery, sendList } from "../../lib/listQuery.js";
 import { forbidden, notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
@@ -20,7 +21,6 @@ import {
   batchInTenant,
   branchInTenant,
   classSessionInTenant,
-  noticeInTenant,
   studentInTenant,
   subjectInTenant,
 } from "../tenancy/scope.js";
@@ -119,6 +119,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
       count: rows.length,
       date: body.date,
     });
+    await onAttendanceMarked(tenant.institutionId, rows);
     return reply.code(201).send({ records: rows });
   });
 
@@ -235,7 +236,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const assessment = await prisma.assessment.findFirst({
       where: { id, institutionId: tenant.institutionId },
-      include: { batch: true },
+      include: { batch: true, subject: true },
     });
     if (!assessment) throw notFound();
     await assertTeacherBatchAccess(tenant, assessment.batchId);
@@ -278,6 +279,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const rows = await prisma.$transaction(ops);
     await prisma.assessment.update({ where: { id }, data: { status: "PUBLISHED" } });
     await writeAudit(req, "results.upsert", "Assessment", id);
+    await onResultsPublished(tenant.institutionId, assessment, body.results.map((r) => r.studentId));
     return { results: rows };
   });
 
@@ -352,6 +354,7 @@ export async function academicWorkRoutes(app: FastifyInstance) {
       });
     }
     await writeAudit(req, "assignment.create", "Assignment", row.id);
+    await onAssignmentCreated(tenant.institutionId, { id: row.id, title: row.title, batchId: row.batchId });
     return reply.code(201).send(row);
   });
 
@@ -467,6 +470,14 @@ export async function academicWorkRoutes(app: FastifyInstance) {
       },
     });
     await writeAudit(req, "notice.create", "Notice", notice.id);
+    await onNoticePublished(tenant.institutionId, {
+      id: notice.id,
+      title: notice.title,
+      audience: notice.audience,
+      branchId: notice.branchId,
+      batchId: notice.batchId,
+      studentIds: body.studentIds,
+    });
     return reply.code(201).send(notice);
   });
 
@@ -474,6 +485,27 @@ export async function academicWorkRoutes(app: FastifyInstance) {
     const tenant = requireTenant(req);
     requirePermission(req, "notices:read");
     const { id } = req.params as { id: string };
-    return noticeInTenant(tenant.institutionId, id);
+    const notice = await prisma.notice.findFirst({
+      where: { id, institutionId: tenant.institutionId },
+      include: { students: true },
+    });
+    if (!notice) throw notFound();
+    if (tenant.role === "PARENT" || tenant.role === "STUDENT") {
+      const studentIds = tenant.role === "PARENT" ? await parentStudentIds(tenant) : [await studentSelfId(tenant)];
+      const enrolls = await prisma.batchEnrollment.findMany({ where: { studentId: { in: studentIds } } });
+      const batchIds = enrolls.map((e) => e.batchId);
+      const branches = await prisma.student.findMany({
+        where: { id: { in: studentIds } },
+        select: { branchId: true },
+      });
+      const branchIds = branches.map((s) => s.branchId);
+      const allowed =
+        notice.audience === "INSTITUTION" ||
+        (notice.batchId && batchIds.includes(notice.batchId)) ||
+        (notice.branchId && branchIds.includes(notice.branchId)) ||
+        notice.students.some((s) => studentIds.includes(s.studentId));
+      if (!allowed) throw notFound();
+    }
+    return notice;
   });
 }

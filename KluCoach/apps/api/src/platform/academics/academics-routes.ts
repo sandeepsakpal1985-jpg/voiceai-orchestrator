@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "@klunex-edu/database";
 import { batchCreateSchema, batchPatchSchema, sessionCreateSchema, sessionPatchSchema, timetableCreateSchema, timetablePatchSchema } from "@klunex-edu/shared";
 import { writeAudit } from "../audit/write.js";
+import { onSessionChanged } from "../communication/notification-events.js";
 import { listSkipTake, orderBy, parseListQuery, sendList } from "../../lib/listQuery.js";
 import { notFound, validationError } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
@@ -339,6 +340,7 @@ export async function academicsRoutes(app: FastifyInstance) {
       },
     });
     await writeAudit(req, "session.update", "ClassSession", id);
+    await onSessionChanged(tenant.institutionId, existing, session);
     return session;
   });
 
