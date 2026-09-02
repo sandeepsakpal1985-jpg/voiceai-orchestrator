@@ -14,11 +14,14 @@ import {
   Users,
 } from "lucide-react";
 import { api, auth, setCsrf, type Me } from "../api";
+import { useUnreadCount } from "../notifications/NotificationCenter";
 
 export function AppShell() {
   const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState("");
   const navigate = useNavigate();
+  const unread = useUnreadCount(Boolean(me));
+  const unreadCount = unread.data?.unreadCount ?? 0;
 
   useEffect(() => {
     auth
@@ -64,6 +67,10 @@ export function AppShell() {
             <Home size={16} aria-hidden /> Home
           </NavLink>
         )}
+        <NavLink to="/notifications" aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}>
+          <Bell size={16} aria-hidden /> Notifications
+          {unreadCount ? <span className="badge">{unreadCount}</span> : null}
+        </NavLink>
         {adminish && (
           <NavLink to="/admin">
             <LayoutDashboard size={16} aria-hidden /> Dashboard

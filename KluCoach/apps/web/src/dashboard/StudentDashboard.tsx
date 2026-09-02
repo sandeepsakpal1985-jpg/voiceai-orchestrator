@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Student360 } from "@klunex-edu/shared";
 import { api } from "../api";
 import { Student360Loading, Student360View } from "../student360/Student360View";
+import { RecentNotifications } from "../notifications/NotificationCenter";
 
 export function StudentDashboard() {
   const query = useQuery({
@@ -12,5 +13,10 @@ export function StudentDashboard() {
     return <p className="err">{query.error instanceof Error ? query.error.message : "Could not load Student 360"}</p>;
   }
   if (!query.data) return <Student360Loading />;
-  return <Student360View snapshot={query.data} />;
+  return (
+    <div>
+      <RecentNotifications />
+      <Student360View snapshot={query.data} />
+    </div>
+  );
 }

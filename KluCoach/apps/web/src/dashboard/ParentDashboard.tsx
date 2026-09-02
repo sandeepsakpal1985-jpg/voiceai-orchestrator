@@ -4,6 +4,7 @@ import type { Student360 } from "@klunex-edu/shared";
 import { api } from "../api";
 import { ChildSelector } from "../student360/ChildSelector";
 import { Student360Loading, Student360View } from "../student360/Student360View";
+import { RecentNotifications } from "../notifications/NotificationCenter";
 
 type ParentHome = {
   children: { id: string; firstName: string; lastName: string }[];
@@ -31,6 +32,7 @@ export function ParentDashboard() {
         selectedId={query.data.snapshot.student.id}
         onSelect={(id) => setParams({ studentId: id })}
       />
+      <RecentNotifications />
       <Student360View snapshot={query.data.snapshot} />
     </div>
   );

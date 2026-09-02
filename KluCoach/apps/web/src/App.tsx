@@ -16,6 +16,7 @@ import { BatchesPage } from "./batches/BatchesPage";
 import { ParentsPage } from "./parents/ParentsPage";
 import { TeachersPage } from "./teachers/TeachersPage";
 import { AssignmentsPage } from "./assignments/AssignmentsPage";
+import { NotificationCenter } from "./notifications/NotificationCenter";
 
 export function App() {
   return (
@@ -37,6 +38,7 @@ export function App() {
         <Route path="/notices" element={<NoticesPage />} />
         <Route path="/timetable" element={<TimetablePage />} />
         <Route path="/assignments" element={<AssignmentsPage />} />
+        <Route path="/notifications" element={<NotificationCenter />} />
         <Route path="/import" element={<ImportPage />} />
       </Route>
     </Routes>
