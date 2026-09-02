@@ -31,4 +31,12 @@ describe("RBAC policies", () => {
     expect(can("TEACHER", "teachers:write")).toBe(false);
     expect(can("PARENT", "teachers:write")).toBe(false);
   });
+
+  it("keeps commercial write on super admin only", () => {
+    expect(can("SUPER_ADMIN", "billing:write")).toBe(true);
+    expect(can("INSTITUTION_ADMIN", "billing:read")).toBe(true);
+    expect(can("INSTITUTION_ADMIN", "billing:write")).toBe(false);
+    expect(can("TEACHER", "billing:read")).toBe(false);
+    expect(can("STAFF", "fees:read")).toBe(false);
+  });
 });
