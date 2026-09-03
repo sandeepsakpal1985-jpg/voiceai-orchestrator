@@ -6,10 +6,10 @@ import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import { ERROR_CODES } from "@klunex-edu/shared";
 import { prisma } from "@klunex-edu/database";
-import { config } from "./config.js";
+import { config, healthPayload } from "./config.js";
 import { ApiError } from "./lib/errors.js";
 import { createRequestId } from "./lib/logger.js";
-import { isHealthPath, rateLimits } from "./lib/rateLimits.js";
+import { isRateLimitAllowlisted, rateLimits } from "./lib/rateLimits.js";
 import { assertCsrf, bindSession } from "./platform/identity/http-auth.js";
 import { authRoutes } from "./platform/identity/auth-routes.js";
 import { peopleRoutes } from "./platform/students/people-routes.js";
@@ -19,6 +19,7 @@ import { dashboardRoutes } from "./platform/dashboard/dashboard-routes.js";
 import { opsRoutes } from "./platform/ops/ops-routes.js";
 import { notificationRoutes } from "./platform/communication/notification-routes.js";
 import { billingRoutes } from "./platform/billing/billing-routes.js";
+import { paymentWebhookRoutes } from "./platform/payments/webhook-routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -40,7 +41,7 @@ export async function buildApp() {
     max: rateLimits.globalMax,
     timeWindow: "1 minute",
     skipOnError: true,
-    allowList: (req) => isHealthPath(req.url),
+    allowList: (req) => isRateLimitAllowlisted(req.url),
   });
   await app.register(multipart, { limits: { fileSize: 8 * 1024 * 1024 } });
 
@@ -50,23 +51,26 @@ export async function buildApp() {
   });
 
   app.setErrorHandler((err, req, reply) => {
+    const requestId = req.id;
     if (err instanceof ApiError) {
-      return reply.code(err.statusCode).send({ error: { code: err.code, message: err.message } });
+      return reply.code(err.statusCode).send({ error: { code: err.code, message: err.message, requestId } });
     }
     const status = (err as { statusCode?: number }).statusCode ?? 500;
-    req.log.error({ err }, "unhandled");
+    req.log.error({ err, requestId }, "unhandled");
     if (status === 429) {
-      return reply.code(429).send({ error: { code: ERROR_CODES.RATE_LIMIT, message: "Too many requests" } });
+      return reply.code(429).send({ error: { code: ERROR_CODES.RATE_LIMIT, message: "Too many requests", requestId } });
     }
+    const expose = !config.isProduction && status < 500;
     return reply.code(status >= 400 && status < 600 ? status : 500).send({
       error: {
         code: status === 400 ? ERROR_CODES.VALIDATION : ERROR_CODES.INTERNAL,
-        message: status >= 500 ? "Internal error" : err instanceof Error ? err.message : "Request failed",
+        message: status >= 500 ? "Internal error" : expose && err instanceof Error ? err.message : "Request failed",
+        requestId,
       },
     });
   });
 
-  app.get("/health", async () => ({ status: "ok" }));
+  app.get("/health", async () => healthPayload(config));
   app.get("/ready", async (_req, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
@@ -76,6 +80,7 @@ export async function buildApp() {
     }
   });
 
+  await app.register(paymentWebhookRoutes);
   await app.register(authRoutes);
   await app.register(peopleRoutes);
   await app.register(academicsRoutes);

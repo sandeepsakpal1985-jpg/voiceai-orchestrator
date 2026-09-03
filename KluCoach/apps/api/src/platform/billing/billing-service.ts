@@ -1,6 +1,7 @@
 import { prisma } from "@klunex-edu/database";
 import { deliverNotification } from "../communication/notification-service.js";
-import { writeAudit } from "../audit/write.js";
+import { notifyInstitutionAdmins } from "../communication/notify.js";
+import { writeAudit, writeSystemAudit } from "../audit/write.js";
 import type { FastifyRequest } from "fastify";
 import {
   countBillableStudents,
@@ -91,6 +92,22 @@ export async function applyLifecycle(asOf = new Date()) {
     if (next !== sub.status) {
       await prisma.tenantSubscription.update({ where: { id: sub.id }, data: { status: next as "ACTIVE" | "PAST_DUE" | "EXPIRED" } });
       updated += 1;
+      await writeSystemAudit({
+        action: next === "EXPIRED" ? "billing.subscription.expired" : "billing.subscription.changed",
+        entityType: "TenantSubscription",
+        entityId: sub.id,
+        institutionId: sub.institutionId,
+        metadata: { from: sub.status, to: next },
+      });
+      if (next === "EXPIRED") {
+        await notifyInstitutionAdmins({
+          institutionId: sub.institutionId,
+          type: "SUBSCRIPTION_EXPIRED",
+          title: "Subscription expired",
+          body: "The KluCoach subscription period has ended. Academic records are retained.",
+          dedupeKey: `SUBSCRIPTION_EXPIRED:${sub.id}:${asOf.toISOString().slice(0, 10)}`,
+        });
+      }
     }
     const grace = sub.gracePeriodDays || cfg.gracePeriodDays;
     await prisma.studentEntitlement.updateMany({
@@ -111,6 +128,10 @@ export async function applyLifecycle(asOf = new Date()) {
       data: { status: "EXPIRED" },
     });
   }
+  await prisma.billingInvoice.updateMany({
+    where: { status: "ISSUED", dueDate: { not: null, lt: asOf } },
+    data: { status: "OVERDUE" },
+  });
   return { updated, asOf: asOf.toISOString() };
 }
 

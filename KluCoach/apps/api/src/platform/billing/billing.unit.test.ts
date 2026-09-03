@@ -43,6 +43,8 @@ describe("pricing calculations", () => {
     expect(outstandingPaise(99_900_000, 50_000_000)).toBe(49_900_000);
     expect(invoiceStatusFromPaid(100, 40, "ISSUED")).toBe("PARTIALLY_PAID");
     expect(invoiceStatusFromPaid(100, 100, "ISSUED")).toBe("PAID");
+    expect(invoiceStatusFromPaid(100, 0, "OVERDUE")).toBe("OVERDUE");
+    expect(invoiceStatusFromPaid(100, 100, "OVERDUE")).toBe("PAID");
   });
 });
 

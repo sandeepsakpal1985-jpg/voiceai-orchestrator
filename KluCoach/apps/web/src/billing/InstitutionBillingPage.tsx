@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 
@@ -33,6 +33,9 @@ type InvoiceList = {
   }[];
 };
 
+type PayStatus = { paymentsEnabled: boolean; provider: string };
+type Checkout = { provider: string; orderId: string; amountPaise: number; currency: string; keyId: string; invoiceId: string };
+
 function rupees(paise: number) {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
 }
@@ -40,6 +43,7 @@ function rupees(paise: number) {
 export function InstitutionBillingPage() {
   const [params] = useSearchParams();
   const asOf = params.get("asOf");
+  const qc = useQueryClient();
   const sub = useQuery({
     queryKey: ["billing", "subscription", asOf],
     queryFn: () => api<SubView>(`/billing/subscription${asOf ? `?asOf=${asOf}` : ""}`),
@@ -48,10 +52,58 @@ export function InstitutionBillingPage() {
     queryKey: ["billing", "invoices"],
     queryFn: () => api<InvoiceList>("/billing/invoices?page=1&pageSize=20"),
   });
+  const payStatus = useQuery({
+    queryKey: ["billing", "payments-status"],
+    queryFn: () => api<PayStatus>("/billing/payments/status"),
+  });
+  const pay = useMutation({
+    mutationFn: async (input: { invoiceId: string; outcome: "SUCCESS" | "FAILED" }) => {
+      const session = await api<Checkout>(`/billing/invoices/${input.invoiceId}/pay`, { method: "POST" });
+      if (session.provider === "test") {
+        await api("/billing/payments/test-complete", {
+          method: "POST",
+          body: JSON.stringify({ orderId: session.orderId, outcome: input.outcome }),
+        });
+        return { session, outcome: input.outcome };
+      }
+      await new Promise<void>((resolve, reject) => {
+        const w = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { open: () => void } };
+        const start = () => {
+          if (!w.Razorpay) {
+            reject(new Error("Checkout is unavailable"));
+            return;
+          }
+          const rzp = new w.Razorpay({
+            key: session.keyId,
+            amount: session.amountPaise,
+            currency: session.currency,
+            order_id: session.orderId,
+            name: "KluCoach",
+            handler: () => resolve(),
+            modal: { ondismiss: () => resolve() },
+          });
+          rzp.open();
+        };
+        if (w.Razorpay) start();
+        else {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => start();
+          script.onerror = () => reject(new Error("Checkout is unavailable"));
+          document.body.appendChild(script);
+        }
+      });
+      return { session, outcome: "PENDING" as const };
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["billing", "invoices"] });
+    },
+  });
   if (sub.isError) return <p className="err">Could not load billing</p>;
   if (!sub.data) return <p>Loading…</p>;
   const s = sub.data.subscription;
   const e = sub.data.economics;
+  const enabled = payStatus.data?.paymentsEnabled === true;
   return (
     <div>
       <div className="top">
@@ -88,7 +140,9 @@ export function InstitutionBillingPage() {
       {e && s ? (
         <section className="card" style={{ marginTop: 16 }}>
           <h2 className="label">Current period (contracted)</h2>
-          <p>Gross {rupees(e.grossPaise)} · KluNex {rupees(e.klunexRealizationPaise)} · Partner {rupees(e.partnerSharePaise)}</p>
+          <p>
+            Gross {rupees(e.grossPaise)} · KluNex {rupees(e.klunexRealizationPaise)} · Partner {rupees(e.partnerSharePaise)}
+          </p>
           <p className="hint">
             Unit {rupees(s.studentUnitPricePaise)} / student · {s.currency} · grace {s.gracePeriodDays} days
           </p>
@@ -97,16 +151,36 @@ export function InstitutionBillingPage() {
       <h2 className="label" style={{ marginTop: 24 }}>
         Invoices
       </h2>
+      {!enabled ? <p className="hint">Invoices are visible. Payment collection is not enabled on this environment.</p> : null}
+      {pay.isError ? <p className="err">{pay.error instanceof Error ? pay.error.message : "Payment failed"}</p> : null}
       <div className="list">
-        {invoices.data?.items.map((inv) => (
-          <div className="card" key={inv.id}>
-            <strong>{inv.invoiceNumber}</strong>
-            <p className="hint">
-              {inv.status} · {rupees(inv.totalPaise)} · paid {rupees(inv.paidPaise)}
-              {inv.dueDate ? ` · due ${String(inv.dueDate).slice(0, 10)}` : ""}
-            </p>
-          </div>
-        ))}
+        {invoices.data?.items.map((inv) => {
+          const due = inv.totalPaise - inv.paidPaise;
+          const payable = due > 0 && (inv.status === "ISSUED" || inv.status === "PARTIALLY_PAID" || inv.status === "OVERDUE");
+          return (
+            <div className="card" key={inv.id} data-testid={`invoice-${inv.invoiceNumber}`}>
+              <strong>{inv.invoiceNumber}</strong>
+              <p className="hint">
+                <span data-testid={`invoice-status-${inv.invoiceNumber}`}>{inv.status}</span>
+                {" · "}
+                {rupees(inv.totalPaise)} · paid {rupees(inv.paidPaise)}
+                {inv.dueDate ? ` · due ${String(inv.dueDate).slice(0, 10)}` : ""}
+              </p>
+              {payable && enabled ? (
+                <p>
+                  <button className="btn" type="button" onClick={() => pay.mutate({ invoiceId: inv.id, outcome: "SUCCESS" })}>
+                    Pay invoice
+                  </button>
+                  {payStatus.data?.provider === "test" ? (
+                    <button className="btn" type="button" style={{ marginLeft: 8 }} onClick={() => pay.mutate({ invoiceId: inv.id, outcome: "FAILED" })}>
+                      Simulate failure
+                    </button>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -139,18 +139,19 @@ describe("billing invoices and payments", () => {
     });
     expect(json<{ id: string }>(again).id).toBe(invoice.id);
 
+    const payKey = `test-pay-${invoice.id}-${Date.now()}`;
     const pay = await app.inject({
       method: "POST",
       url: "/billing/payments",
       headers: superA.headers,
-      payload: { invoiceId: invoice.id, amountPaise: 1000, paymentDate: "2026-10-02", dedupeKey: `test-pay-${invoice.id}` },
+      payload: { invoiceId: invoice.id, amountPaise: 1000, paymentDate: "2026-10-02", dedupeKey: payKey },
     });
     expect(pay.statusCode, pay.body).toBe(200);
     const payAgain = await app.inject({
       method: "POST",
       url: "/billing/payments",
       headers: superA.headers,
-      payload: { invoiceId: invoice.id, amountPaise: 1000, paymentDate: "2026-10-02", dedupeKey: `test-pay-${invoice.id}` },
+      payload: { invoiceId: invoice.id, amountPaise: 1000, paymentDate: "2026-10-02", dedupeKey: payKey },
     });
     expect(json<{ id: string }>(payAgain).id).toBe(json<{ id: string }>(pay).id);
 
@@ -168,7 +169,7 @@ describe("billing invoices and payments", () => {
         invoiceId: invoice.id,
         paymentId: json<{ id: string }>(pay).id,
         amountPaise: 1000,
-        dedupeKey: `test-refund-${invoice.id}`,
+        dedupeKey: `test-refund-${invoice.id}-${Date.now()}`,
       },
     });
     expect(refund.statusCode, refund.body).toBe(200);

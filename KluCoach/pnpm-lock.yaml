@@ -46,6 +46,9 @@ importers:
       fastify-plugin:
         specifier: ^5.0.1
         version: 5.1.0
+      nodemailer:
+        specifier: ^7.0.6
+        version: 7.0.13
       papaparse:
         specifier: ^5.7.0
         version: 5.7.0
@@ -56,6 +59,9 @@ importers:
       '@types/node':
         specifier: ^24.3.0
         version: 24.13.3
+      '@types/nodemailer':
+        specifier: ^6.4.19
+        version: 6.4.24
       '@types/papaparse':
         specifier: ^5.5.2
         version: 5.5.2
@@ -990,6 +996,9 @@ packages:
   '@types/node@24.13.3':
     resolution: {integrity: sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==}
 
+  '@types/nodemailer@6.4.24':
+    resolution: {integrity: sha512-Ww4u0rT9wQNXh4JiQaIwx3QWdcOFXzOjQA2zc+jtFYNmQiT4mIUqcDin51bDFdkzKubFnQCZNK7FIHlPKQ/q9w==}
+
   '@types/papaparse@5.5.2':
     resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
@@ -1679,6 +1688,10 @@ packages:
   node-releases@2.0.54:
     resolution: {integrity: sha512-YHs7BmmcsdAI5Ozuf8JZo6PT0mv2GIWC9vMfvUC3dp65M8hn7Ux8CPL+2oBI7juNuj9d0ndhTcznq2ODBps9cQ==}
     engines: {node: '>=18'}
+
+  nodemailer@7.0.13:
+    resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
+    engines: {node: '>=6.0.0'}
 
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
@@ -2779,6 +2792,10 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
+  '@types/nodemailer@6.4.24':
+    dependencies:
+      '@types/node': 24.13.3
+
   '@types/papaparse@5.5.2':
     dependencies:
       '@types/node': 24.13.3
@@ -3461,6 +3478,8 @@ snapshots:
   node-gyp-build@4.8.4: {}
 
   node-releases@2.0.54: {}
+
+  nodemailer@7.0.13: {}
 
   normalize-path@3.0.0: {}
 

@@ -15,6 +15,11 @@ import {
   subscriptionView,
 } from "./billing-service.js";
 import { getEntitlementStatus, entitleStudent } from "./entitlement-service.js";
+import { completeTestPayment, createInvoiceCheckout, paymentsAreEnabled, reconcileOpenPayments } from "../payments/service.js";
+import { runDueJobs } from "../../jobs/runner.js";
+import { config } from "../../config.js";
+import { rateLimits } from "../../lib/rateLimits.js";
+import { emailTransport } from "../communication/email-transport.js";
 
 function asOfFrom(query: { asOf?: string }) {
   if (!query.asOf) return new Date();
@@ -68,6 +73,82 @@ export async function billingRoutes(app: FastifyInstance) {
     return row;
   });
 
+  app.get("/billing/payments/status", async (req) => {
+    requireUser(req);
+    requirePermission(req, "billing:read");
+    return {
+      paymentsEnabled: paymentsAreEnabled(),
+      provider: paymentsAreEnabled() ? process.env.PAYMENT_PROVIDER || config.paymentProvider : "none",
+    };
+  });
+
+  app.post("/billing/invoices/:id/pay", { config: { rateLimit: rateLimits.paymentStart } }, async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "billing:read");
+    const { id } = req.params as { id: string };
+    return createInvoiceCheckout(tenant.institutionId, id, tenant.id);
+  });
+
+  app.post("/billing/payments/test-complete", async (req) => {
+    if (config.isProduction) throw notFound();
+    const tenant = requireTenant(req);
+    requirePermission(req, "billing:read");
+    const body = req.body as { orderId?: string; outcome?: string };
+    if (!body.orderId) throw validationError("orderId required");
+    const invoice = await prisma.billingPayment.findFirst({
+      where: { providerOrderId: body.orderId, institutionId: tenant.institutionId },
+    });
+    if (!invoice) throw notFound();
+    const outcome = body.outcome === "FAILED" ? "FAILED" : "SUCCESS";
+    const result = await completeTestPayment(body.orderId, outcome);
+    if (result.statusCode >= 400) {
+      throw validationError("Test payment could not be completed");
+    }
+    return result.body;
+  });
+
+  app.post("/billing/invoices/:id/void", async (req) => {
+    requireSuperAdmin(req);
+    const { id } = req.params as { id: string };
+    const invoice = await prisma.billingInvoice.findUnique({ where: { id } });
+    if (!invoice) throw notFound();
+    if (invoice.status === "PAID" || invoice.status === "VOID") throw validationError("Invoice cannot be voided");
+    const updated = await prisma.billingInvoice.update({
+      where: { id },
+      data: { status: "VOID" },
+    });
+    await writeAudit(req, "billing.invoice.voided", "BillingInvoice", updated.id);
+    return updated;
+  });
+
+  app.get("/billing/reconciliation", async (req) => {
+    requireSuperAdmin(req);
+    const items = await prisma.paymentReconciliation.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return { items };
+  });
+
+  app.post("/billing/reconciliation/run", async (req) => {
+    requireSuperAdmin(req);
+    const result = await reconcileOpenPayments();
+    await writeAudit(req, "billing.reconciliation.performed", "PaymentReconciliation", null, result);
+    return result;
+  });
+
+  app.post("/jobs/run", async (req) => {
+    requireSuperAdmin(req);
+    const body = (req.body as { asOf?: string }) ?? {};
+    const asOf = body.asOf ? new Date(body.asOf) : new Date();
+    return runDueJobs(asOf);
+  });
+
+  app.post("/ops/email/verify", async (req) => {
+    requireSuperAdmin(req);
+    return emailTransport.verify();
+  });
+
   app.get("/billing/entitlements/:studentId", async (req) => {
     const tenant = requireTenant(req);
     if (tenant.role === "TEACHER" || tenant.role === "STAFF") throw notFound();
@@ -114,6 +195,18 @@ export async function billingRoutes(app: FastifyInstance) {
     if (!body.invoiceId || !body.paymentId || !body.amountPaise || !body.dedupeKey) {
       throw validationError("invoiceId, paymentId, amountPaise, dedupeKey required");
     }
+    const payment = await prisma.billingPayment.findFirst({
+      where: { id: body.paymentId, invoiceId: body.invoiceId },
+    });
+    if (!payment) throw notFound();
+    if (payment.providerPaymentId && paymentsAreEnabled()) {
+      const { getPaymentProvider } = await import("../payments/factory.js");
+      const provider = getPaymentProvider();
+      if (provider) {
+        await provider.refund({ providerPaymentId: payment.providerPaymentId, amountPaise: body.amountPaise });
+      }
+    }
+    await writeAudit(req, "billing.refund.created", "BillingPayment", payment.id, { amountPaise: body.amountPaise });
     const refund = await recordRefund({
       invoiceId: body.invoiceId,
       paymentId: body.paymentId,

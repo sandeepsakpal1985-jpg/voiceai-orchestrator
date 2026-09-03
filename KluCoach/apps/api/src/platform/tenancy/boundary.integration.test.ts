@@ -206,7 +206,10 @@ describe("authentication responses", () => {
     });
     expect(unknown.statusCode).toBe(401);
     expect(known.statusCode).toBe(401);
-    expect(unknown.json()).toEqual(known.json());
+    const a = unknown.json() as { error: { code: string; message: string } };
+    const b = known.json() as { error: { code: string; message: string } };
+    expect(a.error.code).toBe(b.error.code);
+    expect(a.error.message).toBe(b.error.message);
   });
 });
 

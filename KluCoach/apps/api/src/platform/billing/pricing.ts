@@ -50,7 +50,7 @@ export function outstandingPaise(totalPaise: number, paidPaise: number) {
 
 export function invoiceStatusFromPaid(totalPaise: number, paidPaise: number, current: string) {
   if (current === "VOID" || current === "DRAFT" || current === "REFUNDED") return current;
-  if (paidPaise <= 0) return "ISSUED";
+  if (paidPaise <= 0) return current === "OVERDUE" ? "OVERDUE" : "ISSUED";
   if (paidPaise >= totalPaise) return "PAID";
   return "PARTIALLY_PAID";
 }
