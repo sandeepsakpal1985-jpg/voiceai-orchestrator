@@ -10,7 +10,7 @@ Assignments and photos need files. Postgres should not store large blobs.
 
 ## Decision
 
-`FileStorage` interface. MVP: local filesystem under a data directory. Metadata in `FileObject`. Later: S3-compatible without changing callers.
+`StorageProvider` interface (`put`/`get`). Default: `LocalStorageProvider` under `FILE_STORAGE_DIR`. Optional: `ObjectStorageProvider` (S3-compatible SigV4) when `STORAGE_PROVIDER=s3`. Metadata stays in `FileObject`. Callers do not change.
 
 ## Consequences
 

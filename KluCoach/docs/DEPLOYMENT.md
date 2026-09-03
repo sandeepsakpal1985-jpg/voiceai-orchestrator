@@ -11,19 +11,17 @@ Target: a single VPS. No Kubernetes.
 
 ## Services
 
-`docker-compose.yml`: `postgres`, `api`, `web`.
+`docker-compose.yml`: `postgres`, `api`, `web` (local). Production: `docker-compose.prod.yml` adds `worker` and Caddy. See [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md) and [ADR-017](./adr/ADR-017-production-deployment.md).
 
 ## Environment
 
-Copy `.env.example`. Required in production:
-
+- `APP_ENV=production`
 - `DATABASE_URL`
-- `SESSION_SECRET` (long random)
+- `SESSION_SECRET` (long random; production rejects denylisted examples)
 - `COOKIE_SECURE=true`
-- `PUBLIC_APP_URL`
+- `PUBLIC_APP_URL` / `APP_BASE_URL` (https)
 - `API_CORS_ORIGINS`
-
-Optional: SMTP for email invites.
+- When `PAYMENTS_ENABLED=true`: `PAYMENT_PROVIDER=razorpay`, Razorpay keys, `PAYMENT_WEBHOOK_SECRET`
 
 ## Database
 
@@ -41,24 +39,13 @@ Never use `prisma db push` as the production migration strategy.
 
 ## Backups
 
-**Not configured by this repository automatically.** Production must add:
+See [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md). A dump that has never been restored is not validated.
 
-1. `pg_dump` on a schedule
-2. Retention (e.g. 7 daily / 4 weekly)
-3. Off-box copy
-4. Restore procedure drill
-
-Restore:
-
-```bash
-psql "$DATABASE_URL" < backup.sql
-```
-
-File storage directory must be backed up with the database.
+Executed on 2026-09-02 against local Compose Postgres (`localhost:55433`): dump → restore into `klucoach_restore_check` → `institutions` count **2** → `RESTORE_VERIFIED`.
 
 ## HTTPS / rollback
 
-Terminate TLS at the reverse proxy. Rollback: previous Compose image tags + `migrate` is forward-only — restore DB from backup if a release is bad.
+Terminate TLS at Caddy or nginx (`deploy/Caddyfile`, `deploy/nginx-proxy.conf.example`). HTTP should redirect to HTTPS. Fastify `trustProxy` is enabled so Secure cookies work behind the proxy. Live public TLS for this development machine is **BLOCKED — INFRASTRUCTURE**.
 
 ## Logs
 

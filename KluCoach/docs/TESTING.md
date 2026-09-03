@@ -11,8 +11,9 @@
 | Layer | Tool | What |
 |-------|------|------|
 | Unit | Vitest | RBAC policies, spreadsheet parse, student-import validation, rate-limit config, pricing/grace/invoice totals |
-| Integration | Vitest + Postgres | auth, tenant isolation, invitation lifecycle, marks validation, teacher-batch denial, attendance upsert, timetable/assignment isolation, assignment submit-by-id, billing isolation/idempotency |
-| E2E | Playwright | parent invitation, assessment marks, attendance save + parent view, assignment submit, timetable admin slot, smoke/notice, parent Student 360, multi-child switch, student own 360, parent absence/result notifications, multi-child notification context, student assignment notification, institution billing, parent fee status, subscription asOf expiry, multi-tenant billing 404 |
+| Integration | Vitest + Postgres | auth, tenant isolation, invitation lifecycle, password reset, marks validation, teacher-batch denial, attendance upsert, timetable/assignment isolation, assignment submit-by-id, billing isolation/idempotency, payment checkout/webhooks, lifecycle job idempotency |
+| E2E | Playwright | parent invitation, assessment marks, attendance save + parent view, assignment submit, timetable admin slot, smoke/notice, parent Student 360, multi-child switch, student own 360, parent absence/result notifications, multi-child notification context, student assignment notification, institution billing, parent fee status, subscription asOf expiry, multi-tenant billing 404, password reset, test-mode payment fail/success, subscription renew |
+| Payments | Vitest | Razorpay HMAC unit tests; checkout isolation; invalid signature 400; duplicate webhook; pending ≠ paid; refunds |
 | Billing | Vitest | 100/1000 student economics from snapshot; invoice/payment/refund immutability; asOf expiry; super-admin report denial |
 | Student 360 | Vitest | status engine unit tests; parent/student/teacher/admin authorization; empty-state student (created in-test); schema parse |
 | Notifications | Vitest | list/get 404 isolation; recipient POST denied; absence/result/assignment/notice/timetable events; dedupe; mark-all-read; reminder stub; retention does not delete audit logs |
@@ -30,6 +31,10 @@ Phase 4 Vitest evidence (2026-09-02): **63/63 passed** (58 Phase 3 plus 5 notifi
 Phase 5 Vitest evidence (2026-09-02): **74/74 passed** (63 Phase 4 plus pricing/lifecycle unit tests, billing isolation/idempotency, billing RBAC).
 
 Phase 5 Playwright evidence (2026-09-02): **21/21 passed** — Phase 4 seventeen workflows plus institution billing, parent fee status, asOf expiry, multi-tenant billing 404.
+
+Phase 6 Vitest evidence (2026-09-02): **90/90 passed** (74 Phase 5 plus config, Razorpay HMAC, password reset, payment webhooks, job idempotency, executed HTTP 429).
+
+Phase 6 Playwright evidence (2026-09-02): **24/24 passed** — Phase 5 twenty-one workflows plus password reset, test-mode payment fail/success on `KC-2026-0001`, subscription renew. Live Razorpay sandbox E2E: **BLOCKED — EXTERNAL PROVIDER**.
 
 ## Cross-tenant matrix
 

@@ -1,6 +1,6 @@
 # Billing and subscriptions
 
-Commercial engine for KluCoach. This is **not** a payment gateway and **not** an accounting package.
+Commercial engine for KluCoach. Collection is documented in [PAYMENTS.md](./PAYMENTS.md). This file remains the commercial engine (plans, invoices, entitlements). It is **not** an accounting package.
 
 Amounts are **integer paise** (₹1 = 100). Do not use floating-point money in application logic.
 
@@ -31,7 +31,7 @@ Partner share is stored explicitly. It is not computed as price − realization,
 |---------|---------|
 | Price | Unit commercial term on a plan or snapshot |
 | Invoice | Obligation for a period (institution → KluNex) |
-| Payment | Recorded receipt against an invoice (manual in this phase) |
+| Payment | Recorded receipt against an invoice (manual or provider-verified) |
 | Refund | Separate record; does not rewrite invoice `totalPaise` |
 | Entitlement | Whether a student may use KluCoach |
 | KluNex realization / partner share | Contracted split, not cash already paid |
@@ -50,7 +50,7 @@ When a `TenantSubscription` is created, unit prices and commercial mode are **co
 
 Statuses: TRIAL, ACTIVE, PAST_DUE, SUSPENDED, EXPIRED, CANCELLED.
 
-Reads can compute status from `endsAt` + `gracePeriodDays` (platform default 7, overridable per subscription). `POST /billing/lifecycle/apply` (super-admin) persists grace/expiry. It is **callable, not scheduled**.
+Reads can compute status from `endsAt` + `gracePeriodDays` (platform default 7, overridable per subscription). `POST /billing/lifecycle/apply` (super-admin) still persists grace/expiry. The worker also runs `billing.lifecycle` once per UTC hour (`job_runs.dedupeKey`). Running it twice in the same hour is a no-op.
 
 Cancelled/suspended stored status is not overridden by dates.
 

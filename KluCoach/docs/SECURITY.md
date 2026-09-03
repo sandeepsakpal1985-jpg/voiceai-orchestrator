@@ -26,7 +26,8 @@ Identity, tenant, and role come from the **server session**. Resource IDs in URL
 - CSRF protection on cookie-authenticated state-changing requests
 - Session rotation on login
 - Logout deletes the server session
-- Rate limit login and invitation-accept endpoints
+- Rate limit login, registration, invitation, password reset, and payment initiation
+- Password reset: generic response whether or not the email exists; SHA-256 hashed single-use tokens with expiry; all reset tokens and sessions invalidated on completion. Never store the raw token. Audit `auth.password_reset.requested` / `.completed` without tokens or passwords.
 
 Production rate limits (in-process `@fastify/rate-limit`; no Redis):
 
@@ -36,9 +37,13 @@ Production rate limits (in-process `@fastify/rate-limit`; no Redis):
 | `POST /auth/register` | 5 | 1 minute | Institution spam |
 | `POST /auth/invitations/accept` | 10 | 1 minute | Token guessing |
 | `POST /invitations` | 20 | 1 minute | Invite flood |
+| `POST /auth/password-reset/request` and complete | 5 | 1 minute | Token guessing |
+| `POST /billing/invoices/:id/pay` | 10 | 1 minute | Checkout abuse |
 | `POST /imports/students/preview` | 20 | 1 minute | Parse CPU |
 | Global (other routes) | 300 | 1 minute | Generic abuse |
-| `/health`, `/ready` | allow-listed | — | Probes |
+| `/health`, `/ready`, `/webhooks/*` | allow-listed | — | Probes and provider retries |
+
+HTTP 429 was executed in Vitest against a Fastify app with `max: 1` (`rateLimits.test.ts`). Production ceilings are asserted as numbers. Live production 429 against a public host is **BLOCKED — INFRASTRUCTURE**.
 
 Vitest uses a 10_000 ceiling so isolation suites do not 429. Phase 1 gate: [SECURITY_GATE_PHASE1.md](./SECURITY_GATE_PHASE1.md).
 
@@ -70,13 +75,13 @@ Failed cross-tenant access returns **404** (do not confirm the other tenant's re
 - CORS allowlist
 - Request size limits
 - Rate limiting
-- Structured logs with request IDs; no passwords or session tokens in logs
+- Structured logs with request IDs; API errors include `error.requestId`. Production 5xx messages do not expose stacks, SQL, or paths. No passwords, reset tokens, session tokens, or payment credentials in logs.
 
 ---
 
 ## Files
 
-- Storage via `FileStorage` port (local disk in MVP)
+- Storage via `StorageProvider` (`LocalStorageProvider` or `ObjectStorageProvider` SigV4). Local disk remains the default until `STORAGE_PROVIDER=s3` is set.
 - Size limits
 - MIME allowlist (images, PDF, common office/csv)
 - Never serve uploaded files as executable
@@ -94,7 +99,16 @@ Failed cross-tenant access returns **404** (do not confirm the other tenant's re
 
 ## Audit
 
-Tenant-scoped audit log for: login/logout, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports.
+Tenant-scoped audit log for: login/logout, password reset requested/completed, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports, payment initiated/confirmed/failed, refunds, subscription lifecycle, invoice issue/void, reconciliation.
+
+## Payments and webhooks
+
+- Checkout amount, invoice, and institution come from server records. Clients cannot submit payable amounts.
+- `POST /webhooks/razorpay` verifies HMAC-SHA256 of the raw body. Invalid signatures return 400. Processing failures return 500 so the provider retries.
+- Idempotency: unique `(provider, providerEventId)`. Duplicates do not create a second SUCCESS payment.
+- Frontend success pages are not proof of payment.
+- `PAYMENTS_ENABLED` defaults to false. Production rejects `PAYMENT_PROVIDER=test` and fails startup if payments are enabled without keys.
+- Refunds: super-admin (financial write) only. A refund is a new row; historical `BillingPayment` amounts are not rewritten.
 
 Invitation tokens are returned to the inviter in the API/UI for activation. They are not written to audit metadata or email logs. `POST /auth/invitations/accept` 401s stay on the accept page (they do not bounce to login).
 
@@ -109,6 +123,6 @@ Paged admin lists (`?page=`) remain tenant-scoped; omitting `page` keeps the ori
 - Full WAF
 - Hardware key / WebAuthn
 - Per-row encryption at rest (rely on disk encryption + Postgres access control)
-- Payment PCI scope (no gateway)
+- Payment PCI scope (Razorpay hosted checkout; KluCoach never stores PAN/CVV/UPI PIN)
 
 Legal/compliance review is required before commercial launch; this document is engineering intent, not legal advice.

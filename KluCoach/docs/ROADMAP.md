@@ -8,7 +8,6 @@ Items here are **not** in the current build phase. Do not implement them because
 
 Do not interrupt Student 360 / parent experience for:
 
-- Password reset
 - PDF / XLSX export
 - Teacher hard-delete
 - Full Playwright suite expansion beyond proven workflows
@@ -30,7 +29,7 @@ In-app notifications around Student 360 data. See [ADR-012](./adr/ADR-012-notifi
 Deferred from this phase (do not treat as implemented):
 
 - Live SMTP/SMS/WhatsApp/push delivery
-- Assignment due-soon / overdue job runner
+- Assignment due-soon / overdue job (job runner exists; this reminder is still a stub)
 - Fee due notifications
 - Teacher notification dashboard
 - Browser/mobile push
@@ -43,23 +42,41 @@ Plans, snapshots, entitlements, institution invoices, manual payments, partner r
 
 ---
 
-## Next major phase — Production readiness + payment collection
+## Phase 6 — Production readiness + payment collection
 
-Real payment collection (Razorpay/Stripe), webhooks, production hosting. After that: AI insights on Student 360.
+Password reset, fail-fast production config, Razorpay provider abstraction, verified webhooks, lifecycle worker, observability, backup restore drill, Compose/Caddy runbooks. See [PAYMENTS.md](./PAYMENTS.md), [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md), ADR-014–017.
 
-Deferred from billing:
+Live Razorpay sandbox checkout and a public HTTPS host remain **BLOCKED** until keys and a VPS exist. `PAYMENTS_ENABLED` stays false until that cutover.
 
-- Payment gateway / webhooks
+Deferred from this phase:
+
 - Automatic partner payouts
-- GST filing
+- GST filing (legal/accounting validation required)
 - Complex proration / dunning
 - PDF invoices
+- Live SMTP in this development environment
+
+---
+
+## Next major phase — Phase 7 AI capabilities
+
+Only after the production gate (including explicit payment cutover) is accepted.
+
+Potential:
+
+- Parent AI: "How is my child doing?"
+- Teacher AI: "Which students need attention?"
+- Admin AI: "Which batches have declining attendance?"
+
+AI must use Student 360 and existing tenant/RBAC. No AI feature may bypass authorization.
+
+Do not start AI during Phase 6 leftovers.
 
 ---
 
 ## After that
 
-- AI insights with tenant/role-respecting retrieval (only when cost model allows) — sits on Student 360, does not replace it
+- Broader AI insights with tenant/role-respecting retrieval (only when cost model allows)
 - SMS/WhatsApp providers (institution-paid usage)
 - PDF reports
 - Branch-level admin role

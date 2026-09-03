@@ -16,6 +16,7 @@ Versions below are the ranges currently declared in workspace `package.json` fil
 | @fastify/helmet | ^13.0.2 | Security headers | MIT | Official Fastify plugin | Low | Low |
 | @fastify/rate-limit | ^10.3.0 | Abuse protection | MIT | Official Fastify plugin | Low | Low |
 | argon2 | ^0.41.1 | Password hashing | MIT / dual native | Spec requirement | Native build | Medium |
+| nodemailer | ^7.0.6 | SMTP transport | MIT | Production `EmailTransport` when `SMTP_HOST` is set; tests use memory | Misconfigured SMTP | Low |
 | @tanstack/react-table | ^9.2.4 | Headless tables | MIT | Sorting/pagination without owning grid code | v9 API differs from v8 | Medium (one DataTable wrapper) |
 | @tanstack/react-query | ^5.102.8 | Server-state cache | MIT | Students list; later dashboards | Misuse as auth | Low–medium |
 | react-hook-form | ^7.87.0 | Form state | MIT | Login + future admin/parent forms | Low | Medium |
@@ -50,7 +51,8 @@ Import parse port: `apps/api/src/platform/import/parseSpreadsheet.ts`. Validatio
 | Next.js shadcn SaaS dashboard starter | **Rejected** | Would import someone else's auth/tenancy/billing. Study patterns only. |
 | AG Grid | Rejected | Heavier; community license constraints vs MIT headless table |
 | Clerk / Auth.js / Supabase Auth | **Rejected** | Would replace tenant-aware session model |
-| BullMQ + Redis | **Not yet** | No demonstrated job volume; email can stay inline/log |
+| BullMQ + Redis | **Rejected for Phase 6** | PostgreSQL `job_runs` + worker process is enough; no Redis cost |
+| Razorpay Node SDK | **Rejected** | HTTPS + HMAC in `RazorpayPaymentProvider`; domain must not import SDK types |
 | TipTap | **Not yet** | Notices are plain text in MVP |
 | SheetJS `xlsx` | Rejected | ExcelJS is MIT and sufficient |
 | Redux / Zustand as source of truth | Rejected | Server + TanStack Query |
@@ -61,7 +63,7 @@ Import parse port: `apps/api/src/platform/import/parseSpreadsheet.ts`. Validatio
 ## Security notes
 
 - Helmet is registered (CSP disabled for cookie SPA; revisit at HTTPS deploy).
-- Rate limit: global 300/min in non-test; **stricter** on login (10), register (5), invite accept (10), invite create (20), import preview (20). `/health` and `/ready` are allow-listed. Vitest uses a 10_000 ceiling so isolation suites do not 429.
+- Rate limit: global 300/min in production; **stricter** on login (10), register (5), invite accept (10), invite create (20), password reset (5), payment start (10), import preview (20). `/health`, `/ready`, and `/webhooks/*` are allow-listed. Vitest uses a 10_000 ceiling so isolation suites do not 429. HTTP 429 was executed in `rateLimits.test.ts`.
 - Papa Parse / ExcelJS never authorize; jobs are `institutionId`-scoped. Commit is a transaction and **does not silently skip** invalid rows.
 - Do not put ExcelJS in the parent PWA bundle.
 

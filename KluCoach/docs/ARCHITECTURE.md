@@ -221,7 +221,11 @@ Parsers do not authorize. Tenant, batch resolution, duplicates, and error rows a
 
 ## 10. Deployment
 
-VPS + Docker Compose: `web`, `api`, `postgres`. Reverse proxy/HTTPS documented in [DEPLOYMENT.md](./DEPLOYMENT.md). Architecture allows later move to managed Postgres/object storage without rewrite.
+VPS + Docker Compose: `web`, `api`, `worker`, `postgres`, Caddy. Production file: `docker-compose.prod.yml`. Reverse proxy/HTTPS in [DEPLOYMENT.md](./DEPLOYMENT.md) and [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md). Architecture allows later move to managed Postgres/object storage without rewrite.
+
+Payments use `PaymentProvider` (Razorpay over HTTPS, or `test` in non-production). Webhooks are signature-verified. See [PAYMENTS.md](./PAYMENTS.md) and [ADR-014](./adr/ADR-014-payment-provider.md).
+
+Jobs: API process + worker process + PostgreSQL `job_runs`. No Redis/Kafka. See [ADR-016](./adr/ADR-016-job-runner.md).
 
 ---
 
@@ -263,10 +267,10 @@ Future AI may summarize this DTO. It must not compute authorization or replace t
 
 Notifications are tenant-scoped rows for a **session user**, optionally with `studentId` so a multi-child parent opens the correct Student 360. Recipients are never taken from the client. Pagination is server-side (`page`, `pageSize` ≤ 50) with indexes on `(institutionId, userId, createdAt)` and `(institutionId, userId, readAt)`.
 
-Retention: 90 days via `purgeExpiredNotifications` (callable; not a running scheduler). Assignment reminders are a stub until a job runner exists.
+Retention: 90 days via `purgeExpiredNotifications` (callable). Assignment reminders remain a stub. The worker currently runs billing lifecycle and payment reconciliation; reminder retries can share the same `job_runs` table later.
 
 ---
 
 ## 14. Billing
 
-Institution commercial data is tenant-scoped. Super-admin reporting is the only cross-tenant commercial view. Billable counts use SQL aggregation. Money is integer paise. See [BILLING.md](./BILLING.md) and [ADR-013](./adr/ADR-013-billing-subscriptions.md).
+Institution commercial data is tenant-scoped. Super-admin reporting is the only cross-tenant commercial view. Billable counts use SQL aggregation. Money is integer paise. Provider checkout amounts come from stored invoice outstanding balances. See [BILLING.md](./BILLING.md), [PAYMENTS.md](./PAYMENTS.md), and [ADR-013](./adr/ADR-013-billing-subscriptions.md).
