@@ -1,5 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { LoginPage } from "./auth/LoginPage";
+import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { AcceptInvitePage } from "./auth/AcceptInvitePage";
 import { AppShell } from "./layout/AppShell";
 import { ParentDashboard } from "./dashboard/ParentDashboard";
@@ -24,6 +26,8 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route element={<AppShell />}>
         <Route path="/" element={<div />} />

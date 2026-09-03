@@ -20,6 +20,15 @@ export const loginSchema = z.object({
   password: z.string().min(8).max(200),
 });
 
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+export const passwordResetCompleteSchema = z.object({
+  token: z.string().min(16),
+  password: z.string().min(10).max(200),
+});
+
 export const registerInstitutionSchema = z.object({
   institutionName: z.string().min(2).max(200),
   city: z.string().min(1).max(120).optional(),

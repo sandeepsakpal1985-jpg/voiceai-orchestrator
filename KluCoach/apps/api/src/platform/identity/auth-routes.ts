@@ -4,6 +4,8 @@ import {
   acceptInvitationSchema,
   invitationCreateSchema,
   loginSchema,
+  passwordResetCompleteSchema,
+  passwordResetRequestSchema,
   registerInstitutionSchema,
 } from "@klunex-edu/shared";
 import type { z } from "zod";
@@ -14,7 +16,9 @@ import { requireUser } from "./http-auth.js";
 import { can } from "./policies.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { createSession, destroySession, newToken, hashToken } from "./session.js";
+import { completePasswordReset, peekDevResetToken, requestPasswordReset } from "./password-reset.js";
 import { rateLimits } from "../../lib/rateLimits.js";
+import { config } from "../../config.js";
 import { guardianInTenant, studentInTenant, teacherInTenant } from "../tenancy/scope.js";
 
 function parse<T>(schema: z.ZodType<T>, body: unknown): T {
@@ -123,6 +127,27 @@ export async function authRoutes(app: FastifyInstance) {
     await writeAudit(req, "auth.login", "User", user.id);
     return { user: publicUser(user), csrfToken: session.csrfToken };
   });
+
+  app.post("/auth/password-reset/request", { config: { rateLimit: rateLimits.passwordReset } }, async (req) => {
+    const body = parse(passwordResetRequestSchema, req.body);
+    return requestPasswordReset(body.email, req.ip);
+  });
+
+  app.post("/auth/password-reset/complete", { config: { rateLimit: rateLimits.passwordReset } }, async (req) => {
+    const body = parse(passwordResetCompleteSchema, req.body);
+    const result = await completePasswordReset(body.token, body.password, req.ip);
+    if (!result.ok) throw unauthorized("Reset link is invalid or expired");
+    return { ok: true };
+  });
+
+  if (config.allowDevResetToken && !config.isProduction) {
+    app.get("/auth/password-reset/dev-token", async (req) => {
+      const email = String((req.query as { email?: string }).email ?? "");
+      const token = peekDevResetToken(email);
+      if (!token) throw unauthorized();
+      return { token };
+    });
+  }
 
   app.post("/auth/logout", async (req, reply) => {
     if (req.authUser) await writeAudit(req, "auth.logout", "User", req.authUser.id);

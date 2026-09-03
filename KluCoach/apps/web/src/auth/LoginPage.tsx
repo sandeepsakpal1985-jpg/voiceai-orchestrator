@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { loginSchema } from "@klunex-edu/shared";
 import type { z } from "zod";
 import { auth, setCsrf } from "../api";
@@ -49,7 +49,12 @@ export function LoginPage() {
         <button className="btn" type="submit">
           Continue
         </button>
-        <p className="hint">Demo: parent@example.test / admin@example.test / teacher@example.test — password DemoPassw0rd!</p>
+        <p>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </p>
+        {import.meta.env.DEV ? (
+          <p className="hint">Demo: parent@example.test / admin@example.test / teacher@example.test — password DemoPassw0rd!</p>
+        ) : null}
       </form>
     </div>
   );

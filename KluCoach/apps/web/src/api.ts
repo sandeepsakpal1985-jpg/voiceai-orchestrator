@@ -31,7 +31,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (res.status === 401) {
-    const publicAuth = path.startsWith("/auth/login") || path.startsWith("/auth/invitations/accept");
+    const publicAuth =
+      path.startsWith("/auth/login") ||
+      path.startsWith("/auth/invitations/accept") ||
+      path.startsWith("/auth/password-reset/");
     if (!publicAuth) window.location.href = "/login";
     throw new Error(data?.error?.message ?? "Unauthorized");
   }
@@ -54,6 +57,16 @@ export const auth = {
     }),
   logout: () => api("/auth/logout", { method: "POST" }),
   me: () => api<Me>("/me"),
+  requestPasswordReset: (email: string) =>
+    api<{ message: string }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  completePasswordReset: (token: string, password: string) =>
+    api<{ ok: boolean }>("/auth/password-reset/complete", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
   acceptInvite: (token: string, password: string, firstName: string, lastName: string) =>
     api("/auth/invitations/accept", {
       method: "POST",

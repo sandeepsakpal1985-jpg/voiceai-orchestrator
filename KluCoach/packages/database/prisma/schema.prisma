@@ -300,11 +300,27 @@ model User {
   auditLogs            AuditLog[]
   createdImportJobs    ImportJob[]
   createdInvitations   Invitation[]       @relation("InvitationCreator")
+  passwordResets       PasswordResetToken[]
 
   @@index([institutionId])
   @@index([email])
   @@index([phone])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Session {
@@ -1120,6 +1136,12 @@ model BillingPayment {
   status            BillingPaymentStatus @default(SUCCESS)
   provider          String               @default("MANUAL")
   providerReference String?              @map("provider_reference")
+  providerPaymentId String?              @map("provider_payment_id")
+  providerOrderId   String?              @map("provider_order_id")
+  providerStatus    String?              @map("provider_status")
+  paidAt            DateTime?            @map("paid_at")
+  failureReason     String?              @map("failure_reason")
+  metadata          Json                 @default("{}")
   dedupeKey         String               @map("dedupe_key")
   createdAt         DateTime             @default(now()) @map("created_at")
 
@@ -1130,7 +1152,58 @@ model BillingPayment {
   @@unique([institutionId, dedupeKey])
   @@index([institutionId])
   @@index([invoiceId])
+  @@index([provider, providerPaymentId])
+  @@index([provider, providerOrderId])
   @@map("billing_payments")
+}
+
+model PaymentWebhookEvent {
+  id                String    @id @default(cuid())
+  provider          String
+  providerEventId   String    @map("provider_event_id")
+  eventType         String    @map("event_type")
+  processingResult  String    @map("processing_result")
+  invoiceId         String?   @map("invoice_id")
+  paymentId         String?   @map("payment_id")
+  payloadHash       String    @map("payload_hash")
+  error             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@unique([provider, providerEventId])
+  @@index([createdAt])
+  @@map("payment_webhook_events")
+}
+
+model PaymentReconciliation {
+  id             String   @id @default(cuid())
+  invoiceId      String   @map("invoice_id")
+  paymentId      String?  @map("payment_id")
+  localStatus    String   @map("local_status")
+  providerStatus String   @map("provider_status")
+  mismatch       Boolean
+  notes          String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([invoiceId])
+  @@index([createdAt])
+  @@map("payment_reconciliations")
+}
+
+model JobRun {
+  id           String    @id @default(cuid())
+  name         String
+  dedupeKey    String    @unique @map("dedupe_key")
+  status       String
+  scheduledFor DateTime  @map("scheduled_for")
+  startedAt    DateTime? @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+  attempt      Int       @default(0)
+  result       Json?
+  error        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([name, createdAt])
+  @@map("job_runs")
 }
 
 model BillingRefund {

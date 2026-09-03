@@ -15,6 +15,10 @@ function slugify(name: string) {
 async function main() {
   const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
 
+  await prisma.passwordResetToken.deleteMany();
+  await prisma.paymentWebhookEvent.deleteMany();
+  await prisma.paymentReconciliation.deleteMany();
+  await prisma.jobRun.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.importRowError.deleteMany();
   await prisma.importJob.deleteMany();
@@ -314,6 +318,18 @@ async function seedTenant(opts: {
       role: "INSTITUTION_ADMIN",
     },
   });
+  if (opts.primary) {
+    await prisma.user.create({
+      data: {
+        institutionId: institution.id,
+        email: "resetme@example.test",
+        passwordHash: opts.passwordHash,
+        firstName: "Reset",
+        lastName: "Demo",
+        role: "INSTITUTION_ADMIN",
+      },
+    });
+  }
 
   const teacherUser = await prisma.user.create({
     data: {
