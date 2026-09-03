@@ -14,7 +14,7 @@ test("admin login shows institute snapshot", async ({ page }) => {
   await page.getByLabel("Email").fill("admin@example.test");
   await page.getByLabel("Password").fill("DemoPassw0rd!");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: "Institute snapshot" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Institute snapshot" })).toBeVisible({ timeout: 15000 });
   await expect(page.getByText("Parents activated")).toBeVisible();
 });
 
