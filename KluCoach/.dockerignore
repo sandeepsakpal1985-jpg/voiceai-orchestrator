@@ -1,0 +1,12 @@
+.git
+**/.git
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+data
+*.dump
+**/*.log
+apps/web/test-results
+apps/web/playwright-report
+**/.DS_Store

@@ -1,0 +1,33 @@
+# Caddy is the production TLS terminator (see docker-compose.prod.yml).
+# This nginx snippet is the alternative if Caddy is not used.
+# HTTP must redirect to HTTPS. Fastify trustProxy is enabled so Secure cookies work.
+
+# server {
+#   listen 80;
+#   server_name app.example.com;
+#   return 301 https://$host$request_uri;
+# }
+#
+# server {
+#   listen 443 ssl http2;
+#   server_name app.example.com;
+#   ssl_certificate /etc/ssl/certs/fullchain.pem;
+#   ssl_certificate_key /etc/ssl/private/privkey.pem;
+#   location / {
+#     proxy_pass http://web:80;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#   }
+#   location /api/ {
+#     proxy_pass http://api:3000/;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#   }
+#   location /webhooks/ {
+#     proxy_pass http://api:3000/webhooks/;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#   }
+# }

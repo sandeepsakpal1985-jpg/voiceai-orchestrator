@@ -1,0 +1,35 @@
+{
+  email {$CADDY_EMAIL}
+}
+
+{$APP_DOMAIN} {
+  encode gzip
+
+  handle /webhooks/* {
+    reverse_proxy api:3000 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Forwarded-For {remote_host}
+    }
+  }
+
+  handle /health {
+    reverse_proxy api:3000
+  }
+
+  handle /ready {
+    reverse_proxy api:3000
+  }
+
+  handle_path /api/* {
+    reverse_proxy api:3000 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Forwarded-For {remote_host}
+    }
+  }
+
+  handle {
+    reverse_proxy web:80
+  }
+}

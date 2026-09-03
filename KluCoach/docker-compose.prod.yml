@@ -1,0 +1,98 @@
+# Production compose. Do not use demo defaults.
+# Copy .env.example, set APP_ENV=production, COOKIE_SECURE=true, unique SESSION_SECRET,
+# PAYMENTS_ENABLED=false until Razorpay live keys are ready.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - klucoach_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      SESSION_SECRET: ${SESSION_SECRET}
+      COOKIE_SECURE: "true"
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      APP_BASE_URL: ${APP_BASE_URL:-${PUBLIC_APP_URL}}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+      API_PORT: "3000"
+      FILE_STORAGE_DIR: /data/files
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-false}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-none}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - klucoach_files:/data/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["node", "dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      SESSION_SECRET: ${SESSION_SECRET}
+      PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-false}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-none}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+volumes:
+  klucoach_pg:
+  klucoach_files:
+  caddy_data:
+  caddy_config:
