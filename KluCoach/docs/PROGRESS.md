@@ -52,7 +52,7 @@ Validation rule: COMPLETE only with execution evidence. Statuses: IMPLEMENTED / 
 ## Session summary (Phase 6)
 
 1. **Starting commit:** `f3497b3`
-2. **Ending commit:** (git, this session)
+2. **Ending commit:** `dba3d06` (`docs: record phase 6 production readiness`)
 3. **Features implemented:** production config, password reset, Razorpay provider abstraction, verified webhooks, reconciliation, lifecycle worker, email/storage ports, observability, Compose/Caddy, backup drill, Docker image
 4. **Features validated:** Vitest 90/90; backup restore; API image USER klucoach; Playwright production journeys (see below)
 5. **Vitest:** 90/90 PASS
