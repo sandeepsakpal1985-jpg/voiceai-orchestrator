@@ -12,3 +12,23 @@ export async function loginAs(page: Page, email: string) {
 export async function expectHeading(page: Page, name: string | RegExp) {
   await expect(page.getByRole("heading", { name }).first()).toBeVisible({ timeout: 15000 });
 }
+
+export async function csrfPostStatus(page: Page, path: string, body: unknown) {
+  return page.evaluate(
+    async ({ path, body }) => {
+      const me = await fetch("/api/me", { credentials: "include" });
+      const session = (await me.json()) as { csrfToken?: string };
+      const res = await fetch(`/api${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": session.csrfToken ?? "",
+        },
+        body: JSON.stringify(body),
+      });
+      return res.status;
+    },
+    { path, body },
+  );
+}

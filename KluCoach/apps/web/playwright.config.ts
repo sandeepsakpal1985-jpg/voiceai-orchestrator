@@ -24,6 +24,8 @@ export default defineConfig({
         PAYMENT_PROVIDER: "test",
         PAYMENT_WEBHOOK_SECRET: "test-webhook-secret",
         ALLOW_DEV_RESET_TOKEN: "true",
+        AI_ENABLED: "true",
+        AI_PROVIDER: "test",
       },
     },
     {
