@@ -26,7 +26,7 @@ Identity, tenant, and role come from the **server session**. Resource IDs in URL
 - CSRF protection on cookie-authenticated state-changing requests
 - Session rotation on login
 - Logout deletes the server session
-- Rate limit login, registration, invitation, password reset, and payment initiation
+- Rate limit login, registration, invitation, password reset, payment initiation, and AI asks
 - Password reset: generic response whether or not the email exists; SHA-256 hashed single-use tokens with expiry; all reset tokens and sessions invalidated on completion. Never store the raw token. Audit `auth.password_reset.requested` / `.completed` without tokens or passwords.
 
 Production rate limits (in-process `@fastify/rate-limit`; no Redis):
@@ -39,6 +39,7 @@ Production rate limits (in-process `@fastify/rate-limit`; no Redis):
 | `POST /invitations` | 20 | 1 minute | Invite flood |
 | `POST /auth/password-reset/request` and complete | 5 | 1 minute | Token guessing |
 | `POST /billing/invoices/:id/pay` | 10 | 1 minute | Checkout abuse |
+| `POST /ai/students/:id/ask`, `/ai/batches/:id/ask`, `/ai/institution/ask` | 20 | 1 minute | Model cost; keyed by tenant + user after session bind |
 | `POST /imports/students/preview` | 20 | 1 minute | Parse CPU |
 | Global (other routes) | 300 | 1 minute | Generic abuse |
 | `/health`, `/ready`, `/webhooks/*` | allow-listed | — | Probes and provider retries |
@@ -99,7 +100,17 @@ Failed cross-tenant access returns **404** (do not confirm the other tenant's re
 
 ## Audit
 
-Tenant-scoped audit log for: login/logout, password reset requested/completed, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports, payment initiated/confirmed/failed, refunds, subscription lifecycle, invoice issue/void, reconciliation.
+Tenant-scoped audit log for: login/logout, password reset requested/completed, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports, payment initiated/confirmed/failed, refunds, subscription lifecycle, invoice issue/void, reconciliation, AI insight requested/completed/failed (`ai.student_insight.*`). AI audit metadata is limited to provider name — not prompts, answers, or Student 360 payloads.
+
+## AI
+
+- The model is not the authorization boundary. Context is built only after session tenant + RBAC + relationship checks.
+- Clients cannot submit `studentData` / `tenantId` as AI context.
+- `SUPER_ADMIN` does not automatically receive student AI.
+- `AI_ENABLED` defaults to false. Provider keys never appear in `/health` or the browser.
+- Prompt injection is treated as untrusted user text; unauthorized rows are never in the prompt.
+
+See [AI.md](./AI.md) and [ADR-018](./adr/ADR-018-ai-student-insights.md).
 
 ## Payments and webhooks
 

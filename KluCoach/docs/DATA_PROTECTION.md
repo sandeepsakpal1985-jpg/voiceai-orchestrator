@@ -57,6 +57,12 @@ Only send to addresses/phones on file for that user. Tenant-scoped templates. No
 
 ---
 
+## AI processor
+
+When `AI_ENABLED=true`, a minimized JSON context (first name, attendance and academic summaries, pending assignment counts, batch/institution aggregates — not password hashes, sessions, payment secrets, or unnecessary contact PII) is sent to the configured provider together with the user question. Purpose: answer that explicit question. KluCoach does not store AI conversations in this phase. Application logs and audit rows must not contain the full context or answer. Retention at the vendor is **not** asserted here; use the provider contract. Disable with `AI_ENABLED=false`.
+
+---
+
 ## Cross-institution
 
 No student portability in MVP. A person who is a parent at Tenant A and Tenant B would have **separate accounts** unless a future identity layer is designed (roadmap).

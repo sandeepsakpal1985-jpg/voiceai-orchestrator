@@ -1,8 +1,86 @@
 # Progress
 
-Updated: 2026-09-02 (Phase 6 — Production Readiness + Real Payment Collection)
+Updated: 2026-09-04 (Phase 7 — AI Student Insights & Assistant)
 
 Validation rule: COMPLETE only with execution evidence. Statuses: IMPLEMENTED / VALIDATED / BLOCKED / NOT IMPLEMENTED.
+
+| Feature | Status | Tests | Verified | Notes |
+|---------|--------|-------|----------|-------|
+| Phase 6 checkpoint `9edae95` | VALIDATED | n/a | git | Start of Phase 7 |
+| AiProvider + TestAiProvider + OpenAI fetch adapter | VALIDATED | vitest | yes | No vendor SDK; no LangChain |
+| AI_ENABLED default false | VALIDATED | vitest | yes | App boots with AI off; production rejects `test` |
+| Student360AiContextBuilder | VALIDATED | vitest | yes | Minimized; no ids/emails/hashes |
+| Parent / student / teacher / admin ask APIs | VALIDATED | vitest + playwright | yes | Authz before context |
+| Citations from server context | VALIDATED | vitest + playwright | yes | Model does not invent evidence rows |
+| Tenant / parent-child / sibling / teacher-batch isolation | VALIDATED | vitest + playwright | yes | Cross-tenant 404; super-admin denied |
+| Prompt injection does not expand data | VALIDATED | vitest | yes | Unauthorized names never in context |
+| Rate limits + input/output caps | VALIDATED | vitest | yes | 20/min production; 500-char message; 8000-char context |
+| Disabled payload + provider 503 | VALIDATED | vitest + playwright (UI mock) | yes | No stack traces |
+| Live OpenAI (or other vendor) | BLOCKED — EXTERNAL PROVIDER | n/a | no | Keys not present; CI uses TestAiProvider |
+
+## Phase 7 exit checklist
+
+- [x] AI provider abstraction implemented
+- [x] AI disabled by default
+- [x] Test AI provider implemented
+- [x] Parent Student 360 AI implemented
+- [x] Student self AI implemented
+- [x] Teacher batch AI implemented
+- [x] Admin institution AI implemented
+- [x] Existing Student 360 remains canonical
+- [x] No arbitrary database access from LLM
+- [x] No model-generated SQL
+- [x] Context builder authorization enforced
+- [x] Tenant isolation tested (EXECUTED, PASSED)
+- [x] Parent-child isolation tested (EXECUTED, PASSED)
+- [x] Student-sibling isolation tested (EXECUTED, PASSED)
+- [x] Teacher batch authorization tested (EXECUTED, PASSED)
+- [x] Admin tenant isolation tested (EXECUTED, PASSED)
+- [x] Prompt injection tests pass (EXECUTED, PASSED)
+- [x] Rate limits implemented
+- [x] Input/output limits implemented
+- [x] AI errors safely handled
+- [x] Provider failure tested (EXECUTED, PASSED)
+- [x] AI disabled state tested (HTTP EXECUTED; Playwright UI via status mock EXECUTED)
+- [x] Citations/evidence implemented
+- [x] No unnecessary PII sent to model
+- [x] No sensitive data logged (audit metadata is provider only)
+- [x] Audit events implemented
+- [x] Parent Playwright journey passes
+- [x] Student Playwright journey passes
+- [x] Teacher Playwright journey passes
+- [x] Admin Playwright journey passes
+- [x] Typecheck passes
+- [x] Build passes
+- [x] Vitest passes (113/113)
+- [x] Playwright passes (29/29)
+- [x] Documentation updated
+- [ ] Git tree clean — recorded after the docs commit
+- [x] No critical/high security regression in executed suites
+- [ ] Live provider — **BLOCKED — EXTERNAL PROVIDER**
+
+## Session summary (Phase 7)
+
+1. **Starting commit:** `9edae95`
+2. **Ending commit:** *(recorded in the follow-up docs commit)*
+3. **AI capabilities implemented:** parent child insights, student self insights, teacher assigned-batch insights, institution-admin tenant insights; on-demand UI on existing Student 360 / batches / admin home
+4. **AI capabilities validated:** TestAiProvider journeys EXECUTED and PASSED (Vitest + Playwright). Live vendor **BLOCKED — EXTERNAL PROVIDER**
+5. **Security tests executed:** parent/sibling/tenant/teacher/admin/super-admin/prompt-injection/disabled/provider-failure
+6. **Security tests passed:** yes (Vitest integration + Playwright tamper 404s)
+7. **Vitest:** 113/113 PASS
+8. **Playwright:** 29/29 PASS (24 Phase 6 + 5 AI)
+9. **Typecheck:** PASS
+10. **Build:** PASS
+11. **Lint:** `pnpm lint` `--if-present` no-op PASS
+12. **AI provider status:** `TestAiProvider` VALIDATED; OpenAI HTTPS adapter IMPLEMENTED unused without keys
+13. **Tests blocked:** live LLM API — **BLOCKED — EXTERNAL PROVIDER**
+14. **Known limitations:** no chat history; no RAG; no proactive notification insights; no tenant-level `aiEnabled` flag; Playwright `reuseExistingServer` must include `AI_ENABLED=true` and `AI_PROVIDER=test`
+15. **Documentation updated:** AI.md, AI_PROVIDER_SETUP.md, ADR-018, SECURITY, PRIVACY, DATA_PROTECTION, ARCHITECTURE, ROADMAP, DECISIONS, TESTING, OPEN_SOURCE, PROGRESS
+16. **Exact next phase:** **Stop.** Do not start Phase 8. The next interesting expansion is proactive factual insights through the existing notification system, only after this interactive layer is accepted.
+
+Phase 7 software is **VALIDATED** against the test provider. Do not claim “AI works” against a live model until the optional procedure in [AI_PROVIDER_SETUP.md](./AI_PROVIDER_SETUP.md) is actually run.
+
+## Phase 6 feature status
 
 | Feature | Status | Tests | Verified | Notes |
 |---------|--------|-------|----------|-------|

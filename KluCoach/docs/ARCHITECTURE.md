@@ -72,7 +72,7 @@ Allowed cheap defaults:
 
 Forbidden in MVP (and dangerous at ₹500/student/year):
 
-- Per-request LLM/AI
+- Automatic LLM calls on every Student 360 or dashboard load
 - Video storage or live class infra
 - Unbounded SMS/WhatsApp
 - Per-student third-party SaaS seats
@@ -261,6 +261,8 @@ Multi-child: one parent account, many `StudentGuardian` rows, same institution. 
 
 Future AI may summarize this DTO. It must not compute authorization or replace the status engine.
 
+Phase 7 does that as an on-demand layer: see [AI.md](./AI.md) and [ADR-018](./adr/ADR-018-ai-student-insights.md). Student 360 remains canonical. AI is off unless `AI_ENABLED=true`.
+
 ---
 
 ## 13. Communication
@@ -274,3 +276,10 @@ Retention: 90 days via `purgeExpiredNotifications` (callable). Assignment remind
 ## 14. Billing
 
 Institution commercial data is tenant-scoped. Super-admin reporting is the only cross-tenant commercial view. Billable counts use SQL aggregation. Money is integer paise. Provider checkout amounts come from stored invoice outstanding balances. See [BILLING.md](./BILLING.md), [PAYMENTS.md](./PAYMENTS.md), and [ADR-013](./adr/ADR-013-billing-subscriptions.md).
+
+---
+
+## 15. AI insights
+
+Optional, default-off. `POST /ai/students/:id/ask`, `/ai/batches/:id/ask`, and `/ai/institution/ask` accept only `{ message }`. Context is built after the same tenant/RBAC/parent-child/teacher-batch checks as Student 360. `AiProvider` hides vendor types. Tests use `TestAiProvider`. See [AI.md](./AI.md).
+

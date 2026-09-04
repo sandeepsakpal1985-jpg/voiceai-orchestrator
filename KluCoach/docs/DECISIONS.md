@@ -21,6 +21,7 @@ Index of architectural decision records.
 | [ADR-015](./adr/ADR-015-webhook-architecture.md) | Webhook architecture | Accepted |
 | [ADR-016](./adr/ADR-016-job-runner.md) | Job runner | Accepted |
 | [ADR-017](./adr/ADR-017-production-deployment.md) | Production deployment | Accepted |
+| [ADR-018](./adr/ADR-018-ai-student-insights.md) | AI Student Insights | Accepted |
 
 KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital schema.
 
@@ -37,3 +38,5 @@ Phase 4: Domain events (absence, published results, assignment created, notice p
 Phase 5: Commercial engine (plans, snapshots, entitlements, institution invoices, manual payments, partner report). Prices live in configuration. Demo tenants are `NON_BILLABLE`. See [ADR-013](./adr/ADR-013-billing-subscriptions.md) and [BILLING.md](./BILLING.md).
 
 Phase 6: Production config, password reset, Razorpay behind `PaymentProvider`, verified webhooks, PostgreSQL job runner, email/storage ports, backup restore drill, Compose + Caddy. Payments stay off until `PAYMENTS_ENABLED=true` with real keys. See ADR-014–017, [PAYMENTS.md](./PAYMENTS.md), [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
+
+Phase 7: AI is an authorized context layer over Student 360. Default off. `TestAiProvider` for CI. No generic database chat. See [ADR-018](./adr/ADR-018-ai-student-insights.md) and [AI.md](./AI.md).

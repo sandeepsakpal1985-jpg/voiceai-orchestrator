@@ -58,23 +58,29 @@ Deferred from this phase:
 
 ---
 
-## Next major phase — Phase 7 AI capabilities
+## Phase 7 — AI Student Insights
 
-Only after the production gate (including explicit payment cutover) is accepted.
+On-demand insights over authorized Student 360 / teacher batch / admin tenant aggregates. Default `AI_ENABLED=false`. Test provider for CI. No RAG, no vector DB, no LangChain, no autonomous writes. See [AI.md](./AI.md) and [ADR-018](./adr/ADR-018-ai-student-insights.md).
 
-Potential:
+Live OpenAI (or other vendor) quality checks remain **BLOCKED** until keys exist.
 
-- Parent AI: "How is my child doing?"
-- Teacher AI: "Which students need attention?"
-- Admin AI: "Which batches have declining attendance?"
+Deferred from this phase:
 
-AI must use Student 360 and existing tenant/RBAC. No AI feature may bypass authorization.
-
-Do not start AI during Phase 6 leftovers.
+- Persistent AI chat history
+- Embeddings / document RAG
+- Proactive insights pushed through notifications
+- Per-tenant `institution.aiEnabled`
+- AI usage billing
 
 ---
 
 ## After that
+
+Do not start the next phase until Phase 7 is accepted.
+
+Potential next expansion: **proactive factual insights** (for example attendance falling) delivered through the existing notification system — still authorized before any model call.
+
+Further out:
 
 - Broader AI insights with tenant/role-respecting retrieval (only when cost model allows)
 - SMS/WhatsApp providers (institution-paid usage)

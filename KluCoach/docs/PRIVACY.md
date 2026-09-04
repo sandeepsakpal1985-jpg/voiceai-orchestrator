@@ -29,7 +29,7 @@ This document is engineering intent. Legal compliance (DPDP Act, school/board ru
 - Allow parents to view their child's coaching journey
 - Security, abuse prevention, audit
 
-Not for: ads, resale, cross-institution profiling, training public AI models on identifiable student data.
+Not for: ads, resale, cross-institution profiling, training public AI models on identifiable student data. Optional AI insights send a minimized, already-authorized snapshot to a configured processor only when a user explicitly asks. AI is off by default.
 
 ---
 
@@ -67,6 +67,7 @@ MVP:
 |-----------|------|-------|
 | Hosting VPS / Postgres | all | operator-controlled |
 | Email provider (optional) | email, name, invite link | only if configured |
+| AI provider (optional) | minimized Student 360 / batch / institution facts plus the user question | only if `AI_ENABLED=true` and a provider is configured; see [AI.md](./AI.md) |
 | SMS / WhatsApp | none in MVP | interfaces only |
 
 No analytics SDKs that profile children. No advertising pixels.
@@ -76,3 +77,5 @@ No analytics SDKs that profile children. No advertising pixels.
 ## Rights (product hooks)
 
 Institution admin can export CSV reports (tenant-scoped). Full data-subject request workflow is a roadmap item; record in ROADMAP.md.
+
+When AI is enabled, a parent/student/teacher/admin can choose not to click Ask. There is no automatic generation. Turning `AI_ENABLED=false` stops new provider calls. KluCoach does not claim that an external provider deletes historical prompts.
