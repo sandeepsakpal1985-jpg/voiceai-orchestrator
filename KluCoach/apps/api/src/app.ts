@@ -20,6 +20,7 @@ import { opsRoutes } from "./platform/ops/ops-routes.js";
 import { notificationRoutes } from "./platform/communication/notification-routes.js";
 import { billingRoutes } from "./platform/billing/billing-routes.js";
 import { paymentWebhookRoutes } from "./platform/payments/webhook-routes.js";
+import { aiRoutes } from "./platform/ai/routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -88,6 +89,7 @@ export async function buildApp() {
   await app.register(dashboardRoutes);
   await app.register(notificationRoutes);
   await app.register(billingRoutes);
+  await app.register(aiRoutes);
   await app.register(opsRoutes);
 
   return app;

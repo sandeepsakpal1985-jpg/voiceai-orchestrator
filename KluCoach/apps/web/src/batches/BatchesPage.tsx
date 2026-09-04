@@ -5,6 +5,7 @@ import { listQuery, type Paged } from "../lib/paged";
 import { useDebounced } from "../lib/useDebounced";
 import { DataTable } from "../ui/DataTable";
 import { createAppColumnHelper, type SortingState } from "../ui/table-engine";
+import { AiAskPanel } from "../ai/AiAskPanel";
 
 type Named = { id: string; name: string };
 type BatchRow = {
@@ -201,6 +202,19 @@ export function BatchesPage() {
           </select>
           <button className="btn" type="submit">Save batch</button>
         </form>
+      ) : null}
+      {edit ? (
+        <AiAskPanel
+          key={edit.id}
+          title={`AI insights · ${edit.name}`}
+          endpoint={`/ai/batches/${edit.id}/ask`}
+          prompts={[
+            "Who needs attention?",
+            "How is attendance?",
+            "How is performance trending?",
+            "Which students have pending assignments?",
+          ]}
+        />
       ) : null}
     </div>
   );

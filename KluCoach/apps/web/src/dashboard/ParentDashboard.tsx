@@ -5,6 +5,7 @@ import { api } from "../api";
 import { ChildSelector } from "../student360/ChildSelector";
 import { Student360Loading, Student360View } from "../student360/Student360View";
 import { RecentNotifications } from "../notifications/NotificationCenter";
+import { AiAskPanel } from "../ai/AiAskPanel";
 
 type ParentHome = {
   children: { id: string; firstName: string; lastName: string }[];
@@ -34,6 +35,18 @@ export function ParentDashboard() {
       />
       <RecentNotifications />
       <Student360View snapshot={query.data.snapshot} />
+      <AiAskPanel
+        key={query.data.snapshot.student.id}
+        title={`Ask about ${query.data.snapshot.student.firstName}`}
+        endpoint={`/ai/students/${query.data.snapshot.student.id}/ask`}
+        prompts={[
+          "How is my child doing?",
+          "What needs attention?",
+          "How is attendance?",
+          "How are recent test results?",
+          "What assignments are pending?",
+        ]}
+      />
     </div>
   );
 }
