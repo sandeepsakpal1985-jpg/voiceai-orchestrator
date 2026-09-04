@@ -55,14 +55,14 @@ Validation rule: COMPLETE only with execution evidence. Statuses: IMPLEMENTED / 
 - [x] Vitest passes (113/113)
 - [x] Playwright passes (29/29)
 - [x] Documentation updated
-- [ ] Git tree clean — recorded after the docs commit
+- [x] Git tree clean
 - [x] No critical/high security regression in executed suites
 - [ ] Live provider — **BLOCKED — EXTERNAL PROVIDER**
 
 ## Session summary (Phase 7)
 
 1. **Starting commit:** `9edae95`
-2. **Ending commit:** *(recorded in the follow-up docs commit)*
+2. **Ending commit:** `fc549f5` (`docs: document ai architecture`)
 3. **AI capabilities implemented:** parent child insights, student self insights, teacher assigned-batch insights, institution-admin tenant insights; on-demand UI on existing Student 360 / batches / admin home
 4. **AI capabilities validated:** TestAiProvider journeys EXECUTED and PASSED (Vitest + Playwright). Live vendor **BLOCKED — EXTERNAL PROVIDER**
 5. **Security tests executed:** parent/sibling/tenant/teacher/admin/super-admin/prompt-injection/disabled/provider-failure
