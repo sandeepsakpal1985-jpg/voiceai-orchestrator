@@ -1,5 +1,14 @@
 import { config } from "../config.js";
 
+export function aiAskRateLimitKey(req: {
+  ip: string;
+  authUser?: { id: string; institutionId: string | null } | null;
+}) {
+  const user = req.authUser;
+  if (user?.id) return `ai:${user.institutionId ?? "none"}:${user.id}`;
+  return `ai-ip:${req.ip}`;
+}
+
 export const productionAuthLimits = {
   login: 10,
   register: 5,
@@ -8,6 +17,7 @@ export const productionAuthLimits = {
   passwordReset: 5,
   paymentStart: 10,
   importPreview: 20,
+  aiAsk: 20,
   globalMax: 300,
 } as const;
 
@@ -23,6 +33,12 @@ export const rateLimits = {
   passwordReset: { max: relaxed ? testMax : productionAuthLimits.passwordReset, timeWindow: "1 minute" as const },
   paymentStart: { max: relaxed ? testMax : productionAuthLimits.paymentStart, timeWindow: "1 minute" as const },
   importPreview: { max: relaxed ? testMax : productionAuthLimits.importPreview, timeWindow: "1 minute" as const },
+  aiAsk: {
+    max: relaxed ? testMax : productionAuthLimits.aiAsk,
+    timeWindow: "1 minute" as const,
+    hook: "preHandler" as const,
+    keyGenerator: aiAskRateLimitKey,
+  },
 };
 
 export function isRateLimitAllowlisted(url: string) {

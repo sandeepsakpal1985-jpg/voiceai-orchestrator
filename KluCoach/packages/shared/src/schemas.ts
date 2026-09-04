@@ -337,3 +337,34 @@ export const notificationItemSchema = z.object({
   createdAt: z.string(),
 });
 export type NotificationItem = z.infer<typeof notificationItemSchema>;
+
+export const AI_CONTEXT_VERSIONS = {
+  student: "STUDENT_360_AI_V1",
+  batch: "TEACHER_BATCH_AI_V1",
+  institution: "ADMIN_INSTITUTION_AI_V1",
+} as const;
+
+export const aiAskRequestSchema = z.object({
+  message: z.string().trim().min(1).max(500),
+});
+export type AiAskRequest = z.infer<typeof aiAskRequestSchema>;
+
+export const aiCitationSchema = z.object({
+  type: z.string(),
+  label: z.string(),
+  value: z.string(),
+});
+export const aiAskResponseSchema = z.object({
+  available: z.boolean(),
+  answer: z.string(),
+  citations: z.array(aiCitationSchema),
+  contextVersion: z.string().nullable(),
+  provider: z.string(),
+});
+export type AiAskResponse = z.infer<typeof aiAskResponseSchema>;
+
+export const aiStatusSchema = z.object({
+  enabled: z.boolean(),
+  provider: z.string(),
+});
+export type AiStatus = z.infer<typeof aiStatusSchema>;

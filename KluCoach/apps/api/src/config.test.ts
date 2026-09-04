@@ -44,10 +44,27 @@ describe("production configuration validator", () => {
   });
 
   it("does not put secrets on the health payload", () => {
-    const cfg = loadConfig(base({ RAZORPAY_KEY_SECRET: "super-secret", SESSION_SECRET: "a-sufficiently-long-production-session-secret-value" }));
+    const cfg = loadConfig(base({ RAZORPAY_KEY_SECRET: "super-secret", SESSION_SECRET: "a-sufficiently-long-production-session-secret-value", AI_API_KEY: "sk-secret-ai" }));
     const body = JSON.stringify(healthPayload(cfg));
     expect(body).not.toContain("super-secret");
+    expect(body).not.toContain("sk-secret-ai");
     expect(body).not.toContain(cfg.sessionSecret);
     expect(body).not.toContain(cfg.databaseUrl);
+  });
+
+  it("allows production to boot with AI disabled and no API key", () => {
+    const cfg = loadConfig(base({ AI_ENABLED: "false" }));
+    expect(() => validateConfig(cfg)).not.toThrow();
+    expect(cfg.aiEnabled).toBe(false);
+  });
+
+  it("fails fast when production AI is enabled without a key", () => {
+    const cfg = loadConfig(base({ AI_ENABLED: "true", AI_PROVIDER: "openai" }));
+    expect(() => validateConfig(cfg)).toThrow(/AI_API_KEY/);
+  });
+
+  it("rejects the test AI provider in production when AI is enabled", () => {
+    const cfg = loadConfig(base({ AI_ENABLED: "true", AI_PROVIDER: "test", AI_API_KEY: "sk-not-used" }));
+    expect(() => validateConfig(cfg)).toThrow(/AI_PROVIDER/);
   });
 });

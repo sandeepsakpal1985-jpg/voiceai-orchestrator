@@ -8,6 +8,8 @@ export const APP_ENVS = ["development", "test", "demo", "production"] as const;
 export type AppEnv = (typeof APP_ENVS)[number];
 export const PAYMENT_PROVIDERS = ["none", "razorpay", "test"] as const;
 export type PaymentProviderName = (typeof PAYMENT_PROVIDERS)[number];
+export const AI_PROVIDERS = ["none", "test", "openai"] as const;
+export type AiProviderName = (typeof AI_PROVIDERS)[number];
 
 const WEAK_SECRETS = new Set([
   "dev-only-change-me",
@@ -57,6 +59,12 @@ export type AppConfig = {
   s3Region: string;
   s3AccessKey: string;
   s3SecretKey: string;
+  aiEnabled: boolean;
+  aiProvider: AiProviderName;
+  aiApiKey: string;
+  aiModel: string;
+  aiMaxOutputTokens: number;
+  aiMaxInputChars: number;
 };
 
 function asAppEnv(raw: string | undefined, nodeEnv: string): AppEnv {
@@ -68,6 +76,11 @@ function asAppEnv(raw: string | undefined, nodeEnv: string): AppEnv {
 
 function asPaymentProvider(raw: string | undefined): PaymentProviderName {
   if (raw && (PAYMENT_PROVIDERS as readonly string[]).includes(raw)) return raw as PaymentProviderName;
+  return "none";
+}
+
+function asAiProvider(raw: string | undefined): AiProviderName {
+  if (raw && (AI_PROVIDERS as readonly string[]).includes(raw)) return raw as AiProviderName;
   return "none";
 }
 
@@ -113,6 +126,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     s3Region: env.S3_REGION ?? "ap-south-1",
     s3AccessKey: env.S3_ACCESS_KEY_ID ?? "",
     s3SecretKey: env.S3_SECRET_ACCESS_KEY ?? "",
+    aiEnabled: env.AI_ENABLED === "true",
+    aiProvider: asAiProvider(env.AI_PROVIDER),
+    aiApiKey: env.AI_API_KEY ?? "",
+    aiModel: env.AI_MODEL ?? "gpt-4o-mini",
+    aiMaxOutputTokens: Number(env.AI_MAX_OUTPUT_TOKENS ?? 400),
+    aiMaxInputChars: Number(env.AI_MAX_INPUT_CHARS ?? 8000),
   };
 }
 
@@ -144,6 +163,14 @@ export function validateConfig(cfg: AppConfig): void {
         throw new ConfigError("RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and PAYMENT_WEBHOOK_SECRET are required when payments are enabled");
       }
     }
+    if (cfg.aiEnabled) {
+      if (cfg.aiProvider === "test" || cfg.aiProvider === "none") {
+        throw new ConfigError("AI_ENABLED requires a real AI_PROVIDER in production");
+      }
+      if (!cfg.aiApiKey) {
+        throw new ConfigError("AI_API_KEY is required when AI is enabled in production");
+      }
+    }
   }
 }
 
@@ -153,6 +180,7 @@ export function healthPayload(cfg: AppConfig) {
     appEnv: cfg.appEnv,
     paymentsEnabled: cfg.paymentsEnabled,
     paymentProvider: cfg.paymentsEnabled ? cfg.paymentProvider : "none",
+    aiEnabled: cfg.aiEnabled,
   };
 }
 
