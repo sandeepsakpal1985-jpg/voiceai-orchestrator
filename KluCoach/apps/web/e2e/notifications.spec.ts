@@ -19,7 +19,7 @@ test("parent is notified when a child is marked absent and opens the correct Stu
   await loginAs(parent, "parent@example.test");
   await parent.getByRole("link", { name: /Notifications/ }).click();
   await expectHeading(parent, "Notifications");
-  await parent.getByRole("button", { name: "Unread" }).click();
+  await parent.getByRole("button", { name: "Unread", exact: true }).click();
   const item = parent.getByRole("button", { name: new RegExp(`Aarav was marked absent on ${date}`) });
   await expect(item).toBeVisible({ timeout: 15000 });
   await expect(item).toContainText("Unread");

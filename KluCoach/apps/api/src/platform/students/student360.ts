@@ -195,7 +195,7 @@ export async function assembleStudent360(institutionId: string, studentId: strin
       overdue,
       dueSoon: dueSoonCount,
       submitted,
-      items: submissions.slice(0, 8).map((s) => ({
+      items: submissions.slice(0, 30).map((s) => ({
         id: s.assignment.id,
         title: s.assignment.title,
         dueAt: s.assignment.dueAt.toISOString(),

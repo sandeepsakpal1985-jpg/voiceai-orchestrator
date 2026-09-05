@@ -123,12 +123,14 @@ describe("student 360 authorization", () => {
   });
 
   it("lets an admin read in-tenant 360 and 404s tenant B", async () => {
-    const students = json<{ id: string; firstName: string }[]>(await app.inject({ method: "GET", url: "/students", headers: a.headers }));
-    const aarav = students.find((s) => s.firstName === "Aarav")!;
+    const home = json<{ children: { id: string; firstName: string }[] }>(
+      await app.inject({ method: "GET", url: "/dashboard/parent", headers: parentA.headers }),
+    );
+    const aarav = home.children.find((c) => c.firstName === "Aarav")!;
     const ok = await app.inject({ method: "GET", url: `/students/${aarav.id}/360`, headers: a.headers });
     expect(ok.statusCode).toBe(200);
     const parsed = student360Schema.safeParse(ok.json());
-    expect(parsed.success).toBe(true);
+    expect(parsed.success, parsed.success ? "" : parsed.error.toString()).toBe(true);
     if (parsed.success) {
       expect(parsed.data.attendance.percent).not.toBe(0);
       expect(parsed.data.academic.latest.length).toBeGreaterThan(0);

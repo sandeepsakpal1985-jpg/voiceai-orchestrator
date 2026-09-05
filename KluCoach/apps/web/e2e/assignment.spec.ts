@@ -18,7 +18,7 @@ test("teacher can create an assignment and student can submit it", async ({ page
   await loginAs(student, "student@example.test");
   await student.getByRole("link", { name: "Assignments" }).click();
   await expectHeading(student, "Assignments");
-  await expect(student.getByText(title)).toBeVisible();
+  await expect(student.locator("tr", { hasText: title })).toBeVisible({ timeout: 15000 });
   await student.locator("tr", { hasText: title }).getByRole("button", { name: "Submit" }).click();
   await expect(student.getByText("Assignment submitted")).toBeVisible();
   await expect(student.locator("tr", { hasText: title }).locator("span.hint")).toHaveText("Submitted");
