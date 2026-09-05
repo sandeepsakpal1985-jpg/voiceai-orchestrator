@@ -46,13 +46,13 @@ Validation rule: COMPLETE only with execution evidence. Statuses: IMPLEMENTED / 
 - [x] Build passes
 - [x] Existing regression suite passes (Vitest 131/131 includes Phases 1–7)
 - [x] Documentation updated
-- [ ] Git tree clean — pending logical commits
+- [x] Git tree clean — KluCoach paths committed
 - [x] No critical/high security regression in executed suites
 
 ## Session summary (Phase 8)
 
 1. **Starting commit:** `dfd8d8e`
-2. **Ending commit:** pending (docs commit after this file)
+2. **Ending commit:** `301b9f2` (`docs: document proactive insights`)
 3. **Insight types implemented:** `ATTENDANCE_DECLINE`, `ATTENDANCE_IMPROVEMENT`, `ACADEMIC_DECLINE`, `ACADEMIC_IMPROVEMENT`, `ASSIGNMENT_OVERDUE`
 4. **Insight types validated:** all five via Vitest rules; attendance/academic/overdue via integration + Playwright
 5. **Notification integration:** existing `deliverNotification`; preferences map to attendance/result/assignment alerts; IN_APP
