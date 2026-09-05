@@ -249,6 +249,8 @@ Caching is optional later (Redis). Not required for MVP. Student 360 is not cach
 
 Phase 8 factual insights are a **sibling** authorized `GET /students/:id/insights` on the same page — not copied into the 360 DTO and not a second dashboard.
 
+Phase 9A gate movement is a **sibling** authorized `GET /students/:id/movement` (ENTRY/EXIT only, 30 days). It is not copied into the 360 DTO, not GPS, and not included in AI context. See [SAFETRACK.md](./SAFETRACK.md).
+
 | Route | Who | Notes |
 |-------|-----|-------|
 | `GET /students/:id/360` | roles with `students:read` after `assertStudent360Access` | Canonical DTO (`student360Schema`) |

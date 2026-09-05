@@ -22,7 +22,7 @@ Index of architectural decision records.
 | [ADR-016](./adr/ADR-016-job-runner.md) | Job runner | Accepted |
 | [ADR-017](./adr/ADR-017-production-deployment.md) | Production deployment | Accepted |
 | [ADR-018](./adr/ADR-018-ai-student-insights.md) | AI Student Insights | Accepted |
-| [ADR-019](./adr/ADR-019-proactive-student-insights.md) | Proactive Student Insights | Accepted |
+| [ADR-020](./adr/ADR-020-student-movement-safetrack.md) | Student Movement & SafeTrack | Accepted |
 
 KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital schema.
 
@@ -43,3 +43,5 @@ Phase 6: Production config, password reset, Razorpay behind `PaymentProvider`, v
 Phase 7: AI is an authorized context layer over Student 360. Default off. `TestAiProvider` for CI. No generic database chat. See [ADR-018](./adr/ADR-018-ai-student-insights.md) and [AI.md](./AI.md).
 
 Phase 8: Rule-based proactive insights (attendance / academic change, overdue assignments) reuse `NotificationService` and `job_runs`. Lifecycle is one unique row per dedupe key. Thresholds are env-only (no admin UI). Insight evaluation is fire-and-forget after academic writes. No predictive risk engine. Optional AI wording is off by default. See [ADR-019](./adr/ADR-019-proactive-student-insights.md) and [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md).
+
+Phase 9A: RFID/NFC digital gate (entry/exit) into Student 360 and parent in-app notifications. No GPS. Teachers and super-admin do not inherit movement history. See [ADR-020](./adr/ADR-020-student-movement-safetrack.md) and [SAFETRACK.md](./SAFETRACK.md).

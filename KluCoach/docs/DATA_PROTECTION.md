@@ -9,7 +9,8 @@ Operational companion to [PRIVACY.md](./PRIVACY.md) and [SECURITY.md](./SECURITY
 | Class | Examples | Handling |
 |-------|----------|----------|
 | Secret | passwords, session tokens, invite tokens | hash; never log |
-| Restricted | student PII, marks, attendance, contacts | tenant + RBAC |
+| Restricted | student PII, marks, attendance, contacts, gate entry/exit | tenant + RBAC |
+| Highly restricted | GPS / live location (not collected in 9A) | guardian authorization; not in AI context |
 | Operational | batch names, timetable | tenant |
 | Public | marketing site (out of scope) | n/a |
 
@@ -24,6 +25,7 @@ Operational companion to [PRIVACY.md](./PRIVACY.md) and [SECURITY.md](./SECURITY
 | Sessions | Expire (7 days idle default); delete on logout |
 | Invitations | Expire; hash token |
 | Audit logs | Keep; tenant-scoped; no silent purge in MVP |
+| Gate ENTRY/EXIT visible to parents | Last 30 days in the API query window |
 | Uploaded files | Delete/orphan-clean with parent record archive (later job) |
 
 Do not permanently delete educational records in casual admin “delete” actions. MVP uses status + `archivedAt`.

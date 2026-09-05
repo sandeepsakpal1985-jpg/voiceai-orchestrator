@@ -86,11 +86,25 @@ Deferred from this phase:
 
 ---
 
-## After that
+## Phase 9 — Student Movement & SafeTrack
 
-Do not start the next phase until Phase 8 is accepted.
+RFID-first digital gate. GPS is a later stage. See [SAFETRACK.md](./SAFETRACK.md) and [ADR-020](./adr/ADR-020-student-movement-safetrack.md).
 
-Potential next expansion: **teacher batch insight aggregation** (counts of authorized students with a given factual insight type) — still tenant-scoped, still not a predictive engine.
+| Slice | Status | Scope |
+|-------|--------|-------|
+| **9A Digital Gate** | VALIDATED | Card/device, ENTRY/EXIT, parent alerts, Student 360 sibling fetch, no GPS |
+| **9B Multiple gates** | NOT IMPLEMENTED | Hostel/back/parking gates using existing `AccessGate` |
+| **9C GPS** | NOT IMPLEMENTED | Live location, geofence, routes, SOS — only after RFID demand and privacy review |
+
+Deferred from 9A:
+
+- Physical RFID reader installation / OEM quotes
+- SMS/WhatsApp movement alerts
+- SafeTrack billed plan snapshot / hardware SKU
+- Teacher live-location roster
+- Movement in AI context
+
+Teacher batch insight aggregation remains deferred (still not a predictive engine).
 
 Further out:
 

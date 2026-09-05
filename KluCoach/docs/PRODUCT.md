@@ -34,6 +34,8 @@ B2B2C. Institution is the buyer and distributor.
 
 These are **commercial assumptions**. Actual amounts live on `SubscriptionPlan` and tenant agreements.
 
+**SafeTrack (planning, not 9A checkout):** RFID add-on list about ₹1,299–₹1,499/student/year and GPS about ₹1,999–₹2,499/student/year plus device hardware are **not** encoded as live plans in this phase. Hardware and SIM costs must be quoted from Indian OEM/ODMs before locking prices. See [BILLING.md](./BILLING.md) and [ADR-020](./adr/ADR-020-student-movement-safetrack.md).
+
 Institutions acquire students and parents. Optimize for:
 
 - easy onboarding

@@ -15,6 +15,7 @@
 | E2E | Playwright | parent invitation, assessment marks, attendance save + parent view, assignment submit, timetable admin slot, smoke/notice, parent Student 360, multi-child switch, student own 360, parent absence/result notifications, multi-child notification context, student assignment notification, institution billing, parent fee status, subscription asOf expiry, multi-tenant billing 404, password reset, test-mode payment fail/success, subscription renew, parent/student/teacher/admin AI asks + isolation, AI disabled UI, parent/student proactive insights + isolation + job dedupe |
 | AI | Vitest | provider port, TestAiProvider, context minimization, citations, prompt versions, disabled payload, provider 503, tenant/parent/sibling/teacher/admin isolation, prompt injection, rate-limit key |
 | Proactive insights | Vitest + Playwright | attendance/academic decline and improvement rules, overdue assignments, thresholds, trivial-change skip, dedupe, worker/job idempotency, parent/student/teacher/admin/super-admin isolation, AI wording off, provider failure, prompt-injection copy rejected |
+| SafeTrack movement | Vitest + Playwright | RFID ingest, duplicate scan, unknown card, parent entry notification, teacher/super-admin denied, tenant 404 |
 | Payments | Vitest | Razorpay HMAC unit tests; checkout isolation; invalid signature 400; duplicate webhook; pending ≠ paid; refunds |
 | Billing | Vitest | 100/1000 student economics from snapshot; invoice/payment/refund immutability; asOf expiry; super-admin report denial |
 | Student 360 | Vitest | status engine unit tests; parent/student/teacher/admin authorization; empty-state student (created in-test); schema parse |
@@ -43,6 +44,8 @@ Phase 7 Vitest evidence (2026-09-04): **113/113 passed** (90 Phase 6 plus AI uni
 Phase 7 Playwright evidence (2026-09-04): **29/29 passed** — Phase 6 twenty-four workflows plus parent Aarav/Diya AI + tamper 404, student self vs sibling 404, teacher assigned batch vs tenant B 404, admin institution vs tenant B student 404, AI disabled UI (status mock). Live LLM: **BLOCKED — EXTERNAL PROVIDER**.
 
 Phase 8 close-out evidence (2026-09-05): Vitest **131/131**. Playwright **33/33** including `assessment-marks` (independent re-run PASS; full suite PASS). Insight journeys include notification → Student 360 and foreign studentId/notificationId **404**. Live LLM wording: **BLOCKED — EXTERNAL PROVIDER**. See [PROGRESS.md](./PROGRESS.md).
+
+Phase 9A evidence (2026-09-05): Vitest **137/137**. Playwright SafeTrack `access.spec.ts` **2/2**. Typecheck PASS. Full Playwright last complete run **32/35**; `attendance.spec` parent 360 date assertion fails independently on this demo DB (newest 8 attendance rows are later-dated e2e marks). See [PROGRESS.md](./PROGRESS.md).
 
 ## Cross-tenant matrix
 

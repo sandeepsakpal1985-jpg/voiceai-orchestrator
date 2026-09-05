@@ -23,6 +23,8 @@ Seed example (Partner plan):
 
 Partner share is stored explicitly. It is not computed as price − realization, so future splits can differ.
 
+SafeTrack RFID/GPS list prices are **planning figures only** until a dedicated `SubscriptionPlan` snapshot exists. Do not hard-code ₹1,499 / ₹2,499 in services. GPS connectivity (roughly ₹300–₹1,000/student/year plus ₹1,500–₹4,000 hardware) is an unfunded per-student cost until quoted — see [ADR-009](./adr/ADR-009-operating-cost-discipline.md).
+
 ---
 
 ## Concepts (keep separate)

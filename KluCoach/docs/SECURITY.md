@@ -117,6 +117,7 @@ See [AI.md](./AI.md) and [ADR-018](./adr/ADR-018-ai-student-insights.md).
 - Recipients are derived on the server. Clients cannot POST an insight or a recipient list.
 - `GET /students/:id/insights` uses the same relationship checks as Student 360; `SUPER_ADMIN` is denied.
 - Cross-tenant insight ids return **404**. Parent A cannot read child B. Student A cannot read a sibling.
+- Gate movement: parent/student/admin as in [SAFETRACK.md](./SAFETRACK.md). Teachers and super-admin do not inherit movement. Cross-tenant movement **404**. Device ingest uses a device secret, not a browser session.
 - Detection is rule-based. Optional AI wording cannot change numbers or add risk language.
 
 See [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md) and [ADR-019](./adr/ADR-019-proactive-student-insights.md).

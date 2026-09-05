@@ -1,6 +1,72 @@
 # Progress
 
+Updated: 2026-09-05 (Phase 9A — Digital Gate — COMPLETE — VALIDATED for SafeTrack; full Playwright regression not 35/35)
+
+Validation rule: COMPLETE only with execution evidence. Statuses: PASS / FAIL / BLOCKED — ENVIRONMENT / BLOCKED — EXTERNAL PROVIDER / NOT RUN.
+
+| Feature | Status | Tests | Verified | Notes |
+|---------|--------|-------|----------|-------|
+| Phase 8 checkpoint `8d56834` | VALIDATED | n/a | git | Start of Phase 9A |
+| RFID/NFC credential + gate device | VALIDATED | vitest | yes | Demo `KC-AARAV-RFID` / `demo-access-device-a` |
+| Device ingest ENTRY/EXIT | VALIDATED | vitest + playwright | yes | Device secret; CSRF skipped like webhooks |
+| Duplicate scan (60s) | VALIDATED | vitest | yes | `DUPLICATE_SCAN`; no parent notify |
+| Unknown card | VALIDATED | vitest | yes | No parent notify; unique dedupe |
+| Admin test punch | VALIDATED | playwright | yes | `/gates` Record entry |
+| Parent in-app alerts | VALIDATED | vitest + playwright | yes | Existing NotificationService; `movementAlerts` default on |
+| Student 360 sibling movement | VALIDATED | vitest + playwright | yes | `GET /students/:id/movement`; not in 360 DTO; not GPS |
+| Teacher / super-admin denied | VALIDATED | vitest + playwright | yes | **403** |
+| Cross-tenant / unlinked parent | VALIDATED | vitest + playwright | yes | **404** |
+| GPS / geofence / SOS | NOT IMPLEMENTED | n/a | n/a | Phase 9C |
+| SMS / WhatsApp movement | NOT IMPLEMENTED | n/a | n/a | Deferred |
+| SafeTrack billed add-on | NOT IMPLEMENTED | n/a | n/a | Planning figures in BILLING.md only |
+
+## Phase 9A close-out gate
+
+- [x] RFID-first digital gate (no lat/lng columns)
+- [x] ENTRY / EXIT / UNKNOWN_CARD / DUPLICATE_SCAN
+- [x] Parent notified for ENTRY/EXIT only
+- [x] Student 360 shows gate history (sibling fetch)
+- [x] Teachers and super-admin do not inherit movement
+- [x] Tenant isolation 404
+- [x] Vitest **137/137 PASS**
+- [x] Playwright SafeTrack **2/2 PASS** (`e2e/access.spec.ts`)
+- [x] Typecheck **PASS**
+- [x] Lint **PASS** (`pnpm lint` `--if-present`)
+- [ ] Full Playwright **35/35** — **not claimed**. Last complete run **32/35**. Independent `attendance.spec` still **FAIL** (see below)
+- [x] Documentation updated
+
+## Full Playwright failures (not SafeTrack product defects)
+
+| Spec | Independent re-run | Classification |
+|------|--------------------|----------------|
+| `e2e/access.spec.ts` | **PASS** (2/2) | n/a |
+| `e2e/insights.spec.ts` | **PASS** after a full-suite timeout | **D** — session closed / 60s timeout under load (same class as Phase 8 `assessment-marks`) |
+| `e2e/notifications.spec.ts` Unread filter | **PASS** after `exact: true` on the Unread pill | Unread notification cards include the word “Unread”, so the pill locator was not unique |
+| `e2e/student360.spec.ts` Motion worksheet | **PASS** after Student 360 listed 30 assignment items (query already `take: 30`; UI had sliced 8). Motion was index 11 of 23 on this demo DB because Phase 8 overdue-insight tests persist earlier-due assignments | Environment data + 8-item cap |
+| `e2e/assignment.spec.ts` title strict mode | **PASS** after waiting on the assignments `tr` | 360 home also showed the new title once 30 items were listed |
+| `e2e/attendance.spec.ts` parent sees `2026-09-03` | **FAIL** independently | **D** — 360 recent attendance is the newest 8 rows; this DB has later-dated e2e marks (Nov/Dec), so 3 Sep is not on parent home. Spec unchanged. |
+
+## Session summary (Phase 9A)
+
+1. **Starting commit:** `8d56834`
+2. **Product:** KluCoach SafeTrack digital gate, not GPS tracking
+3. **GPS:** NOT IMPLEMENTED
+4. **Vitest:** **137/137 PASS**
+5. **Playwright SafeTrack:** **2/2 PASS**
+6. **Typecheck:** PASS
+7. **Build:** not re-run as full `pnpm build` (prisma generate EPERM while API holds the engine — **BLOCKED — ENVIRONMENT** for that step, same as Phase 8)
+8. **Lint:** PASS
+9. **Known limitations:** one Main Gate in the demo UI; 30-day ENTRY/EXIT window; no movement in AI context; legal review still required before commercial location (9C)
+10. **Exact next phase:** **Stop.** Do not start 9B/9C unless asked.
+
+Phase 9A is **COMPLETE — VALIDATED** for RFID entry/exit. Do not claim GPS, live maps, or a billed SafeTrack SKU.
+
+---
+
+# Progress (Phase 8 archive)
+
 Updated: 2026-09-05 (Phase 8 close-out — COMPLETE — VALIDATED)
+
 
 Validation rule: COMPLETE only with execution evidence. Statuses: PASS / FAIL / BLOCKED — ENVIRONMENT / BLOCKED — EXTERNAL PROVIDER / NOT RUN.
 

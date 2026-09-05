@@ -39,7 +39,7 @@ Response: `{ available, answer, citations, contextVersion, provider }`.
 
 ## Context
 
-`buildStudent360AiContext` compresses the existing Student 360 DTO: first name, attendance %, recent results, pending assignments, upcoming classes, notice titles, fee label. It omits ids, admission numbers, emails, phones, password hashes, and sibling records.
+`buildStudent360AiContext` compresses the existing Student 360 DTO: first name, attendance %, recent results, pending assignments, upcoming classes, notice titles, fee label. It omits ids, admission numbers, emails, phones, password hashes, sibling records, **gate movement, and GPS**. Movement must not enter AI context unless a future ADR explicitly authorizes it.
 
 Teacher and admin contexts are compact aggregates (max 40 students per batch; institution counts + batch names). They are not a dump of Student 360 for every student.
 

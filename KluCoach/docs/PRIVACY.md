@@ -17,6 +17,8 @@ This document is engineering intent. Legal compliance (DPDP Act, school/board ru
 | Relationships | parent/guardian links | authorized access |
 | Academic | batches, attendance, assessments, assignments, timetable | core product |
 | Communications | notices, in-app notifications, optional email | engagement |
+| Gate movement | RFID/NFC entry/exit at a named gate, timestamp, device | parent safety alerts (Phase 9A) |
+| GPS location | not collected in 9A | Phase 9C only, guardian authorization required |
 | Commercial | fee/subscription config, entitlements | billing later |
 | Audit | who did what, when | security, disputes |
 | Files | assignment attachments, photos | product features |
@@ -37,8 +39,9 @@ Not for: ads, resale, cross-institution profiling, training public AI models on 
 
 - Tenant isolation
 - RBAC + parent-child link
-- Teachers scoped to assigned batches
+- Teachers scoped to assigned batches; **teachers do not inherit live location or gate history**
 - SUPER_ADMIN is a platform operator role; use least privilege in production
+- Gate movement: parent (linked child), student (self), institution admin (tenant / today's log). Foreign student ids **404**.
 
 ---
 
