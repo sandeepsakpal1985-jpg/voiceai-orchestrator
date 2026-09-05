@@ -6,11 +6,19 @@ import { AiAskPanel } from "../ai/AiAskPanel";
 export function AdminDashboard() {
   const [kpis, setKpis] = useState<Record<string, number> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const [summary, setSummary] = useState<{ periodKey: string; byType: Record<string, number> } | null>(null);
   useEffect(() => {
     api<{ kpis: Record<string, number> }>("/dashboard/admin")
       .then((d) => setKpis(d.kpis))
       .catch(() => undefined);
-    auth.me().then(setMe).catch(() => undefined);
+    auth.me().then((data) => {
+      setMe(data);
+      if (data.user.role === "INSTITUTION_ADMIN") {
+        api<{ periodKey: string; byType: Record<string, number> }>("/insights/summary")
+          .then(setSummary)
+          .catch(() => undefined);
+      }
+    }).catch(() => undefined);
   }, []);
   if (!kpis) return <p>Loading…</p>;
   const items: [string, string][] = [
@@ -31,6 +39,14 @@ export function AdminDashboard() {
           <StudentStatusCard key={key} label={label} value={String(kpis[key] ?? 0)} />
         ))}
       </div>
+      {summary ? (
+        <section className="card" data-testid="insight-summary" style={{ marginBottom: 16 }}>
+          <h2 className="label">Proactive insights</h2>
+          <p className="hint" data-testid="insight-summary-attendance">
+            {summary.byType.ATTENDANCE_DECLINE ?? 0} students had attendance declines greater than the configured threshold this period.
+          </p>
+        </section>
+      ) : null}
       {me?.user.role === "INSTITUTION_ADMIN" ? (
         <AiAskPanel
           title="Institution insights"

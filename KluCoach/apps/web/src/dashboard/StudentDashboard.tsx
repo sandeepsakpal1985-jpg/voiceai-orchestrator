@@ -3,6 +3,7 @@ import type { Student360 } from "@klunex-edu/shared";
 import { api } from "../api";
 import { Student360Loading, Student360View } from "../student360/Student360View";
 import { RecentNotifications } from "../notifications/NotificationCenter";
+import { RecentInsights } from "../insights/RecentInsights";
 import { AiAskPanel } from "../ai/AiAskPanel";
 
 export function StudentDashboard() {
@@ -17,6 +18,7 @@ export function StudentDashboard() {
   return (
     <div>
       <RecentNotifications />
+      <RecentInsights studentId={query.data.student.id} href="/student" />
       <Student360View snapshot={query.data} />
       <AiAskPanel
         title="Ask about my progress"

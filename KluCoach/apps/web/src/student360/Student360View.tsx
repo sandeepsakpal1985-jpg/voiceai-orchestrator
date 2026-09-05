@@ -9,7 +9,7 @@ import { UpcomingClasses } from "./UpcomingClasses";
 
 export function Student360View({ snapshot, embedded = false }: { snapshot: Student360; embedded?: boolean }) {
   return (
-    <div className="student360">
+    <div className="student360" data-testid="student-360">
       <StudentSummary snapshot={snapshot} headingLevel={embedded ? "h2" : "h1"} />
       <div className="kpis">
         <StudentStatusCard

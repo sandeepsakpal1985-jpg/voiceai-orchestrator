@@ -19,7 +19,7 @@ export function ChildSelector({
           aria-label={`${c.firstName} ${c.lastName}`}
           onClick={() => onSelect(c.id)}
         >
-          {c.firstName}
+          {c.firstName} {c.lastName}
         </button>
       ))}
     </div>
