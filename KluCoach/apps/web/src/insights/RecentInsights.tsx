@@ -30,6 +30,7 @@ export function RecentInsights({
       <h2 id="recent-insights-heading" className="label">
         Recent insights
       </h2>
+      <p className="hint">Factual updates from KluCoach records. Not a risk score or diagnosis.</p>
       {query.data.items.map((row) => (
         <button
           type="button"

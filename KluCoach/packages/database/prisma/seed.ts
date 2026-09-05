@@ -24,6 +24,7 @@ async function main() {
   await prisma.importJob.deleteMany();
   await prisma.notificationPreference.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.studentInsight.deleteMany();
   await prisma.noticeStudent.deleteMany();
   await prisma.notice.deleteMany();
   await prisma.assignmentSubmission.deleteMany();

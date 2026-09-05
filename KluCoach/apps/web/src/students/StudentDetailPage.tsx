@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Student360 } from "@klunex-edu/shared";
 import { api } from "../api";
 import { Student360Loading, Student360View } from "../student360/Student360View";
+import { RecentInsights } from "../insights/RecentInsights";
 
 type Guardian = {
   relationship: string;
@@ -128,6 +129,7 @@ export function StudentDetailPage() {
           ) : null}
         </form>
       </div>
+      {id ? <RecentInsights studentId={id} href={`/students/${id}`} /> : null}
       {snapshot.isError ? (
         <p className="err">{snapshot.error instanceof Error ? snapshot.error.message : "Could not load Student 360"}</p>
       ) : snapshot.data ? (

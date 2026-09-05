@@ -72,7 +72,15 @@ export async function persistInsight(
       },
     },
   });
-  if (existing) return { created: false as const, insight: existing };
+  if (existing) {
+    await notifyInsight(institutionId, studentId, {
+      type: existing.type as InsightType,
+      title: existing.title,
+      summary: existing.summary,
+      id: existing.id,
+    });
+    return { created: false as const, insight: existing };
+  }
   const wording = await maybeEnhanceInsightWording(detected);
   try {
     const insight = await prisma.studentInsight.create({
