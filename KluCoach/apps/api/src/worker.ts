@@ -8,7 +8,7 @@ async function tick() {
   try {
     const result = await runDueJobs();
     // eslint-disable-next-line no-console
-    console.info(JSON.stringify({ msg: "jobs_tick", result: { lifecycle: result.lifecycle.skipped, reconcile: result.reconcile.skipped } }));
+    console.info(JSON.stringify({ msg: "jobs_tick", result: { lifecycle: result.lifecycle.skipped, reconcile: result.reconcile.skipped, insights: result.insights.skipped } }));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(JSON.stringify({ msg: "jobs_tick_failed", error: err instanceof Error ? err.message : "unknown" }));

@@ -1,11 +1,13 @@
 import { prisma } from "@klunex-edu/database";
 import { applyLifecycle } from "../platform/billing/billing-service.js";
 import { reconcileOpenPayments } from "../platform/payments/service.js";
+import { runStudentInsights } from "../platform/insights/service.js";
 import { writeSystemAudit } from "../platform/audit/write.js";
 
 export const JOB_NAMES = {
   lifecycle: "billing.lifecycle",
   reconcile: "payment.reconcile",
+  insights: "student.insights",
 } as const;
 
 async function claim(name: string, dedupeKey: string) {
@@ -45,7 +47,13 @@ export async function runNamedJob(name: string, asOf = new Date()) {
   }
   try {
     const result =
-      name === JOB_NAMES.lifecycle ? await applyLifecycle(asOf) : name === JOB_NAMES.reconcile ? await reconcileOpenPayments() : { unknown: true };
+      name === JOB_NAMES.lifecycle
+        ? await applyLifecycle(asOf)
+        : name === JOB_NAMES.reconcile
+          ? await reconcileOpenPayments()
+          : name === JOB_NAMES.insights
+            ? await runStudentInsights({ asOf })
+            : { unknown: true };
     await prisma.jobRun.update({
       where: { id: claimed.id },
       data: { status: "SUCCEEDED", finishedAt: new Date(), result: result as object },
@@ -65,10 +73,15 @@ export async function runNamedJob(name: string, asOf = new Date()) {
 export async function runDueJobs(asOf = new Date()) {
   const lifecycle = await runNamedJob(JOB_NAMES.lifecycle, asOf);
   const reconcile = await runNamedJob(JOB_NAMES.reconcile, asOf);
+  const insights = await runNamedJob(JOB_NAMES.insights, asOf);
   await writeSystemAudit({
     action: "jobs.tick",
     entityType: "JobRun",
-    metadata: { lifecycleSkipped: Boolean(lifecycle.skipped), reconcileSkipped: Boolean(reconcile.skipped) },
+    metadata: {
+      lifecycleSkipped: Boolean(lifecycle.skipped),
+      reconcileSkipped: Boolean(reconcile.skipped),
+      insightsSkipped: Boolean(insights.skipped),
+    },
   });
-  return { lifecycle, reconcile };
+  return { lifecycle, reconcile, insights };
 }
