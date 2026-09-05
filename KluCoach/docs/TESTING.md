@@ -42,7 +42,7 @@ Phase 7 Vitest evidence (2026-09-04): **113/113 passed** (90 Phase 6 plus AI uni
 
 Phase 7 Playwright evidence (2026-09-04): **29/29 passed** — Phase 6 twenty-four workflows plus parent Aarav/Diya AI + tamper 404, student self vs sibling 404, teacher assigned batch vs tenant B 404, admin institution vs tenant B student 404, AI disabled UI (status mock). Live LLM: **BLOCKED — EXTERNAL PROVIDER**.
 
-Phase 8 evidence: Vitest **131/131** (2026-09-05). Playwright insight journeys **4/4**. Full Playwright after re-seed: **32/33** — `assessment-marks` batch select timed out (environmental). See [PROGRESS.md](./PROGRESS.md).
+Phase 8 close-out evidence (2026-09-05): Vitest **131/131**. Playwright **33/33** including `assessment-marks` (independent re-run PASS; full suite PASS). Insight journeys include notification → Student 360 and foreign studentId/notificationId **404**. Live LLM wording: **BLOCKED — EXTERNAL PROVIDER**. See [PROGRESS.md](./PROGRESS.md).
 
 ## Cross-tenant matrix
 

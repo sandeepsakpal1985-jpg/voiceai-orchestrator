@@ -42,4 +42,4 @@ Phase 6: Production config, password reset, Razorpay behind `PaymentProvider`, v
 
 Phase 7: AI is an authorized context layer over Student 360. Default off. `TestAiProvider` for CI. No generic database chat. See [ADR-018](./adr/ADR-018-ai-student-insights.md) and [AI.md](./AI.md).
 
-Phase 8: Rule-based proactive insights (attendance / academic change, overdue assignments) reuse `NotificationService` and `job_runs`. No predictive risk engine. Optional AI wording is off by default. See [ADR-019](./adr/ADR-019-proactive-student-insights.md) and [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md).
+Phase 8: Rule-based proactive insights (attendance / academic change, overdue assignments) reuse `NotificationService` and `job_runs`. Lifecycle is one unique row per dedupe key. Thresholds are env-only (no admin UI). Insight evaluation is fire-and-forget after academic writes. No predictive risk engine. Optional AI wording is off by default. See [ADR-019](./adr/ADR-019-proactive-student-insights.md) and [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md).

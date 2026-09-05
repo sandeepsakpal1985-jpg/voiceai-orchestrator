@@ -75,7 +75,7 @@ Deferred from this phase:
 
 ## Phase 8 — Proactive Student Insights
 
-Rule-based attendance, academic, and overdue-assignment insights delivered through the existing notification system. Configurable thresholds. Deduplicated. Optional AI wording is off by default. No predictive risk engine. See [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md) and [ADR-019](./adr/ADR-019-proactive-student-insights.md).
+Rule-based attendance, academic, and overdue-assignment insights delivered through the existing notification system. Configurable thresholds. Deduplicated. Optional AI wording is off by default. No predictive risk engine. **COMPLETE — VALIDATED** 2026-09-05. See [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md) and [ADR-019](./adr/ADR-019-proactive-student-insights.md).
 
 Deferred from this phase:
 

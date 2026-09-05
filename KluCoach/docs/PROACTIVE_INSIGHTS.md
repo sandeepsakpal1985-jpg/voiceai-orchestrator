@@ -67,13 +67,17 @@ Example copy (deterministic):
 | `INSIGHT_MIN_RESULT_SAMPLES` | 4 | Per window |
 | `INSIGHT_AI_WORDING` | false | Optional LLM rephrase after the fact exists |
 
-Do not hard-code product thresholds in application logic.
+Do not hard-code product thresholds in UI components. Values live in `apps/api/src/config.ts` / environment (see `.env.example`). **MVP: no admin threshold UI** — change env and restart. Equal-to-threshold fires; below threshold is skipped. Thin samples produce no insight (insufficient data is not a negative insight).
 
 ---
 
 ## Persistence and notifications
 
-`student_insights` stores one row per `(institutionId, studentId, dedupeKey)`.
+`student_insights` stores one row per `(institutionId, studentId, dedupeKey)`. There is no separate ACTIVE/RESOLVED/DISMISSED column in this phase: the unique row **is** the active fact for that key. Repeated evaluation is idempotent. Dismiss/resolve UI is out of scope.
+
+Do not embed Student 360 snapshots in `source`. Store only the operational numbers needed to render the sentence (percentages, counts, assignment id, due date).
+
+Event hooks call `scheduleStudentInsights` (fire-and-forget). Attendance, marks, assignment, notice, and timetable writes must not wait on insight detection. Failures are audited as `insight.generation.failed` and are not returned to the client.
 
 Dedupe keys:
 
@@ -124,7 +128,9 @@ Parent: linked children only. Student: self only. Teacher: assigned-batch studen
 
 ## UI
 
-- Parent and student home: **Recent insights** above Student 360. Clicking re-opens the authorized Student 360 route; the server authorizes again.
+- Parent and student home: **Recent insights** above Student 360. The section is labeled as factual record updates, not a risk score. Clicking re-opens the authorized Student 360 route; the server authorizes again.
+- Teacher/admin student detail: the same `GET /students/:id/insights` card on the existing Student 360 page. Insights are **not** stuffed into the Student 360 DTO (avoids duplicate aggregation).
+- Insight notifications use `hrefForRole` (parent `?studentId=`, student `/student`). Opening the notification re-authorizes. Foreign `notificationId` / `studentId` → **404**.
 - Institution admin home: tenant counts for the current period (`N students had attendance declines greater than the configured threshold this period`).
 - Teacher **batch aggregation dashboard** is deferred to Phase 9. Teachers can still `GET /students/:id/insights` for assigned students.
 

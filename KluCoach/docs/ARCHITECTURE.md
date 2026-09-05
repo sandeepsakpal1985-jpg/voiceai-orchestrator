@@ -247,6 +247,8 @@ Caching is optional later (Redis). Not required for MVP. Student 360 is not cach
 
 `assembleStudent360` is the only Student 360 read model. It joins current attendance, assessment results, assignment submissions, upcoming `ClassSession` rows (`SCHEDULED`, `date >= today UTC`), notices the student is allowed to see, and the latest `FeeInvoice` when one exists.
 
+Phase 8 factual insights are a **sibling** authorized `GET /students/:id/insights` on the same page — not copied into the 360 DTO and not a second dashboard.
+
 | Route | Who | Notes |
 |-------|-----|-------|
 | `GET /students/:id/360` | roles with `students:read` after `assertStudent360Access` | Canonical DTO (`student360Schema`) |
