@@ -1,11 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { expectHeading, loginAs } from "./helpers";
 
 test("parent login shows child snapshot", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("parent@example.test");
-  await page.getByLabel("Password").fill("DemoPassw0rd!");
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: /Aarav/ })).toBeVisible({ timeout: 15000 });
+  await loginAs(page, "parent@example.test");
+  await expectHeading(page, /Aarav/);
   await expect(page.locator(".kpis .label").filter({ hasText: /^Attendance$/ })).toBeVisible();
 });
 

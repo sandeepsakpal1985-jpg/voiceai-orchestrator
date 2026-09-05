@@ -13,22 +13,34 @@ export async function expectHeading(page: Page, name: string | RegExp) {
   await expect(page.getByRole("heading", { name }).first()).toBeVisible({ timeout: 15000 });
 }
 
-export async function csrfPostStatus(page: Page, path: string, body: unknown) {
+export async function apiJson<T>(page: Page, method: string, path: string, body?: unknown) {
   return page.evaluate(
-    async ({ path, body }) => {
+    async ({ method, path, body }) => {
       const me = await fetch("/api/me", { credentials: "include" });
       const session = (await me.json()) as { csrfToken?: string };
       const res = await fetch(`/api${path}`, {
-        method: "POST",
+        method,
         credentials: "include",
         headers: {
           "content-type": "application/json",
           "x-csrf-token": session.csrfToken ?? "",
         },
-        body: JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(body),
       });
-      return res.status;
+      const text = await res.text();
+      let json: T | null = null;
+      try {
+        json = text ? (JSON.parse(text) as T) : null;
+      } catch {
+        json = null;
+      }
+      return { status: res.status, json };
     },
-    { path, body },
+    { method, path, body },
   );
+}
+
+export async function csrfPostStatus(page: Page, path: string, body: unknown) {
+  const res = await apiJson(page, "POST", path, body);
+  return res.status;
 }

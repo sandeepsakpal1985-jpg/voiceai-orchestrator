@@ -60,7 +60,7 @@ test("parent result notification stays on the correct child", async ({ page, bro
   });
   await parent.getByRole("button", { name: /Aarav's Physics result is available/ }).first().click();
   await expectHeading(parent, /Aarav/);
-  await expect(parent.getByText("Diya Sharma")).toBeVisible();
+  await expect(parent.getByRole("button", { name: "Diya Sharma" })).toBeVisible();
   await expect(parent.getByRole("heading", { name: /Diya/ })).toHaveCount(0);
   await parentCtx.close();
 });
