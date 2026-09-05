@@ -269,7 +269,9 @@ Phase 7 does that as an on-demand layer: see [AI.md](./AI.md) and [ADR-018](./ad
 
 Notifications are tenant-scoped rows for a **session user**, optionally with `studentId` so a multi-child parent opens the correct Student 360. Recipients are never taken from the client. Pagination is server-side (`page`, `pageSize` ≤ 50) with indexes on `(institutionId, userId, createdAt)` and `(institutionId, userId, readAt)`.
 
-Retention: 90 days via `purgeExpiredNotifications` (callable). Assignment reminders remain a stub. The worker currently runs billing lifecycle and payment reconciliation; reminder retries can share the same `job_runs` table later.
+Retention: 90 days via `purgeExpiredNotifications` (callable). Assignment reminders remain a stub. The worker runs billing lifecycle, payment reconciliation, and `student.insights` when that process is running. Reminder retries can share the same `job_runs` table later.
+
+Proactive insights: rule-based `StudentInsight` rows plus existing in-app notifications. See [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md) and [ADR-019](./adr/ADR-019-proactive-student-insights.md).
 
 ---
 
@@ -282,4 +284,6 @@ Institution commercial data is tenant-scoped. Super-admin reporting is the only 
 ## 15. AI insights
 
 Optional, default-off. `POST /ai/students/:id/ask`, `/ai/batches/:id/ask`, and `/ai/institution/ask` accept only `{ message }`. Context is built after the same tenant/RBAC/parent-child/teacher-batch checks as Student 360. `AiProvider` hides vendor types. Tests use `TestAiProvider`. See [AI.md](./AI.md).
+
+Phase 8 proactive insights are **not** this ask path. Detection is rule-based. Optional insight wording (`INSIGHT_AI_WORDING`) may rephrase an already-stored fact and must not calculate numbers or choose recipients.
 

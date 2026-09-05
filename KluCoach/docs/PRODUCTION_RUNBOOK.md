@@ -14,7 +14,7 @@ Single VPS. Docker Compose. No Kubernetes.
 8. Run migrations: `docker compose -f docker-compose.prod.yml run --rm api node ../../packages/database/...`  
    From a migrate-capable image/task: `pnpm --filter @klunex-edu/database migrate:deploy` against the production `DATABASE_URL`.
 9. **Do not seed demo data in production.** Create the first super-admin out of band.
-10. Start `api`, `worker`, `web`, `caddy`.
+10. Start `api`, `worker`, `web`, `caddy`. The worker process, when running, ticks `billing.lifecycle`, `payment.reconcile`, and `student.insights` once per UTC hour. Do not claim insights are scheduled if the worker container is stopped. Admins can still `POST /insights/run`.
 11. Confirm `GET /health` and `GET /ready`.
 12. Confirm cookies are `Secure` over HTTPS (`trustProxy` is enabled on the API).
 

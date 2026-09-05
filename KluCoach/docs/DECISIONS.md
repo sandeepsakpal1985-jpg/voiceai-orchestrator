@@ -22,6 +22,7 @@ Index of architectural decision records.
 | [ADR-016](./adr/ADR-016-job-runner.md) | Job runner | Accepted |
 | [ADR-017](./adr/ADR-017-production-deployment.md) | Production deployment | Accepted |
 | [ADR-018](./adr/ADR-018-ai-student-insights.md) | AI Student Insights | Accepted |
+| [ADR-019](./adr/ADR-019-proactive-student-insights.md) | Proactive Student Insights | Accepted |
 
 KluCare was inspected for patterns only. We did not adopt JWT+bcrypt or hospital schema.
 
@@ -40,3 +41,5 @@ Phase 5: Commercial engine (plans, snapshots, entitlements, institution invoices
 Phase 6: Production config, password reset, Razorpay behind `PaymentProvider`, verified webhooks, PostgreSQL job runner, email/storage ports, backup restore drill, Compose + Caddy. Payments stay off until `PAYMENTS_ENABLED=true` with real keys. See ADR-014–017, [PAYMENTS.md](./PAYMENTS.md), [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
 
 Phase 7: AI is an authorized context layer over Student 360. Default off. `TestAiProvider` for CI. No generic database chat. See [ADR-018](./adr/ADR-018-ai-student-insights.md) and [AI.md](./AI.md).
+
+Phase 8: Rule-based proactive insights (attendance / academic change, overdue assignments) reuse `NotificationService` and `job_runs`. No predictive risk engine. Optional AI wording is off by default. See [ADR-019](./adr/ADR-019-proactive-student-insights.md) and [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md).

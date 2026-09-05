@@ -56,6 +56,7 @@ Import parse port: `apps/api/src/platform/import/parseSpreadsheet.ts`. Validatio
 | OpenAI / Anthropic SDKs | **Rejected for Phase 7** | `OpenAiProvider` uses HTTPS `fetch`; domain uses `AiProvider` only |
 | LangChain / LlamaIndex | **Rejected for Phase 7** | No orchestration requirement; structured Student 360 context is enough |
 | Vector database / embeddings | **Rejected for Phase 7** | No RAG; structured facts only |
+| Redis / BullMQ / Kafka | **Rejected for Phase 8** | `job_runs` + unique insight/notification keys are enough |
 | TipTap | **Not yet** | Notices are plain text in MVP |
 | SheetJS `xlsx` | Rejected | ExcelJS is MIT and sufficient |
 | Redux / Zustand as source of truth | Rejected | Server + TanStack Query |

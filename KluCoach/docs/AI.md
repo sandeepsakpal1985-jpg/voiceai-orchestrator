@@ -53,7 +53,7 @@ Citations are generated from that context on the server. The model does not inve
 - No SQL generation, embeddings, vector database, or RAG.
 - No autonomous writes (attendance, marks, assignments, notices, fees, subscriptions).
 - Fee text may summarize authorized Student 360 fee status; billing remains authoritative.
-- Prompts are versioned (`PARENT_STUDENT_360_V1`, `STUDENT_SELF_360_V1`, `TEACHER_BATCH_INSIGHTS_V1`, `ADMIN_INSTITUTION_INSIGHTS_V1`).
+- Prompts are versioned (`PARENT_STUDENT_360_V1`, `STUDENT_SELF_360_V1`, `TEACHER_BATCH_INSIGHTS_V1`, `ADMIN_INSTITUTION_INSIGHTS_V1`). Optional proactive-insight rephrase uses `FACTUAL_INSIGHT_WORDING_V1` only when `INSIGHT_AI_WORDING=true`. Detection itself is not AI; see [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md).
 - User messages are untrusted text. Prompt injection cannot expand authorization because unauthorized rows never enter the context.
 
 ---

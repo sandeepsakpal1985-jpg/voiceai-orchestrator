@@ -68,17 +68,29 @@ Deferred from this phase:
 
 - Persistent AI chat history
 - Embeddings / document RAG
-- Proactive insights pushed through notifications
 - Per-tenant `institution.aiEnabled`
 - AI usage billing
 
 ---
 
+## Phase 8 — Proactive Student Insights
+
+Rule-based attendance, academic, and overdue-assignment insights delivered through the existing notification system. Configurable thresholds. Deduplicated. Optional AI wording is off by default. No predictive risk engine. See [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md) and [ADR-019](./adr/ADR-019-proactive-student-insights.md).
+
+Deferred from this phase:
+
+- Teacher batch insight aggregation UI
+- SMS/WhatsApp insight channels
+- Complex preference center (attendance/academic/assignment/positive toggles beyond existing alert flags)
+- LLM-decided risk classification
+
+---
+
 ## After that
 
-Do not start the next phase until Phase 7 is accepted.
+Do not start the next phase until Phase 8 is accepted.
 
-Potential next expansion: **proactive factual insights** (for example attendance falling) delivered through the existing notification system — still authorized before any model call.
+Potential next expansion: **teacher batch insight aggregation** (counts of authorized students with a given factual insight type) — still tenant-scoped, still not a predictive engine.
 
 Further out:
 

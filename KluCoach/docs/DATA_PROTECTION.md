@@ -61,6 +61,8 @@ Only send to addresses/phones on file for that user. Tenant-scoped templates. No
 
 When `AI_ENABLED=true`, a minimized JSON context (first name, attendance and academic summaries, pending assignment counts, batch/institution aggregates — not password hashes, sessions, payment secrets, or unnecessary contact PII) is sent to the configured provider together with the user question. Purpose: answer that explicit question. KluCoach does not store AI conversations in this phase. Application logs and audit rows must not contain the full context or answer. Retention at the vendor is **not** asserted here; use the provider contract. Disable with `AI_ENABLED=false`.
 
+Proactive insight detection does not call a model. If `INSIGHT_AI_WORDING=true`, only the already-computed fact (title + numeric source) may be sent for rephrasing. Default off.
+
 ---
 
 ## Cross-institution

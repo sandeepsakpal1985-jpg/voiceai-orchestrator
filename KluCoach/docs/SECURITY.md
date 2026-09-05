@@ -100,7 +100,7 @@ Failed cross-tenant access returns **404** (do not confirm the other tenant's re
 
 ## Audit
 
-Tenant-scoped audit log for: login/logout, password reset requested/completed, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports, payment initiated/confirmed/failed, refunds, subscription lifecycle, invoice issue/void, reconciliation, AI insight requested/completed/failed (`ai.student_insight.*`). AI audit metadata is limited to provider name — not prompts, answers, or Student 360 payloads.
+Tenant-scoped audit log for: login/logout, password reset requested/completed, student/parent/teacher mutations, marks, attendance, fees, invitations, role changes, exports, payment initiated/confirmed/failed, refunds, subscription lifecycle, invoice issue/void, reconciliation, AI insight requested/completed/failed (`ai.student_insight.*`), proactive insight detected/notification created/delivered/generation failed (`insight.*`). AI and insight audit metadata must not include full Student 360 context, prompts, or source JSON.
 
 ## AI
 
@@ -111,6 +111,15 @@ Tenant-scoped audit log for: login/logout, password reset requested/completed, s
 - Prompt injection is treated as untrusted user text; unauthorized rows are never in the prompt.
 
 See [AI.md](./AI.md) and [ADR-018](./adr/ADR-018-ai-student-insights.md).
+
+## Proactive insights
+
+- Recipients are derived on the server. Clients cannot POST an insight or a recipient list.
+- `GET /students/:id/insights` uses the same relationship checks as Student 360; `SUPER_ADMIN` is denied.
+- Cross-tenant insight ids return **404**. Parent A cannot read child B. Student A cannot read a sibling.
+- Detection is rule-based. Optional AI wording cannot change numbers or add risk language.
+
+See [PROACTIVE_INSIGHTS.md](./PROACTIVE_INSIGHTS.md) and [ADR-019](./adr/ADR-019-proactive-student-insights.md).
 
 ## Payments and webhooks
 

@@ -79,3 +79,5 @@ No analytics SDKs that profile children. No advertising pixels.
 Institution admin can export CSV reports (tenant-scoped). Full data-subject request workflow is a roadmap item; record in ROADMAP.md.
 
 When AI is enabled, a parent/student/teacher/admin can choose not to click Ask. There is no automatic generation. Turning `AI_ENABLED=false` stops new provider calls. KluCoach does not claim that an external provider deletes historical prompts.
+
+Proactive insights store operational facts (percentages, assignment identifiers, due dates). They do not infer mental health, medical conditions, intelligence, personality, family circumstances, or socioeconomic status. Optional insight wording is off unless `INSIGHT_AI_WORDING=true`.
