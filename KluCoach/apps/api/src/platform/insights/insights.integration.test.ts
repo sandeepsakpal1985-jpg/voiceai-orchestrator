@@ -77,10 +77,88 @@ describe("proactive insight authorization", () => {
       where: { studentId: aarav.id, type: "ATTENDANCE_DECLINE", dedupeKey: "ATTENDANCE_DECLINE:2026-08-06" },
     });
     expect(insights).toBe(1);
-    const notices = await prisma.notification.count({
-      where: { studentId: aarav.id, type: "ATTENDANCE_DECLINE", userId: (await prisma.user.findFirst({ where: { email: "parent@example.test" } }))!.id },
+    const parentUser = await prisma.user.findFirst({ where: { email: "parent@example.test" } });
+    const studentUser = await prisma.user.findFirst({ where: { email: "student@example.test" } });
+    await prisma.notification.deleteMany({
+      where: { studentId: aarav.id, type: "ATTENDANCE_DECLINE" },
     });
-    expect(notices).toBe(1);
+    await runStudentInsights({ institutionId: student!.institutionId, studentIds: [aarav.id], asOf });
+    expect(
+      await prisma.notification.count({
+        where: { studentId: aarav.id, type: "ATTENDANCE_DECLINE", userId: parentUser!.id },
+      }),
+    ).toBe(1);
+
+    const parentNotice = await prisma.notification.findFirst({
+      where: { studentId: aarav.id, type: "ATTENDANCE_DECLINE", userId: parentUser!.id },
+    });
+    expect(parentNotice).toBeTruthy();
+    const ownNotice = await app.inject({
+      method: "GET",
+      url: `/notifications/${parentNotice!.id}`,
+      headers: parent.headers,
+    });
+    expect(ownNotice.statusCode).toBe(200);
+    const own360 = await app.inject({ method: "GET", url: `/students/${aarav.id}/360`, headers: parent.headers });
+    expect(own360.statusCode).toBe(200);
+
+    const studentAuth = await login("student@example.test");
+    const studentOwnNotice = await prisma.notification.findFirst({
+      where: { studentId: aarav.id, type: "ATTENDANCE_DECLINE", userId: studentUser!.id },
+    });
+    expect(studentOwnNotice).toBeTruthy();
+    const studentNoticeOk = await app.inject({
+      method: "GET",
+      url: `/notifications/${studentOwnNotice!.id}`,
+      headers: studentAuth.headers,
+    });
+    expect(studentNoticeOk.statusCode).toBe(200);
+    const studentReadsParent = await app.inject({
+      method: "GET",
+      url: `/notifications/${parentNotice!.id}`,
+      headers: studentAuth.headers,
+    });
+    expect(studentReadsParent.statusCode).toBe(404);
+    const parentReadsStudent = await app.inject({
+      method: "GET",
+      url: `/notifications/${studentOwnNotice!.id}`,
+      headers: parent.headers,
+    });
+    expect(parentReadsStudent.statusCode).toBe(404);
+
+    const parentB = await login("parent-b@example.test");
+    const crossNotice = await app.inject({
+      method: "GET",
+      url: `/notifications/${parentNotice!.id}`,
+      headers: parentB.headers,
+    });
+    expect(crossNotice.statusCode).toBe(404);
+    const parentB360 = await app.inject({
+      method: "GET",
+      url: `/students/${aarav.id}/360`,
+      headers: parentB.headers,
+    });
+    expect(parentB360.statusCode).toBe(404);
+    const adminB = await login("admin-b@example.test");
+    const bStudents = json<{ id: string }[]>(await app.inject({ method: "GET", url: "/students", headers: adminB.headers }));
+    const cross360 = await app.inject({
+      method: "GET",
+      url: `/students/${bStudents[0]!.id}/360`,
+      headers: parent.headers,
+    });
+    expect(cross360.statusCode).toBe(404);
+    const adminBNotice = await app.inject({
+      method: "GET",
+      url: `/notifications/${parentNotice!.id}`,
+      headers: adminB.headers,
+    });
+    expect(adminBNotice.statusCode).toBe(404);
+    const tamperedNotice = await app.inject({
+      method: "GET",
+      url: `/notifications/${aarav.id}`,
+      headers: parent.headers,
+    });
+    expect(tamperedNotice.statusCode).toBe(404);
 
     const list = await app.inject({ method: "GET", url: `/students/${aarav.id}/insights`, headers: parent.headers });
     expect(list.statusCode, list.body).toBe(200);
@@ -110,6 +188,10 @@ describe("proactive insight authorization", () => {
     expect(own.statusCode).toBe(200);
     const sibling = await app.inject({ method: "GET", url: `/students/${diya.id}/insights`, headers: student.headers });
     expect(sibling.statusCode).toBe(404);
+    const parentDiya = await app.inject({ method: "GET", url: `/students/${diya.id}/insights`, headers: parent.headers });
+    expect(parentDiya.statusCode).toBe(200);
+    const anon = await app.inject({ method: "GET", url: `/students/${aarav.id}/insights` });
+    expect(anon.statusCode).toBe(401);
   });
 
   it("404s tenant B and forbids super-admin student insight reads", async () => {

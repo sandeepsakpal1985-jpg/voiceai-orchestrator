@@ -117,22 +117,30 @@ describe("password reset", () => {
 describe("payment checkout and webhooks", () => {
   let period = 0;
   async function issueOpenInvoice() {
-    period += 1;
     const admin = await prisma.user.findFirst({ where: { email: "admin@example.test" } });
-    const day = String(10 + (Date.now() % 18)).padStart(2, "0");
-    const periodStart = `2026-05-${day}`;
-    const periodEnd = `2026-05-${day}`;
-    const issued = await app.inject({
-      method: "POST",
-      url: "/billing/invoices/issue",
-      headers: superA.headers,
-      payload: { institutionId: admin?.institutionId, periodStart, periodEnd },
-    });
-    expect(issued.statusCode, issued.body).toBe(200);
-    const invoice = issued.json() as { id: string; totalPaise: number; institutionId: string; status: string; paidPaise: number };
-    expect(invoice.totalPaise).toBeGreaterThan(0);
-    expect(invoice.paidPaise).toBe(0);
-    return invoice;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      period += 1;
+      const month = 5 + Math.floor((period - 1) / 28);
+      const day = String(1 + ((period - 1) % 28)).padStart(2, "0");
+      const periodStart = `2026-${String(month).padStart(2, "0")}-${day}`;
+      const issued = await app.inject({
+        method: "POST",
+        url: "/billing/invoices/issue",
+        headers: superA.headers,
+        payload: { institutionId: admin?.institutionId, periodStart, periodEnd: periodStart },
+      });
+      expect(issued.statusCode, issued.body).toBe(200);
+      const invoice = issued.json() as {
+        id: string;
+        totalPaise: number;
+        institutionId: string;
+        status: string;
+        paidPaise: number;
+      };
+      expect(invoice.totalPaise).toBeGreaterThan(0);
+      if (invoice.paidPaise === 0) return invoice;
+    }
+    throw new Error("Could not issue an unpaid invoice; demo billing periods may all be paid");
   }
 
   it("creates a test order from the stored invoice amount and ignores client amounts", async () => {
