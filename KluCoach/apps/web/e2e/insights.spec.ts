@@ -40,6 +40,21 @@ async function runInsights(page: Page) {
   return run.json;
 }
 
+async function findNotificationByType(page: Page, type: string) {
+  for (let p = 1; p <= 10; p++) {
+    const notices = await apiJson<{ items: { id: string; type: string; href: string }[]; total: number }>(
+      page,
+      "GET",
+      `/notifications?page=${p}&pageSize=50`,
+    );
+    expect(notices.status).toBe(200);
+    const found = (notices.json?.items ?? []).find((n) => n.type === type);
+    if (found) return found;
+    if ((notices.json?.items ?? []).length < 50) break;
+  }
+  return undefined;
+}
+
 test("parent sees an attendance insight and opens authorized Student 360", async ({ page, browser }) => {
   await loginAs(page, "teacher@example.test");
   await expectHeading(page, "Attendance");
@@ -89,6 +104,17 @@ test("parent sees an attendance insight and opens authorized Student 360", async
   expect(insights.status).toBe(200);
   expect((insights.json?.items ?? []).filter((i) => i.type === "ATTENDANCE_DECLINE")).toHaveLength(1);
 
+  const insightNotice = await findNotificationByType(parent, "ATTENDANCE_DECLINE");
+  expect(insightNotice).toBeTruthy();
+  const ownNotice = await apiJson<{ href: string }>(parent, "GET", `/notifications/${insightNotice!.id}`);
+  expect(ownNotice.status).toBe(200);
+  const own360 = await apiJson(parent, "GET", `/students/${ids.studentId}/360`);
+  expect(own360.status).toBe(200);
+
+  await parent.goto(ownNotice.json?.href || insightNotice!.href);
+  await expectHeading(parent, /Aarav/);
+  await expect(parent.getByTestId("student-360")).toBeVisible();
+
   const otherCtx = await browser.newContext();
   const other = await otherCtx.newPage();
   await loginAs(other, "parent-b@example.test");
@@ -98,10 +124,16 @@ test("parent sees an attendance insight and opens authorized Student 360", async
     const body = (await res.json()) as { snapshot?: { student?: { id: string } } };
     return body.snapshot?.student?.id ?? null;
   });
-  await otherCtx.close();
   expect(foreign).toBeTruthy();
   const denied = await apiJson(parent, "GET", `/students/${foreign}/insights`);
   expect(denied.status).toBe(404);
+  const denied360 = await apiJson(parent, "GET", `/students/${foreign}/360`);
+  expect(denied360.status).toBe(404);
+  const deniedNotice = await apiJson(other, "GET", `/notifications/${insightNotice!.id}`);
+  expect(deniedNotice.status).toBe(404);
+  const otherAarav360 = await apiJson(other, "GET", `/students/${ids.studentId}/360`);
+  expect(otherAarav360.status).toBe(404);
+  await otherCtx.close();
   await parentCtx.close();
 });
 
