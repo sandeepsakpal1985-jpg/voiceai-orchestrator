@@ -54,6 +54,8 @@ export const NOTIFICATION_TYPES = [
   "ACADEMIC_DECLINE",
   "ACADEMIC_IMPROVEMENT",
   "ASSIGNMENT_OVERDUE",
+  "MOVEMENT_ENTRY",
+  "MOVEMENT_EXIT",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 export const INSIGHT_TYPES = [
@@ -66,6 +68,16 @@ export const INSIGHT_TYPES = [
 export type InsightType = (typeof INSIGHT_TYPES)[number];
 export const INSIGHT_SEVERITIES = ["INFO", "ATTENTION"] as const;
 export type InsightSeverity = (typeof INSIGHT_SEVERITIES)[number];
+export const MOVEMENT_EVENT_TYPES = [
+  "ENTRY",
+  "EXIT",
+  "UNKNOWN_CARD",
+  "DUPLICATE_SCAN",
+] as const;
+export type MovementEventType = (typeof MOVEMENT_EVENT_TYPES)[number];
+export const MOVEMENT_SOURCES = ["DEVICE", "ADMIN_TEST"] as const;
+export const MOVEMENT_RETENTION_DAYS = 30;
+export const MOVEMENT_DUPLICATE_WINDOW_MS = 60_000;
 export const NOTIFICATION_RETENTION_DAYS = 90;
 export const GUARDIAN_RELATIONSHIPS = ["MOTHER", "FATHER", "GUARDIAN", "OTHER"] as const;
 export const DAYS_OF_WEEK = [

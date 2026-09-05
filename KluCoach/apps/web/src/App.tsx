@@ -21,6 +21,7 @@ import { AssignmentsPage } from "./assignments/AssignmentsPage";
 import { NotificationCenter } from "./notifications/NotificationCenter";
 import { InstitutionBillingPage } from "./billing/InstitutionBillingPage";
 import { CommercialReportPage } from "./billing/CommercialReportPage";
+import { GatesPage } from "./access/GatesPage";
 
 export function App() {
   return (
@@ -46,6 +47,7 @@ export function App() {
         <Route path="/assignments" element={<AssignmentsPage />} />
         <Route path="/notifications" element={<NotificationCenter />} />
         <Route path="/billing" element={<InstitutionBillingPage />} />
+        <Route path="/gates" element={<GatesPage />} />
         <Route path="/commercial" element={<CommercialReportPage />} />
         <Route path="/import" element={<ImportPage />} />
       </Route>

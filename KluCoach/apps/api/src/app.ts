@@ -22,6 +22,7 @@ import { billingRoutes } from "./platform/billing/billing-routes.js";
 import { paymentWebhookRoutes } from "./platform/payments/webhook-routes.js";
 import { aiRoutes } from "./platform/ai/routes.js";
 import { insightRoutes } from "./platform/insights/routes.js";
+import { accessRoutes } from "./platform/access/routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -92,6 +93,7 @@ export async function buildApp() {
   await app.register(billingRoutes);
   await app.register(aiRoutes);
   await app.register(insightRoutes);
+  await app.register(accessRoutes);
   await app.register(opsRoutes);
 
   return app;

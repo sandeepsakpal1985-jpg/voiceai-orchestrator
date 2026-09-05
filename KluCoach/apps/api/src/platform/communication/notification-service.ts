@@ -10,11 +10,12 @@ const DEFAULTS = {
   noticeAlerts: true,
   timetableAlerts: true,
   feeAlerts: false,
+  movementAlerts: true,
   channelInApp: true,
   channelEmail: true,
 };
 
-export type AlertKind = "attendance" | "result" | "assignment" | "notice" | "timetable" | "fee";
+export type AlertKind = "attendance" | "result" | "assignment" | "notice" | "timetable" | "fee" | "movement";
 
 export async function loadPreferences(institutionId: string, userId: string) {
   const row = await prisma.notificationPreference.findUnique({ where: { userId } });
@@ -26,6 +27,7 @@ export async function loadPreferences(institutionId: string, userId: string) {
     noticeAlerts: row.noticeAlerts,
     timetableAlerts: row.timetableAlerts,
     feeAlerts: row.feeAlerts,
+    movementAlerts: row.movementAlerts,
     channelInApp: row.channelInApp,
     channelEmail: row.channelEmail,
   };
@@ -37,6 +39,7 @@ function allows(prefs: typeof DEFAULTS, kind: AlertKind) {
   if (kind === "assignment") return prefs.assignmentAlerts;
   if (kind === "notice") return prefs.noticeAlerts;
   if (kind === "timetable") return prefs.timetableAlerts;
+  if (kind === "movement") return prefs.movementAlerts;
   return prefs.feeAlerts;
 }
 

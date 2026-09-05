@@ -6,6 +6,7 @@ import { ChildSelector } from "../student360/ChildSelector";
 import { Student360Loading, Student360View } from "../student360/Student360View";
 import { RecentNotifications } from "../notifications/NotificationCenter";
 import { RecentInsights } from "../insights/RecentInsights";
+import { RecentMovement } from "../access/RecentMovement";
 import { AiAskPanel } from "../ai/AiAskPanel";
 
 type ParentHome = {
@@ -39,6 +40,7 @@ export function ParentDashboard() {
         studentId={query.data.snapshot.student.id}
         href={`/parent?studentId=${query.data.snapshot.student.id}`}
       />
+      <RecentMovement studentId={query.data.snapshot.student.id} />
       <Student360View snapshot={query.data.snapshot} />
       <AiAskPanel
         key={query.data.snapshot.student.id}

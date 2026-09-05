@@ -11,6 +11,7 @@ import {
   NOTIFICATION_TYPES,
   INSIGHT_TYPES,
   INSIGHT_SEVERITIES,
+  MOVEMENT_EVENT_TYPES,
   STAFF_STATUSES,
   STUDENT_360_STATUSES,
   STUDENT_360_TRENDS,
@@ -321,6 +322,7 @@ export const notificationPreferenceSchema = z.object({
   noticeAlerts: z.boolean(),
   timetableAlerts: z.boolean(),
   feeAlerts: z.boolean(),
+  movementAlerts: z.boolean(),
   channelInApp: z.boolean(),
   channelEmail: z.boolean(),
 });
@@ -393,3 +395,20 @@ export const insightSummarySchema = z.object({
   byType: z.record(z.number().int()),
 });
 export type InsightSummary = z.infer<typeof insightSummarySchema>;
+
+export const movementEventSchema = z.object({
+  id: z.string(),
+  studentId: z.string().nullable(),
+  type: z.enum(MOVEMENT_EVENT_TYPES),
+  gateName: z.string(),
+  institutionName: z.string(),
+  occurredAt: z.string(),
+  outsideSchedule: z.boolean(),
+  source: z.string(),
+});
+export type MovementEventDto = z.infer<typeof movementEventSchema>;
+
+export const movementListSchema = z.object({
+  items: z.array(movementEventSchema),
+});
+export type MovementList = z.infer<typeof movementListSchema>;

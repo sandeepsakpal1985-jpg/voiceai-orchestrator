@@ -14,6 +14,10 @@ export {
   NOTIFICATION_RETENTION_DAYS,
   INSIGHT_TYPES,
   INSIGHT_SEVERITIES,
+  MOVEMENT_EVENT_TYPES,
+  MOVEMENT_SOURCES,
+  MOVEMENT_RETENTION_DAYS,
+  MOVEMENT_DUPLICATE_WINDOW_MS,
   GUARDIAN_RELATIONSHIPS,
   DAYS_OF_WEEK,
   SESSION_COOKIE,
@@ -21,5 +25,5 @@ export {
   CSRF_HEADER,
   ERROR_CODES,
 } from "./constants.js";
-export type { UserRole, InstitutionType, AttendanceStatus, NotificationType, InsightType, InsightSeverity } from "./constants.js";
+export type { UserRole, InstitutionType, AttendanceStatus, NotificationType, InsightType, InsightSeverity, MovementEventType } from "./constants.js";
 export * from "./schemas.js";

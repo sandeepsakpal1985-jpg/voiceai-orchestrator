@@ -55,7 +55,7 @@ export function requirePermission(req: FastifyRequest, permission: Permission): 
 
 export function assertCsrf(req: FastifyRequest) {
   if (SAFE.has(req.method)) return;
-  if (req.url.startsWith("/auth/login") || req.url.startsWith("/auth/register") || req.url.startsWith("/auth/invitations/accept") || req.url.startsWith("/auth/password-reset/") || req.url.startsWith("/webhooks/")) {
+  if (req.url.startsWith("/auth/login") || req.url.startsWith("/auth/register") || req.url.startsWith("/auth/invitations/accept") || req.url.startsWith("/auth/password-reset/") || req.url.startsWith("/webhooks/") || req.url.startsWith("/access/ingest")) {
     return;
   }
   if (!req.authUser) return;

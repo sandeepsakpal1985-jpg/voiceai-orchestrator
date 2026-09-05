@@ -4,6 +4,7 @@ import { api } from "../api";
 import { Student360Loading, Student360View } from "../student360/Student360View";
 import { RecentNotifications } from "../notifications/NotificationCenter";
 import { RecentInsights } from "../insights/RecentInsights";
+import { RecentMovement } from "../access/RecentMovement";
 import { AiAskPanel } from "../ai/AiAskPanel";
 
 export function StudentDashboard() {
@@ -19,6 +20,7 @@ export function StudentDashboard() {
     <div>
       <RecentNotifications />
       <RecentInsights studentId={query.data.student.id} href="/student" />
+      <RecentMovement studentId={query.data.student.id} />
       <Student360View snapshot={query.data} />
       <AiAskPanel
         title="Ask about my progress"

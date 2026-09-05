@@ -25,6 +25,10 @@ async function main() {
   await prisma.notificationPreference.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.studentInsight.deleteMany();
+  await prisma.movementEvent.deleteMany();
+  await prisma.studentCredential.deleteMany();
+  await prisma.accessDevice.deleteMany();
+  await prisma.accessGate.deleteMany();
   await prisma.noticeStudent.deleteMany();
   await prisma.notice.deleteMany();
   await prisma.assignmentSubmission.deleteMany();
@@ -708,6 +712,35 @@ async function seedTenant(opts: {
     },
   });
   void issued;
+
+  const gate = await prisma.accessGate.create({
+    data: {
+      institutionId: institution.id,
+      name: "Main Gate",
+      code: "MAIN",
+      status: "ACTIVE",
+    },
+  });
+  const deviceSecretHash = await argon2.hash("DemoDeviceSecret!", { type: argon2.argon2id });
+  await prisma.accessDevice.create({
+    data: {
+      id: opts.primary ? "demo-access-device-a" : "demo-access-device-b",
+      institutionId: institution.id,
+      gateId: gate.id,
+      name: "Main Gate Reader",
+      secretHash: deviceSecretHash,
+      status: "ACTIVE",
+    },
+  });
+  await prisma.studentCredential.create({
+    data: {
+      institutionId: institution.id,
+      studentId: primaryStudent.id,
+      uid: opts.primary ? "KC-AARAV-RFID" : "KC-OTHER-RFID",
+      type: "RFID",
+      status: "ACTIVE",
+    },
+  });
 
   return { institutionId: institution.id };
 }

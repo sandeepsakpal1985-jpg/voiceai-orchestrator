@@ -232,6 +232,10 @@ model Institution {
   notices              Notice[]
   notifications        Notification[]
   studentInsights      StudentInsight[]
+  accessGates          AccessGate[]
+  accessDevices        AccessDevice[]
+  studentCredentials   StudentCredential[]
+  movementEvents       MovementEvent[]
   notificationPreferences NotificationPreference[]
   fileObjects          FileObject[]
   feePlans             FeePlan[]
@@ -429,6 +433,8 @@ model Student {
   feeInvoices      FeeInvoice[]
   notifications    Notification[]
   insights         StudentInsight[]
+  credentials      StudentCredential[]
+  movementEvents   MovementEvent[]
 
   @@unique([institutionId, admissionNumber])
   @@index([institutionId])
@@ -886,6 +892,86 @@ model StudentInsight {
   @@map("student_insights")
 }
 
+model AccessGate {
+  id            String   @id @default(cuid())
+  institutionId String   @map("institution_id")
+  name          String
+  code          String
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  institution Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  devices     AccessDevice[]
+  events      MovementEvent[]
+
+  @@unique([institutionId, code])
+  @@index([institutionId])
+  @@map("access_gates")
+}
+
+model AccessDevice {
+  id            String    @id @default(cuid())
+  institutionId String    @map("institution_id")
+  gateId        String    @map("gate_id")
+  name          String
+  secretHash    String    @map("secret_hash")
+  status        String    @default("ACTIVE")
+  lastSeenAt    DateTime? @map("last_seen_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  institution Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  gate        AccessGate      @relation(fields: [gateId], references: [id], onDelete: Cascade)
+  events      MovementEvent[]
+
+  @@index([institutionId])
+  @@map("access_devices")
+}
+
+model StudentCredential {
+  id            String   @id @default(cuid())
+  institutionId String   @map("institution_id")
+  studentId     String   @map("student_id")
+  uid           String
+  type          String   @default("RFID")
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, uid])
+  @@index([institutionId, studentId])
+  @@map("student_credentials")
+}
+
+model MovementEvent {
+  id               String    @id @default(cuid())
+  institutionId    String    @map("institution_id")
+  studentId        String?   @map("student_id")
+  gateId           String    @map("gate_id")
+  deviceId         String?   @map("device_id")
+  type             String
+  source           String    @default("DEVICE")
+  credentialUid    String    @map("credential_uid")
+  outsideSchedule  Boolean   @default(false) @map("outside_schedule")
+  dedupeKey        String    @map("dedupe_key")
+  occurredAt       DateTime  @map("occurred_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  institution Institution   @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  student     Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  gate        AccessGate    @relation(fields: [gateId], references: [id], onDelete: Restrict)
+  device      AccessDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@unique([institutionId, dedupeKey])
+  @@index([institutionId, studentId, occurredAt])
+  @@index([institutionId, occurredAt])
+  @@map("movement_events")
+}
+
 model NotificationPreference {
   id               String   @id @default(cuid())
   institutionId    String   @map("institution_id")
@@ -896,6 +982,7 @@ model NotificationPreference {
   noticeAlerts     Boolean  @default(true) @map("notice_alerts")
   timetableAlerts  Boolean  @default(true) @map("timetable_alerts")
   feeAlerts        Boolean  @default(false) @map("fee_alerts")
+  movementAlerts   Boolean  @default(true) @map("movement_alerts")
   channelInApp     Boolean  @default(true) @map("channel_in_app")
   channelEmail     Boolean  @default(true) @map("channel_email")
   createdAt        DateTime @default(now()) @map("created_at")

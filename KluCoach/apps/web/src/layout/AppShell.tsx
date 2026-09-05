@@ -137,6 +137,11 @@ export function AppShell() {
           </NavLink>
         )}
         {role === "INSTITUTION_ADMIN" && (
+          <NavLink to="/gates">
+            <CalendarCheck size={16} aria-hidden /> Gate
+          </NavLink>
+        )}
+        {role === "INSTITUTION_ADMIN" && (
           <NavLink to="/import">
             <Upload size={16} aria-hidden /> Import
           </NavLink>
