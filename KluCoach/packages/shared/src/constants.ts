@@ -49,8 +49,23 @@ export const NOTIFICATION_TYPES = [
   "PAYMENT_RECEIVED",
   "PAYMENT_FAILED",
   "SUBSCRIPTION_EXPIRED",
+  "ATTENDANCE_DECLINE",
+  "ATTENDANCE_IMPROVEMENT",
+  "ACADEMIC_DECLINE",
+  "ACADEMIC_IMPROVEMENT",
+  "ASSIGNMENT_OVERDUE",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+export const INSIGHT_TYPES = [
+  "ATTENDANCE_DECLINE",
+  "ATTENDANCE_IMPROVEMENT",
+  "ACADEMIC_DECLINE",
+  "ACADEMIC_IMPROVEMENT",
+  "ASSIGNMENT_OVERDUE",
+] as const;
+export type InsightType = (typeof INSIGHT_TYPES)[number];
+export const INSIGHT_SEVERITIES = ["INFO", "ATTENTION"] as const;
+export type InsightSeverity = (typeof INSIGHT_SEVERITIES)[number];
 export const NOTIFICATION_RETENTION_DAYS = 90;
 export const GUARDIAN_RELATIONSHIPS = ["MOTHER", "FATHER", "GUARDIAN", "OTHER"] as const;
 export const DAYS_OF_WEEK = [

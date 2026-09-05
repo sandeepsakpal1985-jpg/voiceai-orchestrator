@@ -12,6 +12,8 @@ export {
   NOTICE_AUDIENCES,
   NOTIFICATION_TYPES,
   NOTIFICATION_RETENTION_DAYS,
+  INSIGHT_TYPES,
+  INSIGHT_SEVERITIES,
   GUARDIAN_RELATIONSHIPS,
   DAYS_OF_WEEK,
   SESSION_COOKIE,
@@ -19,5 +21,5 @@ export {
   CSRF_HEADER,
   ERROR_CODES,
 } from "./constants.js";
-export type { UserRole, InstitutionType, AttendanceStatus, NotificationType } from "./constants.js";
+export type { UserRole, InstitutionType, AttendanceStatus, NotificationType, InsightType, InsightSeverity } from "./constants.js";
 export * from "./schemas.js";

@@ -231,6 +231,7 @@ model Institution {
   assignments          Assignment[]
   notices              Notice[]
   notifications        Notification[]
+  studentInsights      StudentInsight[]
   notificationPreferences NotificationPreference[]
   fileObjects          FileObject[]
   feePlans             FeePlan[]
@@ -427,6 +428,7 @@ model Student {
   entitlements     StudentEntitlement[]
   feeInvoices      FeeInvoice[]
   notifications    Notification[]
+  insights         StudentInsight[]
 
   @@unique([institutionId, admissionNumber])
   @@index([institutionId])
@@ -860,6 +862,28 @@ model Notification {
   @@index([institutionId, userId, createdAt])
   @@index([institutionId, userId, readAt])
   @@map("notifications")
+}
+
+model StudentInsight {
+  id            String   @id @default(cuid())
+  institutionId String   @map("institution_id")
+  studentId     String   @map("student_id")
+  type          String
+  severity      String   @default("INFO")
+  title         String
+  summary       String
+  source        Json     @default("{}")
+  dedupeKey     String   @map("dedupe_key")
+  detectedAt    DateTime @default(now()) @map("detected_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, studentId, dedupeKey])
+  @@index([institutionId, studentId, detectedAt])
+  @@index([institutionId, type])
+  @@map("student_insights")
 }
 
 model NotificationPreference {

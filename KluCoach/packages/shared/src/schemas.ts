@@ -9,6 +9,8 @@ import {
   INSTITUTION_TYPES,
   NOTICE_AUDIENCES,
   NOTIFICATION_TYPES,
+  INSIGHT_TYPES,
+  INSIGHT_SEVERITIES,
   STAFF_STATUSES,
   STUDENT_360_STATUSES,
   STUDENT_360_TRENDS,
@@ -368,3 +370,26 @@ export const aiStatusSchema = z.object({
   provider: z.string(),
 });
 export type AiStatus = z.infer<typeof aiStatusSchema>;
+
+export const studentInsightSchema = z.object({
+  id: z.string(),
+  studentId: z.string(),
+  type: z.enum(INSIGHT_TYPES),
+  severity: z.enum(INSIGHT_SEVERITIES),
+  title: z.string(),
+  summary: z.string(),
+  source: z.record(z.unknown()),
+  detectedAt: z.string(),
+});
+export type StudentInsightDto = z.infer<typeof studentInsightSchema>;
+
+export const studentInsightListSchema = z.object({
+  items: z.array(studentInsightSchema),
+});
+export type StudentInsightList = z.infer<typeof studentInsightListSchema>;
+
+export const insightSummarySchema = z.object({
+  periodKey: z.string(),
+  byType: z.record(z.number().int()),
+});
+export type InsightSummary = z.infer<typeof insightSummarySchema>;

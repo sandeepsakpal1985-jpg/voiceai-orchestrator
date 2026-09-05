@@ -65,6 +65,12 @@ export type AppConfig = {
   aiModel: string;
   aiMaxOutputTokens: number;
   aiMaxInputChars: number;
+  insightAttendanceChangePercent: number;
+  insightAcademicChangePercent: number;
+  insightPeriodDays: number;
+  insightMinAttendanceSamples: number;
+  insightMinResultSamples: number;
+  insightAiWording: boolean;
 };
 
 function asAppEnv(raw: string | undefined, nodeEnv: string): AppEnv {
@@ -132,6 +138,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     aiModel: env.AI_MODEL ?? "gpt-4o-mini",
     aiMaxOutputTokens: Number(env.AI_MAX_OUTPUT_TOKENS ?? 400),
     aiMaxInputChars: Number(env.AI_MAX_INPUT_CHARS ?? 8000),
+    insightAttendanceChangePercent: Number(env.INSIGHT_ATTENDANCE_CHANGE_PERCENT ?? 5),
+    insightAcademicChangePercent: Number(env.INSIGHT_ACADEMIC_CHANGE_PERCENT ?? 5),
+    insightPeriodDays: Number(env.INSIGHT_PERIOD_DAYS ?? 30),
+    insightMinAttendanceSamples: Number(env.INSIGHT_MIN_ATTENDANCE_SAMPLES ?? 6),
+    insightMinResultSamples: Number(env.INSIGHT_MIN_RESULT_SAMPLES ?? 4),
+    insightAiWording: env.INSIGHT_AI_WORDING === "true",
   };
 }
 

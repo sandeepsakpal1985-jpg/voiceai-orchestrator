@@ -13,6 +13,7 @@ export default defineConfig({
       ALLOW_DEV_RESET_TOKEN: "true",
       AI_ENABLED: "true",
       AI_PROVIDER: "test",
+      INSIGHT_AI_WORDING: "false",
     },
   },
 });
