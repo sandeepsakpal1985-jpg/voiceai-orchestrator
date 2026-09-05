@@ -5,6 +5,7 @@ import {
   parentsForStudent,
   studentRecipient,
 } from "./notification-service.js";
+import { scheduleStudentInsights } from "../insights/service.js";
 
 function isoDate(value: Date | string) {
   const d = typeof value === "string" ? value.slice(0, 10) : value.toISOString().slice(0, 10);
@@ -89,6 +90,8 @@ export async function onAttendanceMarked(
       dedupeSuffix: `${institutionId}:${rec.studentId}:${day}:${session}`,
     });
   }
+  const ids = [...new Set(records.map((r) => r.studentId))];
+  if (ids.length) scheduleStudentInsights({ institutionId, studentIds: ids });
 }
 
 export async function onResultsPublished(
@@ -116,6 +119,7 @@ export async function onResultsPublished(
       dedupeSuffix: `${institutionId}:${assessment.id}:${studentId}`,
     });
   }
+  if (studentIds.length) scheduleStudentInsights({ institutionId, studentIds });
 }
 
 export async function onAssignmentCreated(
