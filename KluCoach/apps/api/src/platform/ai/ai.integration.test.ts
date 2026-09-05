@@ -234,7 +234,7 @@ describe("AI authorization", () => {
       url: "/batches",
       headers: admin.headers,
       payload: {
-        name: "Unassigned AI Test Batch",
+        name: `Unassigned AI Test Batch ${Date.now()}`,
         branchId: branches[0]!.id,
         academicYearId: years[0]!.id,
         programId: programs[0]!.id,
