@@ -1,6 +1,6 @@
 # Progress
 
-Updated: 2026-09-05 (Phase 10 — Production hardening + pilot readiness — COMPLETE — VALIDATED for controlled pilot; not a general launch)
+Updated: 2026-09-06 (Phase 10 — Production hardening + pilot readiness — COMPLETE — VALIDATED for controlled pilot; not a general launch)
 
 Validation rule: COMPLETE only with execution evidence. Statuses: PASS / FAIL / BLOCKED — ENVIRONMENT / BLOCKED — EXTERNAL PROVIDER / NOT RUN.
 
@@ -18,9 +18,9 @@ Starting checkpoint: `3b087ac`. GPS / SafeTrack 9B / new AI: **not started**.
 | Tenant / RBAC / billing / AI / SafeTrack security | VALIDATED | existing isolation suites + revoked-card + device-secret redact |
 | Password reset | VALIDATED | `e2e/production.spec.ts` + phase 6 integration |
 | Production config fail-fast | VALIDATED | weak session, wildcard CORS, insecure cookies, test payments, `ALLOW_DEV_RESET_TOKEN`, demo seed |
-| Docker web image | Dockerfile VALIDATED; image rebuild **BLOCKED — ENVIRONMENT** | `USER nginx`, listen 8080, Caddy `web:8080`. First `docker build` failed on pnpm ignored native scripts; retry started with `strict-dep-builds=false` (registry slow). Vite web build on host **PASS**. |
+| Docker web image | **PASS** `klucoach-web:phase10` | `USER nginx`, listen 8080, Caddy `web:8080`. Build uses web-only install + `tsc`/`vite` on PATH (avoids `pnpm exec` CI ignored-build gate). Host Vite build also **PASS**. |
 | Backup dump | VALIDATED this session | `pg_dump -Fc` of local `klucoach` (~450 KB) |
-| Backup restore drill | VALIDATED | prior 2026-09-02 restore counted 2 institutions; this session dump-only (restore script auto-review not approved) |
+| Backup restore drill | **RESTORE_VERIFIED** 2026-09-06 | copy DB `klucoach_restore_check` counted **2** institutions, then dropped. Source DB untouched. |
 | Live Razorpay | **BLOCKED — EXTERNAL PROVIDER** | |
 | Live SMTP | **BLOCKED — EXTERNAL PROVIDER** | |
 | Public HTTPS | **BLOCKED — INFRASTRUCTURE** | |

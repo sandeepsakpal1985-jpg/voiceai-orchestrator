@@ -6,9 +6,11 @@ COPY packages ./packages
 COPY apps/web ./apps/web
 ENV CI=true
 RUN corepack prepare pnpm@11.5.0 --activate
-RUN pnpm install --frozen-lockfile --config.strict-dep-builds=false || pnpm install --config.strict-dep-builds=false
+RUN pnpm install --frozen-lockfile --filter @klucoach/web... --config.strict-dep-builds=false || pnpm install --filter @klucoach/web... --config.strict-dep-builds=false
 RUN pnpm rebuild esbuild
-RUN pnpm --filter @klucoach/web --config.strict-dep-builds=false build
+WORKDIR /app/apps/web
+ENV PATH="/app/apps/web/node_modules/.bin:/app/node_modules/.bin:${PATH}"
+RUN tsc --noEmit && vite build
 
 FROM nginx:1.27-alpine
 COPY apps/web/nginx.conf /etc/nginx/nginx.conf

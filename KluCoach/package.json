@@ -19,8 +19,5 @@
     "db:seed": "pnpm --filter @klunex-edu/database seed",
     "db:studio": "pnpm --filter @klunex-edu/database studio",
     "lint": "pnpm -r --if-present lint"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["argon2", "esbuild", "@prisma/client", "@prisma/engines", "prisma"]
   }
 }
