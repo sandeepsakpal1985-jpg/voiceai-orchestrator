@@ -148,4 +148,33 @@ describe("SafeTrack movement authorization", () => {
     expect(unknown.type).toBe("UNKNOWN_CARD");
     expect(await prisma.notification.count({ where: { userId: parentUser!.id, type: "MOVEMENT_ENTRY" } })).toBe(before);
   });
+
+  it("treats a revoked card as unknown and does not notify parents", async () => {
+    const aarav = await prisma.student.findFirst({ where: { firstName: "Aarav", lastName: "Sharma" } });
+    expect(aarav).toBeTruthy();
+    const parentUser = await prisma.user.findFirst({ where: { email: "parent@example.test" } });
+    const uid = `KC-REVOKED-${Date.now()}`;
+    await prisma.studentCredential.create({
+      data: {
+        institutionId: aarav!.institutionId,
+        studentId: aarav!.id,
+        uid,
+        type: "RFID",
+        status: "REVOKED",
+      },
+    });
+    const before = await prisma.notification.count({ where: { userId: parentUser!.id, type: "MOVEMENT_ENTRY" } });
+    const result = await ingestScan({
+      deviceId: "demo-access-device-a",
+      deviceSecret: "DemoDeviceSecret!",
+      uid,
+      occurredAt: new Date(),
+    });
+    expect(result.type).toBe("UNKNOWN_CARD");
+    expect(result.notified).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("DemoDeviceSecret");
+    expect(JSON.stringify(result)).not.toContain(uid);
+    expect(await prisma.notification.count({ where: { userId: parentUser!.id, type: "MOVEMENT_ENTRY" } })).toBe(before);
+    await prisma.studentCredential.deleteMany({ where: { uid } });
+  });
 });

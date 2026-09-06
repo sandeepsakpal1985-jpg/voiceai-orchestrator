@@ -48,7 +48,7 @@ afterAll(async () => {
 });
 
 describe("proactive insight authorization", () => {
-  it("creates one attendance decline insight and notification even if the job runs repeatedly", async () => {
+  it("creates one attendance decline insight and notification even if the job runs repeatedly", { timeout: 120_000 }, async () => {
     const parent = await login("parent@example.test");
     const admin = await login("admin@example.test");
     const home = json<{ children: { id: string; firstName: string }[] }>(

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { assertDemoSeedAllowed } from "@klunex-edu/database";
 import { healthPayload, loadConfig, validateConfig } from "./config.js";
 
 function base(overrides: Record<string, string> = {}) {
@@ -38,6 +39,16 @@ describe("production configuration validator", () => {
     expect(() => validateConfig(cfg)).toThrow(/test/);
   });
 
+  it("rejects wildcard CORS in production", () => {
+    const cfg = loadConfig(base({ API_CORS_ORIGINS: "*" }));
+    expect(() => validateConfig(cfg)).toThrow(/CORS/);
+  });
+
+  it("rejects insecure cookies in production", () => {
+    const cfg = loadConfig(base({ COOKIE_SECURE: "false" }));
+    expect(() => validateConfig(cfg)).toThrow(/COOKIE_SECURE/);
+  });
+
   it("rejects dev reset-token escape hatch in production", () => {
     const cfg = loadConfig(base({ ALLOW_DEV_RESET_TOKEN: "true" }));
     expect(() => validateConfig(cfg)).toThrow(/ALLOW_DEV_RESET_TOKEN/);
@@ -66,5 +77,11 @@ describe("production configuration validator", () => {
   it("rejects the test AI provider in production when AI is enabled", () => {
     const cfg = loadConfig(base({ AI_ENABLED: "true", AI_PROVIDER: "test", AI_API_KEY: "sk-not-used" }));
     expect(() => validateConfig(cfg)).toThrow(/AI_PROVIDER/);
+  });
+
+  it("refuses demo seed when APP_ENV is production", () => {
+    expect(() => assertDemoSeedAllowed({ APP_ENV: "production" })).toThrow(/demo data/);
+    expect(() => assertDemoSeedAllowed({ NODE_ENV: "production" })).toThrow(/demo data/);
+    expect(() => assertDemoSeedAllowed({ APP_ENV: "development", NODE_ENV: "development" })).not.toThrow();
   });
 });
