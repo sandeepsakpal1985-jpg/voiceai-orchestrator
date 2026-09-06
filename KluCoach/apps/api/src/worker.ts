@@ -1,6 +1,8 @@
 import { prisma } from "@klunex-edu/database";
 import { runDueJobs } from "./jobs/runner.js";
-import { config } from "./config.js";
+import { config, validateConfig } from "./config.js";
+
+validateConfig(config);
 
 const INTERVAL_MS = 60 * 60 * 1000;
 

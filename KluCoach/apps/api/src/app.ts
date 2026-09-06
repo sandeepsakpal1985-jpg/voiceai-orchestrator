@@ -28,7 +28,7 @@ export async function buildApp() {
   const app = Fastify({
     logger: {
       level: config.logLevel,
-      redact: ["req.headers.cookie", "req.headers.authorization"],
+      redact: ["req.headers.cookie", "req.headers.authorization", "req.headers.x-access-device-secret"],
     },
     genReqId: createRequestId,
     trustProxy: true,

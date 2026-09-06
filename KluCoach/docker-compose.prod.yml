@@ -61,11 +61,18 @@ services:
       APP_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       SESSION_SECRET: ${SESSION_SECRET}
+      COOKIE_SECURE: "true"
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      APP_BASE_URL: ${APP_BASE_URL:-${PUBLIC_APP_URL}}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
       PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-false}
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-none}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      AI_API_KEY: ${AI_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

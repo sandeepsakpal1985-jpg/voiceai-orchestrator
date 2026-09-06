@@ -1,5 +1,6 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
 import argon2 from "argon2";
+import { assertDemoSeedAllowed } from "../src/assertDemoSeed.ts";
 
 const prisma = new PrismaClient();
 const DEMO_PASSWORD = "DemoPassw0rd!";
@@ -13,6 +14,7 @@ function slugify(name: string) {
 }
 
 async function main() {
+  assertDemoSeedAllowed(process.env);
   const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
 
   await prisma.passwordResetToken.deleteMany();

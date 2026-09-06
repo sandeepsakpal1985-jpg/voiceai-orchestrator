@@ -175,7 +175,7 @@ async function recordScan(input: {
         entityType: "MovementEvent",
         entityId: event.id,
         institutionId: input.institutionId,
-        metadata: { uid: input.uid, gateId: input.gateId },
+        metadata: { gateId: input.gateId },
       });
       return { type: "UNKNOWN_CARD" as const, eventId: event.id, notified: false };
     } catch (err) {

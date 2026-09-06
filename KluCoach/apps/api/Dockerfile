@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile --config.strict-dep-builds=false || pnpm inst
 RUN pnpm rebuild argon2 @prisma/client prisma @prisma/engines esbuild
 RUN pnpm --filter @klunex-edu/shared build
 RUN pnpm --filter @klunex-edu/database generate
-RUN pnpm --filter @klucoach/api build
+RUN pnpm --filter @klucoach/api --config.strict-dep-builds=false build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

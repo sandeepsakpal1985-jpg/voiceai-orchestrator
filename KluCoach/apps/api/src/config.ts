@@ -161,8 +161,8 @@ export function validateConfig(cfg: AppConfig): void {
     if (!cfg.publicAppUrl.startsWith("https://") && !cfg.publicAppUrl.startsWith("http://127.0.0.1")) {
       throw new ConfigError("PUBLIC_APP_URL / APP_BASE_URL must be https in production");
     }
-    if (cfg.allowDevResetToken) {
-      throw new ConfigError("ALLOW_DEV_RESET_TOKEN cannot be enabled in production");
+    if (cfg.corsOrigins.some((origin) => origin === "*")) {
+      throw new ConfigError("API_CORS_ORIGINS cannot be * in production");
     }
     if (cfg.paymentProvider === "test") {
       throw new ConfigError("PAYMENT_PROVIDER=test is not allowed in production");
@@ -182,6 +182,9 @@ export function validateConfig(cfg: AppConfig): void {
       if (!cfg.aiApiKey) {
         throw new ConfigError("AI_API_KEY is required when AI is enabled in production");
       }
+    }
+    if (cfg.allowDevResetToken) {
+      throw new ConfigError("ALLOW_DEV_RESET_TOKEN cannot be enabled in production");
     }
   }
 }
