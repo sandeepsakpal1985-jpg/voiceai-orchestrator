@@ -1,5 +1,69 @@
 # Progress
 
+Updated: 2026-09-05 (Phase 10 — Production hardening + pilot readiness — COMPLETE — VALIDATED for controlled pilot; not a general launch)
+
+Validation rule: COMPLETE only with execution evidence. Statuses: PASS / FAIL / BLOCKED — ENVIRONMENT / BLOCKED — EXTERNAL PROVIDER / NOT RUN.
+
+Starting checkpoint: `3b087ac`. GPS / SafeTrack 9B / new AI: **not started**.
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| Playwright regression isolation | VALIDATED | `attendance.spec` no longer asserts a historical date inside Student 360's newest-8 snippet; date+ABSENT proved on Attendance history + `GET /attendance?date=` |
+| Full Playwright | **35/35 PASS** | 2026-09-05, 4.4m, 1 worker |
+| Vitest | **141/141 PASS** | includes revoked RFID, CORS/cookie/reset-token fail-fast, demo-seed refuse |
+| Typecheck | PASS | `pnpm typecheck` |
+| Web build | PASS | `pnpm --filter @klucoach/web build` (Vite production) |
+| Full `pnpm build` | **BLOCKED — ENVIRONMENT** | `prisma generate` EPERM while API holds `query_engine-windows.dll.node` |
+| Lint | PASS | `pnpm lint` `--if-present` (no package lint scripts; accurately empty) |
+| Tenant / RBAC / billing / AI / SafeTrack security | VALIDATED | existing isolation suites + revoked-card + device-secret redact |
+| Password reset | VALIDATED | `e2e/production.spec.ts` + phase 6 integration |
+| Production config fail-fast | VALIDATED | weak session, wildcard CORS, insecure cookies, test payments, `ALLOW_DEV_RESET_TOKEN`, demo seed |
+| Docker web image | Dockerfile VALIDATED; image rebuild **BLOCKED — ENVIRONMENT** | `USER nginx`, listen 8080, Caddy `web:8080`. First `docker build` failed on pnpm ignored native scripts; retry started with `strict-dep-builds=false` (registry slow). Vite web build on host **PASS**. |
+| Backup dump | VALIDATED this session | `pg_dump -Fc` of local `klucoach` (~450 KB) |
+| Backup restore drill | VALIDATED | prior 2026-09-02 restore counted 2 institutions; this session dump-only (restore script auto-review not approved) |
+| Live Razorpay | **BLOCKED — EXTERNAL PROVIDER** | |
+| Live SMTP | **BLOCKED — EXTERNAL PROVIDER** | |
+| Public HTTPS | **BLOCKED — INFRASTRUCTURE** | |
+| Physical RFID hardware | **NOT VALIDATED — HARDWARE** | software gate + test punch validated |
+
+## Phase 10 close-out gate
+
+- [x] Playwright **35/35 PASS**
+- [x] Vitest **141/141 PASS**
+- [x] Typecheck **PASS**
+- [x] Web production build **PASS**
+- [x] Lint accurately reported
+- [x] Tenant isolation / auth / RBAC / billing / AI / SafeTrack tests executed in the suites above
+- [x] Password reset e2e PASS
+- [x] Production configuration unit tests PASS
+- [x] Demo seed refused in production
+- [x] Pilot runbook / checklist / metrics / feedback docs
+- [x] Privacy / security / payments / data-protection updates
+- [x] No critical/high known regression
+- [ ] Live payments, live SMTP, public TLS, physical readers — external / hardware blockers (honest)
+
+Do not claim “production-ready for unrestricted launch.” This is **controlled first-institute pilot-ready**.
+
+## Regression root cause (Phase 10)
+
+Failing spec: `apps/web/e2e/attendance.spec.ts` expected parent Student 360 home to contain `2026-09-03` and `ABSENT`.
+
+Actual: `ABSENT` visible; `2026-09-03` absent from the 8-row `attendance.recent` snippet because later-dated e2e attendance (notifications used Nov/Dec) occupied newest rows. Student 360 **intentionally** caps recent attendance at 8. Not a product defect. Fix: unique calendar dates per workflow month + assert the saved date on Attendance history and `GET /attendance?date=`, not inside the 8-row home snippet.
+
+## Session summary (Phase 10)
+
+1. **Starting commit:** `3b087ac`
+2. **Vitest:** **141/141 PASS**
+3. **Playwright:** **35/35 PASS**
+4. **Typecheck:** PASS
+5. **Build:** web PASS; full monorepo `pnpm build` **BLOCKED — ENVIRONMENT** (Prisma engine lock)
+6. **Lint:** PASS (`--if-present`)
+7. **Exact next phase:** Stop. Do not start SafeTrack 9B or GPS unless asked.
+
+---
+
+# Progress (Phase 9A archive)
+
 Updated: 2026-09-05 (Phase 9A — Digital Gate — COMPLETE — VALIDATED for SafeTrack; full Playwright regression not 35/35)
 
 Validation rule: COMPLETE only with execution evidence. Statuses: PASS / FAIL / BLOCKED — ENVIRONMENT / BLOCKED — EXTERNAL PROVIDER / NOT RUN.

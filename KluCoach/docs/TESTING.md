@@ -47,6 +47,8 @@ Phase 8 close-out evidence (2026-09-05): Vitest **131/131**. Playwright **33/33*
 
 Phase 9A evidence (2026-09-05): Vitest **137/137**. Playwright SafeTrack `access.spec.ts` **2/2**. Typecheck PASS. Full Playwright last complete run **32/35**; `attendance.spec` parent 360 date assertion fails independently on this demo DB (newest 8 attendance rows are later-dated e2e marks). See [PROGRESS.md](./PROGRESS.md).
 
+Phase 10 evidence (2026-09-05): Vitest **141/141**. Playwright **35/35**. Typecheck PASS. Web Vite build PASS. Lint `--if-present` PASS (no package lint scripts). Attendance e2e uses `uniqueCalendarDate` and asserts the saved date on Attendance history + `GET /attendance?date=` (not the Student 360 newest-8 snippet). Production fail-fast: wildcard CORS, insecure cookies, `ALLOW_DEV_RESET_TOKEN`, demo seed refuse. Revoked RFID → `UNKNOWN_CARD`, no parent notify. Live Razorpay/SMTP/HTTPS/hardware remain blocked. See [PROGRESS.md](./PROGRESS.md).
+
 ## Cross-tenant matrix
 
 Tenant A must not access Tenant B via:
