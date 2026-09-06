@@ -41,7 +41,7 @@ Not for: ads, resale, cross-institution profiling, training public AI models on 
 - RBAC + parent-child link
 - Teachers scoped to assigned batches; **teachers do not inherit live location or gate history**
 - SUPER_ADMIN is a platform operator role; use least privilege in production
-- Gate movement: parent (linked child), student (self), institution admin (tenant / today's log). Foreign student ids **404**.
+- Gate movement: parent (linked child), student (self), institution admin (tenant / today's log). Foreign student ids **404**. RFID UIDs are not public search fields. Unknown/revoked cards do not notify parents.
 
 ---
 

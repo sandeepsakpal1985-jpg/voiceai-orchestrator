@@ -46,4 +46,6 @@ JSON to stdout. Request ids are on every error payload (`error.requestId`). Paym
 
 ## Seed policy
 
-Demo accounts (`@example.test`) belong in development/demo only. Production configuration validation rejects weak session secrets and the test payment provider.
+Demo accounts (`@example.test`) belong in development/demo only. Production configuration validation rejects weak session secrets, wildcard CORS, and the test payment provider.
+
+First-institute procedure: [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md).

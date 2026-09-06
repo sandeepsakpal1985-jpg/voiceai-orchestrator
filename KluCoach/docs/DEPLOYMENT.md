@@ -27,7 +27,7 @@ Target: a single VPS. No Kubernetes.
 
 ```bash
 pnpm --filter @klunex-edu/database migrate:deploy
-pnpm --filter @klunex-edu/database seed   # non-production / demo only
+pnpm --filter @klunex-edu/database seed   # refused when APP_ENV or NODE_ENV is production
 ```
 
 Never use `prisma db push` as the production migration strategy.

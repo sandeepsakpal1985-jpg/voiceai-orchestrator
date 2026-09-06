@@ -23,9 +23,12 @@ Operational companion to [PRIVACY.md](./PRIVACY.md) and [SECURITY.md](./SECURITY
 | Active academic records | Keep while institution is active |
 | Soft-archived students | Keep; exclude from default lists |
 | Sessions | Expire (7 days idle default); delete on logout |
-| Invitations | Expire; hash token |
+| Invitations / password-reset tokens | Expire; hash; single-use |
+| In-app notifications | 90-day purge via `purgeExpiredNotifications` (callable; not a silent untested cron in this phase) |
 | Audit logs | Keep; tenant-scoped; no silent purge in MVP |
+| Billing invoices / payments / refunds | Keep for the life of the institution contract; do not rewrite totals |
 | Gate ENTRY/EXIT visible to parents | Last 30 days in the API query window |
+| RFID device secrets | Argon2 hash at rest; raw secret never in API JSON |
 | Uploaded files | Delete/orphan-clean with parent record archive (later job) |
 
 Do not permanently delete educational records in casual admin “delete” actions. MVP uses status + `archivedAt`.

@@ -51,3 +51,5 @@ docker compose exec -T postgres sh -c "pg_dump -U klucoach -Fc -f /tmp/klucoach-
 ```
 
 Executed 2026-09-02: restore database counted **2** institutions, then dropped. `RESTORE_VERIFIED`.
+
+Executed 2026-09-05 (Phase 10): `pg_dump -Fc` of local `klucoach` on `localhost:55433` produced a 449674-byte custom dump (`DUMP_OK`). Full `scripts/verify-backup.ps1` restore-to-copy was not re-run in that session (operator confirmation). Prior restore drill remains the restore evidence.

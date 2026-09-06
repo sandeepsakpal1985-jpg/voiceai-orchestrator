@@ -46,3 +46,19 @@ Tax fields exist on invoices. Rates are configuration. Legal GST treatment requi
 ## Reconciliation
 
 `POST /billing/reconciliation/run` (super-admin) and the hourly worker job compare local payment rows to provider status. Mismatches are stored on `PaymentReconciliation`; history is not silently overwritten. A pending local row that the provider reports paid is confirmed through the same success path.
+
+## Remaining production requirements (not claimed done)
+
+Live collection stays **BLOCKED — EXTERNAL PROVIDER** until all of the following exist:
+
+1. Razorpay account (live or sandbox, never committed to git)
+2. `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`
+3. Public HTTPS origin
+4. Webhook endpoint `https://<domain>/webhooks/razorpay`
+5. `PAYMENT_WEBHOOK_SECRET` matching the Razorpay dashboard
+6. `PAYMENTS_ENABLED=true` and `PAYMENT_PROVIDER=razorpay` (test provider is rejected in production)
+7. Operator monitoring of webhook 400/500 rates
+8. Reconciliation job running (worker container)
+
+Do not insert fake production credentials to mark this complete.
+

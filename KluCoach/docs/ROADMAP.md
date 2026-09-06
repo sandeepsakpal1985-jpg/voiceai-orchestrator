@@ -106,6 +106,10 @@ Deferred from 9A:
 
 Teacher batch insight aggregation remains deferred (still not a predictive engine).
 
+## Phase 10 — Production hardening and pilot readiness
+
+Make the existing product reliable enough for one controlled institute. No SafeTrack 9B/9C, no GPS, no new AI. See [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md), [PILOT_CHECKLIST.md](./PILOT_CHECKLIST.md), [PILOT_METRICS.md](./PILOT_METRICS.md), [PILOT_FEEDBACK.md](./PILOT_FEEDBACK.md).
+
 Further out:
 
 - Broader AI insights with tenant/role-respecting retrieval (only when cost model allows)
