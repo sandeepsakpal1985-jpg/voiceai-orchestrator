@@ -43,7 +43,7 @@ export const rateLimits = {
 
 export function isRateLimitAllowlisted(url: string) {
   const path = url.split("?")[0];
-  return path === "/health" || path === "/ready" || path.startsWith("/webhooks/");
+  return path === "/health" || path === "/ready" || path === "/readiness" || path.startsWith("/webhooks/");
 }
 
 /** @deprecated use isRateLimitAllowlisted */

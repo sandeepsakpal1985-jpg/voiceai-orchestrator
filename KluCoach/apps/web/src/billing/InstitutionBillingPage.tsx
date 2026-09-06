@@ -13,12 +13,10 @@ type SubView = {
     renewalDate: string | null;
     endsAt: string | null;
     studentUnitPricePaise: number;
-    klunexUnitRealizationPaise: number;
-    partnerUnitSharePaise: number;
     gracePeriodDays: number;
   } | null;
   billableStudents: number;
-  economics: { grossPaise: number; klunexRealizationPaise: number; partnerSharePaise: number } | null;
+  economics: { grossPaise: number } | null;
 };
 
 type InvoiceList = {
@@ -140,9 +138,7 @@ export function InstitutionBillingPage() {
       {e && s ? (
         <section className="card" style={{ marginTop: 16 }}>
           <h2 className="label">Current period (contracted)</h2>
-          <p>
-            Gross {rupees(e.grossPaise)} · KluNex {rupees(e.klunexRealizationPaise)} · Partner {rupees(e.partnerSharePaise)}
-          </p>
+          <p data-testid="billing-gross">Gross {rupees(e.grossPaise)}</p>
           <p className="hint">
             Unit {rupees(s.studentUnitPricePaise)} / student · {s.currency} · grace {s.gracePeriodDays} days
           </p>

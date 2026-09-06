@@ -21,6 +21,10 @@
     reverse_proxy api:3000
   }
 
+  handle /readiness {
+    reverse_proxy api:3000
+  }
+
   handle_path /api/* {
     reverse_proxy api:3000 {
       header_up Host {host}

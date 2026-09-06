@@ -184,6 +184,33 @@ export async function subscriptionView(institutionId: string, asOf = new Date())
   };
 }
 
+/** Institution admins see list price and gross only — never KluNex or partner share. */
+export function toInstitutionSubscriptionView(view: NonNullable<Awaited<ReturnType<typeof subscriptionView>>>) {
+  const subscription = view.subscription;
+  if (!subscription) {
+    return { institution: view.institution, subscription: null, billableStudents: 0, economics: null };
+  }
+  return {
+    institution: view.institution,
+    subscription: {
+      id: subscription.id,
+      planCode: subscription.planCode,
+      planName: subscription.planName,
+      status: subscription.status,
+      storedStatus: subscription.storedStatus,
+      commercialMode: subscription.commercialMode,
+      currency: subscription.currency,
+      startsAt: subscription.startsAt,
+      endsAt: subscription.endsAt,
+      renewalDate: subscription.renewalDate,
+      gracePeriodDays: subscription.gracePeriodDays,
+      studentUnitPricePaise: subscription.studentUnitPricePaise,
+    },
+    billableStudents: "billableStudents" in view ? view.billableStudents : 0,
+    economics: "economics" in view && view.economics ? { grossPaise: view.economics.grossPaise } : null,
+  };
+}
+
 async function nextInvoiceNumber(institutionId: string) {
   const year = new Date().getUTCFullYear();
   const prefix = `KC-${year}-`;

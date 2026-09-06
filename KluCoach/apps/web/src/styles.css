@@ -176,6 +176,11 @@ h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.03em; }
 .ai-answer { margin-top: 12px; }
 .ai-answer ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
 
+.onboarding-list { list-style: none; padding: 0; margin: 8px 0 0; }
+.onboarding-list li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.onboarding-list a { color: inherit; text-decoration: none; }
+.onboarding-list [data-done="false"] { color: var(--muted); }
+
 @media (min-width: 860px) {
   .student360-stack { grid-template-columns: 1fr 1fr; }
 }

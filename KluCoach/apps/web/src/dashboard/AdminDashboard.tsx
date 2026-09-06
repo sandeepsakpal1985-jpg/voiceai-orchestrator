@@ -1,17 +1,34 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, auth, type Me } from "../api";
 import { StudentStatusCard } from "../klucoach/StudentStatusCard";
 import { AiAskPanel } from "../ai/AiAskPanel";
 
+type Onboarding = {
+  items: { id: string; label: string; done: boolean; href: string }[];
+  complete: number;
+  total: number;
+};
+
 export function AdminDashboard() {
   const [kpis, setKpis] = useState<Record<string, number> | null>(null);
+  const [onboarding, setOnboarding] = useState<Onboarding | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [summary, setSummary] = useState<{ periodKey: string; byType: Record<string, number> } | null>(null);
   useEffect(() => {
-    api<{ kpis: Record<string, number> }>("/dashboard/admin")
-      .then((d) => setKpis(d.kpis))
+    let cancelled = false;
+    Promise.all([
+      api<{ kpis: Record<string, number> }>("/dashboard/admin"),
+      api<Onboarding>("/dashboard/onboarding"),
+    ])
+      .then(([admin, onboard]) => {
+        if (cancelled) return;
+        setKpis(admin.kpis);
+        setOnboarding(onboard);
+      })
       .catch(() => undefined);
     auth.me().then((data) => {
+      if (cancelled) return;
       setMe(data);
       if (data.user.role === "INSTITUTION_ADMIN") {
         api<{ periodKey: string; byType: Record<string, number> }>("/insights/summary")
@@ -19,6 +36,9 @@ export function AdminDashboard() {
           .catch(() => undefined);
       }
     }).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, []);
   if (!kpis) return <p>Loading…</p>;
   const items: [string, string][] = [
@@ -34,6 +54,24 @@ export function AdminDashboard() {
       <div className="top">
         <h1>Institute snapshot</h1>
       </div>
+      {onboarding ? (
+        <section className="card" data-testid="onboarding-checklist" style={{ marginBottom: 16 }}>
+          <h2 className="label">KluCoach Setup</h2>
+          <p className="hint" data-testid="onboarding-progress">
+            {onboarding.complete} / {onboarding.total} complete
+          </p>
+          <ul className="onboarding-list">
+            {onboarding.items.map((item) => (
+              <li key={item.id} data-testid={`onboarding-${item.id}`} data-done={item.done ? "true" : "false"}>
+                <Link to={item.href} aria-label={`Setup: ${item.label}`}>
+                  <span aria-hidden="true">{item.done ? "✓" : "○"} </span>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <div className="kpis">
         {items.map(([key, label]) => (
           <StudentStatusCard key={key} label={label} value={String(kpis[key] ?? 0)} />

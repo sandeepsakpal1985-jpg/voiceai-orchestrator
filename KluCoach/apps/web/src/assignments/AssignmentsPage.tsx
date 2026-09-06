@@ -132,6 +132,7 @@ function AdminAssignments() {
     e.preventDefault();
     setError("");
     setMsg("");
+    const createdTitle = form.title;
     try {
       await api("/assignments", {
         method: "POST",
@@ -145,6 +146,8 @@ function AdminAssignments() {
       });
       setMsg("Assignment created");
       setForm((f) => ({ ...f, title: "", description: "" }));
+      setQ(createdTitle);
+      setPageIndex(0);
       await qc.invalidateQueries({ queryKey: ["assignments"] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create assignment");

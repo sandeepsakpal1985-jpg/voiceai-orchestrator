@@ -23,7 +23,13 @@ Write-Host "Recreating $restoreDb"
 if ($LASTEXITCODE -ne 0) { throw "pg_restore failed" }
 
 $count = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM institutions;"
+$billing = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM billing_invoices;"
+$attendance = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM attendance_records;"
+$movement = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM movement_events;"
 Write-Host "Restored institution count: $count"
+Write-Host "Restored billing invoices: $billing"
+Write-Host "Restored attendance records: $attendance"
+Write-Host "Restored movement events: $movement"
 if (-not $count) { throw "restore verification query failed" }
 
 & dropdb -h $hostName -p $port -U $user $restoreDb

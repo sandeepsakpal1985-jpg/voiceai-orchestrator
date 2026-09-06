@@ -13,6 +13,7 @@ import {
   recordRefund,
   renewTenantSubscription,
   subscriptionView,
+  toInstitutionSubscriptionView,
 } from "./billing-service.js";
 import { getEntitlementStatus, entitleStudent } from "./entitlement-service.js";
 import { completeTestPayment, createInvoiceCheckout, paymentsAreEnabled, reconcileOpenPayments } from "../payments/service.js";
@@ -35,7 +36,7 @@ export async function billingRoutes(app: FastifyInstance) {
     const asOf = asOfFrom(req.query as { asOf?: string });
     const view = await subscriptionView(tenant.institutionId, asOf);
     if (!view) throw notFound();
-    return view;
+    return toInstitutionSubscriptionView(view);
   });
 
   app.get("/billing/invoices", async (req) => {

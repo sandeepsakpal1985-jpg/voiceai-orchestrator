@@ -9,6 +9,10 @@ import { writeAudit } from "../audit/write.js";
 import { parseSpreadsheet, SpreadsheetParseError } from "../import/parseSpreadsheet.js";
 import {
   missingRequiredColumns,
+  sheetExceedsImportLimit,
+  STUDENT_IMPORT_MAX_ROWS,
+  STUDENT_IMPORT_PREVIEW_ERROR_LIMIT,
+  STUDENT_IMPORT_STORED_ERROR_LIMIT,
   validateStudentImport,
   type StudentImportRecord,
 } from "../import/validateStudentImport.js";
@@ -107,6 +111,9 @@ export async function opsRoutes(app: FastifyInstance) {
       throw err;
     }
     if (sheet.rows.length === 0) throw validationError("Spreadsheet has no data rows");
+    if (sheetExceedsImportLimit(sheet.rows.length)) {
+      throw validationError(`Too many rows (${sheet.rows.length}). Maximum is ${STUDENT_IMPORT_MAX_ROWS} per import.`);
+    }
     const missing = missingRequiredColumns(sheet.headers);
     if (missing.length) throw validationError(`Missing columns: ${missing.join(", ")}`);
 
@@ -134,7 +141,7 @@ export async function opsRoutes(app: FastifyInstance) {
         validRows: valid.length,
         errorRows: errors.length,
         payload: valid,
-        errors: { create: errors },
+        errors: { create: errors.slice(0, STUDENT_IMPORT_STORED_ERROR_LIMIT) },
       },
       include: { errors: true },
     });
@@ -142,7 +149,11 @@ export async function opsRoutes(app: FastifyInstance) {
       jobId: job.id,
       total: job.totalRows,
       valid: job.validRows,
-      errors: job.errors,
+      errorCount: errors.length,
+      errors: errors.slice(0, STUDENT_IMPORT_PREVIEW_ERROR_LIMIT),
+      errorTruncated: errors.length > STUDENT_IMPORT_PREVIEW_ERROR_LIMIT,
+      partialImport: true,
+      partialImportNote: "Only valid rows are committed. Invalid rows are skipped and listed. A malformed row does not change other rows.",
     });
   });
 

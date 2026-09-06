@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import cookie from "@fastify/cookie";
@@ -23,6 +23,7 @@ import { paymentWebhookRoutes } from "./platform/payments/webhook-routes.js";
 import { aiRoutes } from "./platform/ai/routes.js";
 import { insightRoutes } from "./platform/insights/routes.js";
 import { accessRoutes } from "./platform/access/routes.js";
+import { pilotRoutes } from "./platform/pilot/routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -74,14 +75,16 @@ export async function buildApp() {
   });
 
   app.get("/health", async () => healthPayload(config));
-  app.get("/ready", async (_req, reply) => {
+  async function readiness(_req: FastifyRequest, reply: FastifyReply) {
     try {
       await prisma.$queryRaw`SELECT 1`;
       return { status: "ready" };
     } catch {
       return reply.code(503).send({ status: "not_ready" });
     }
-  });
+  }
+  app.get("/ready", readiness);
+  app.get("/readiness", readiness);
 
   await app.register(paymentWebhookRoutes);
   await app.register(authRoutes);
@@ -94,6 +97,7 @@ export async function buildApp() {
   await app.register(aiRoutes);
   await app.register(insightRoutes);
   await app.register(accessRoutes);
+  await app.register(pilotRoutes);
   await app.register(opsRoutes);
 
   return app;

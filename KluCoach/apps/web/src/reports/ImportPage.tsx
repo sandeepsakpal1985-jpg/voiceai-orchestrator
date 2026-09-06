@@ -1,9 +1,20 @@
 import { FormEvent, useState } from "react";
 import { api } from "../api";
 
+type Preview = {
+  jobId: string;
+  total: number;
+  valid: number;
+  errorCount: number;
+  errors: { rowNumber: number; message: string }[];
+  errorTruncated?: boolean;
+  partialImport?: boolean;
+  partialImportNote?: string;
+};
+
 export function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<{ jobId: string; total: number; valid: number; errors: { rowNumber: number; message: string }[] } | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState("");
 
   async function previewCsv(e: FormEvent) {
@@ -35,7 +46,12 @@ export function ImportPage() {
         <h1>Bulk import</h1>
       </div>
       <form className="card" onSubmit={previewCsv}>
-        <p className="hint">CSV or XLSX columns: firstName, lastName, admissionNumber, branchName, batchName, parentName, parentPhone, parentEmail, email, phone. Invalid rows are listed — nothing is imported silently.</p>
+        <p className="hint">
+          CSV or XLSX columns: firstName, lastName, admissionNumber, branchName, batchName, parentName, parentPhone,
+          parentEmail, email, phone. Invalid rows are listed and skipped. Only valid rows are committed — a malformed
+          row does not change other rows. Maximum 2,000 rows per file. Valid rows stay on the server until you confirm;
+          they are not loaded into the browser.
+        </p>
         <input
           type="file"
           accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -45,9 +61,17 @@ export function ImportPage() {
       </form>
       {preview && (
         <div className="card" style={{ marginTop: 16 }}>
-          <p>
-            {preview.valid} valid of {preview.total}. {preview.errors.length} errors.
+          <p data-testid="import-preview-summary">
+            {preview.valid} valid of {preview.total}. {preview.errorCount} errors.
           </p>
+          {preview.partialImport ? (
+            <p className="hint" data-testid="import-partial-note">
+              {preview.partialImportNote ?? "Only valid rows are committed. Invalid rows are skipped and listed."}
+            </p>
+          ) : null}
+          {preview.errorTruncated ? (
+            <p className="hint">Showing the first {preview.errors.length} errors of {preview.errorCount}.</p>
+          ) : null}
           {preview.errors.map((e) => (
             <div className="row" key={`${e.rowNumber}-${e.message}`}>
               Row {e.rowNumber}: {e.message}

@@ -4,6 +4,7 @@ import { notFound } from "../../lib/errors.js";
 import { requirePermission, requireTenant } from "../identity/http-auth.js";
 import { parentStudentIds, studentSelfId } from "../identity/scope.js";
 import { assembleStudent360 } from "../students/student360.js";
+import { assembleOnboarding } from "../pilot/onboarding.js";
 import { writeAudit } from "../audit/write.js";
 
 export async function dashboardRoutes(app: FastifyInstance) {
@@ -59,5 +60,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
         parentActivation: parentsActivated,
       },
     };
+  });
+
+  app.get("/dashboard/onboarding", async (req) => {
+    const tenant = requireTenant(req);
+    requirePermission(req, "dashboard:admin");
+    return assembleOnboarding(tenant.institutionId);
   });
 }
