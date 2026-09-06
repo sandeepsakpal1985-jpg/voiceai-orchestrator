@@ -9,7 +9,7 @@ test("admin can invite a parent who then sees only their child", async ({ page, 
 
   await loginAs(page, "admin@example.test");
   await expectHeading(page, "Institute snapshot");
-  await page.getByRole("link", { name: "Students" }).click();
+  await page.getByRole("link", { name: "Students", exact: true }).click();
   await expectHeading(page, "Students");
 
   await page.getByLabel("First name").fill(firstName);

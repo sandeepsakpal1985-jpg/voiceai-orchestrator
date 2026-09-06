@@ -5,7 +5,7 @@ test("institution admin sees subscription, billable students, and invoices from 
   await loginAs(page, "superadmin@example.test");
   await expectHeading(page, "Commercial");
   await expect(page.getByText("PARTNER").first()).toBeVisible();
-  await expect(page.getByText("Demo Coaching Institute")).toBeVisible();
+  await expect(page.getByText("Demo Coaching Institute").first()).toBeVisible();
 
   await loginAs(page, "admin@example.test");
   await page.getByRole("link", { name: "Billing" }).click();
@@ -15,7 +15,8 @@ test("institution admin sees subscription, billable students, and invoices from 
   await expect(billable).toBeVisible();
   await expect(billable).not.toHaveText("0");
   await expect(page.getByText("KC-2026-0001")).toBeVisible();
-  await expect(page.getByText(/KluNex/)).toBeVisible();
+  await expect(page.getByText(/KluNex/)).toHaveCount(0);
+  await expect(page.getByText(/partner share/i)).toHaveCount(0);
 });
 
 test("parent sees child fee status without institution economics", async ({ page }) => {

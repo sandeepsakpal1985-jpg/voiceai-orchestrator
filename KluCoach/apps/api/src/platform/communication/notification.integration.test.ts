@@ -228,6 +228,75 @@ describe("notification authorization", () => {
     const other = json<{ items: { id: string }[] }>(await app.inject({ method: "GET", url: "/notifications", headers: parentB.headers }));
     expect(Array.isArray(other.items)).toBe(true);
   });
+
+  it("lets a parent change own preferences and ignores a foreign userId in the body", async () => {
+    const parentB = await login("parent-b@example.test");
+    const other = json<{ user: { id: string } }>(await app.inject({ method: "GET", url: "/me", headers: parentB.headers }));
+    const patched = await app.inject({
+      method: "PATCH",
+      url: "/notification-preferences",
+      headers: parentA.headers,
+      payload: { attendanceAlerts: false, userId: other.user.id },
+    });
+    expect(patched.statusCode, patched.body).toBe(200);
+    const own = json<{ attendanceAlerts: boolean }>(patched);
+    expect(own.attendanceAlerts).toBe(false);
+    const otherPrefs = json<{ attendanceAlerts: boolean }>(
+      await app.inject({ method: "GET", url: "/notification-preferences", headers: parentB.headers }),
+    );
+    expect(otherPrefs.attendanceAlerts).toBe(true);
+    await app.inject({
+      method: "PATCH",
+      url: "/notification-preferences",
+      headers: parentA.headers,
+      payload: { attendanceAlerts: true },
+    });
+  });
+
+  it("suppresses absence notifications when attendanceAlerts is off", async () => {
+    const batches = json<{ id: string; name: string }[]>(await app.inject({ method: "GET", url: "/batches", headers: a.headers }));
+    const jee = batches.find((row) => row.name.includes("JEE"))!;
+    const students = json<{ id: string; firstName: string }[]>(
+      await app.inject({ method: "GET", url: `/students?batchId=${jee.id}`, headers: a.headers }),
+    );
+    const aarav = students.find((s) => s.firstName === "Aarav")!;
+    const day = 1 + (Date.now() % 28);
+    const date = `2036-04-${String(day).padStart(2, "0")}`;
+    const me = json<{ user: { id: string } }>(await app.inject({ method: "GET", url: "/me", headers: parentA.headers }));
+    const before = await prisma.notification.count({
+      where: { userId: me.user.id, type: "ATTENDANCE_ABSENCE", dedupeKey: { contains: `${aarav.id}:${date}` } },
+    });
+    expect(before).toBe(0);
+    try {
+      const patched = json<{ attendanceAlerts: boolean }>(
+        await app.inject({
+          method: "PATCH",
+          url: "/notification-preferences",
+          headers: parentA.headers,
+          payload: { attendanceAlerts: false },
+        }),
+      );
+      expect(patched.attendanceAlerts).toBe(false);
+      const mark = await app.inject({
+        method: "POST",
+        url: "/attendance",
+        headers: teacherA.headers,
+        payload: { batchId: jee.id, date, records: [{ studentId: aarav.id, status: "ABSENT" }] },
+      });
+      expect(mark.statusCode, mark.body).toBe(201);
+      const after = await prisma.notification.count({
+        where: { userId: me.user.id, type: "ATTENDANCE_ABSENCE", dedupeKey: { contains: `${aarav.id}:${date}` } },
+      });
+      expect(after).toBe(0);
+    } finally {
+      await app.inject({
+        method: "PATCH",
+        url: "/notification-preferences",
+        headers: parentA.headers,
+        payload: { attendanceAlerts: true },
+      });
+    }
+  });
 });
 
 describe("notification jobs", () => {

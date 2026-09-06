@@ -63,6 +63,7 @@ describe("billing isolation", () => {
     expect(view.subscription.planCode).toBe("PARTNER");
     expect(view.billableStudents).toBeGreaterThan(0);
     expect(view.economics.grossPaise).toBe(view.billableStudents * view.subscription.studentUnitPricePaise);
+    expect(JSON.stringify(view)).not.toMatch(/klunex|partnerShare|partnerUnit/i);
 
     const invoices = json<{ items: { id: string; totalPaise: number }[] }>(
       await app.inject({ method: "GET", url: "/billing/invoices", headers: adminA.headers }),
@@ -188,6 +189,7 @@ describe("billing invoices and payments", () => {
     });
     expect(future.statusCode).toBe(200);
     expect(json<{ subscription: { status: string } }>(future).subscription.status).toBe("EXPIRED");
+    expect(JSON.stringify(json(future))).not.toMatch(/klunexUnitRealizationPaise|partnerUnitSharePaise/);
   });
 
   it("lets super admin read the partner report and denies institution admin", async () => {

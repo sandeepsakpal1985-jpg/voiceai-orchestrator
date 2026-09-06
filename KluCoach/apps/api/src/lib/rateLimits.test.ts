@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import { describe, expect, it } from "vitest";
-import { aiAskRateLimitKey, productionAuthLimits } from "./rateLimits.js";
+import { aiAskRateLimitKey, isRateLimitAllowlisted, productionAuthLimits } from "./rateLimits.js";
 
 describe("auth rate limit configuration", () => {
   it("keeps documented production ceilings", () => {
@@ -12,6 +12,13 @@ describe("auth rate limit configuration", () => {
     expect(productionAuthLimits.passwordReset).toBe(5);
     expect(productionAuthLimits.paymentStart).toBe(10);
     expect(productionAuthLimits.aiAsk).toBe(20);
+  });
+
+  it("allow-lists health and readiness probes", () => {
+    expect(isRateLimitAllowlisted("/health")).toBe(true);
+    expect(isRateLimitAllowlisted("/ready")).toBe(true);
+    expect(isRateLimitAllowlisted("/readiness")).toBe(true);
+    expect(isRateLimitAllowlisted("/students")).toBe(false);
   });
 
   it("keys AI limits by tenant and user after the session is bound", () => {
