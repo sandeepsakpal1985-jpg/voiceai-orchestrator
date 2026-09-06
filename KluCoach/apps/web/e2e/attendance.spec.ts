@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { expectHeading, loginAs } from "./helpers";
-
-const DATE = "2026-09-03";
+import { expectHeading, loginAs, apiJson, uniqueCalendarDate } from "./helpers";
 
 test("teacher can save attendance and parent sees the result", async ({ page, browser }) => {
+  const DATE = uniqueCalendarDate(2026, 9);
+
   await loginAs(page, "teacher@example.test");
   await expectHeading(page, "Attendance");
   await expect(page.getByLabel("Batch")).toHaveValue(/.+/, { timeout: 15000 });
@@ -34,9 +34,21 @@ test("teacher can save attendance and parent sees the result", async ({ page, br
   await loginAs(parent, "parent@example.test");
   await expectHeading(parent, /Aarav/);
   await expect(parent.getByText("ABSENT").first()).toBeVisible();
-  await expect(parent.getByText(DATE).first()).toBeVisible();
+
+  const saved = await apiJson<{ student?: { firstName: string }; status: string; date: string }[]>(
+    parent,
+    "GET",
+    `/attendance?date=${DATE}`,
+  );
+  expect(saved.status).toBe(200);
+  const aaravRow = (saved.json ?? []).find((row) => row.student?.firstName === "Aarav");
+  expect(aaravRow?.status).toBe("ABSENT");
+  expect(String(aaravRow?.date).slice(0, 10)).toBe(DATE);
+
   await parent.getByRole("link", { name: "Attendance" }).click();
   await expectHeading(parent, "Attendance");
-  await expect(parent.getByText("ABSENT").first()).toBeVisible();
+  const history = parent.locator(".row", { hasText: DATE }).filter({ hasText: "Aarav" });
+  await expect(history).toBeVisible({ timeout: 15000 });
+  await expect(history).toContainText("ABSENT");
   await parentCtx.close();
 });

@@ -2,6 +2,12 @@ import { type Page, expect } from "@playwright/test";
 
 export const DEMO_PASSWORD = "DemoPassw0rd!";
 
+/** Unique YYYY-MM-DD in a fixed month so e2e runs do not collide on leftover demo rows. */
+export function uniqueCalendarDate(year: number, month: number) {
+  const day = 1 + Math.floor(Math.random() * 28);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export async function loginAs(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);

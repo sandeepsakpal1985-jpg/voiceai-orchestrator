@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { expectHeading, loginAs } from "./helpers";
+import { expectHeading, loginAs, uniqueCalendarDate } from "./helpers";
 
 test("parent is notified when a child is marked absent and opens the correct Student 360", async ({ page, browser }) => {
-  const date = `2026-11-${String((Date.now() % 27) + 1).padStart(2, "0")}`;
+  const date = uniqueCalendarDate(2026, 5);
   await loginAs(page, "teacher@example.test");
   await expectHeading(page, "Attendance");
   await expect(page.getByLabel("Batch")).toHaveValue(/.+/, { timeout: 15000 });
@@ -66,7 +66,7 @@ test("parent result notification stays on the correct child", async ({ page, bro
 });
 
 test("multi-child notifications keep Aarav and Diya contexts separate", async ({ page, browser }) => {
-  const date = `2026-12-${String((Date.now() % 27) + 1).padStart(2, "0")}`;
+  const date = uniqueCalendarDate(2026, 4);
   await loginAs(page, "teacher@example.test");
   await expectHeading(page, "Attendance");
   await expect(page.getByLabel("Batch")).toHaveValue(/.+/, { timeout: 15000 });
