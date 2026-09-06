@@ -49,6 +49,8 @@ Phase 9A evidence (2026-09-05): Vitest **137/137**. Playwright SafeTrack `access
 
 Phase 10 evidence (2026-09-05): Vitest **141/141**. Playwright **35/35**. Typecheck PASS. Web Vite build PASS. Lint `--if-present` PASS (no package lint scripts). Attendance e2e uses `uniqueCalendarDate` and asserts the saved date on Attendance history + `GET /attendance?date=` (not the Student 360 newest-8 snippet). Production fail-fast: wildcard CORS, insecure cookies, `ALLOW_DEV_RESET_TOKEN`, demo seed refuse. Revoked RFID → `UNKNOWN_CARD`, no parent notify. Live Razorpay/SMTP/HTTPS/hardware remain blocked. See [PROGRESS.md](./PROGRESS.md).
 
+Phase 11 evidence (2026-09-06): Vitest **152/152**. Playwright **36/36** including `e2e/pilot.spec.ts`. Typecheck PASS. Web Vite build PASS. Lint `--if-present` PASS. Adds admin onboarding checklist (`GET /dashboard/onboarding`), `GET /pilot/metrics` (super-admin), import row cap + email/phone validation (500/1,000 row unit tests), notification preference UI + suppression, institution billing without KluNex/partner share. Do not raise Student 360's 8-row attendance window to make tests pass. Live Razorpay/SMTP/HTTPS/hardware remain blocked. See [PROGRESS.md](./PROGRESS.md).
+
 ## Cross-tenant matrix
 
 Tenant A must not access Tenant B via:

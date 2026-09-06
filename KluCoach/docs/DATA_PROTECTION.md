@@ -18,20 +18,20 @@ Operational companion to [PRIVACY.md](./PRIVACY.md) and [SECURITY.md](./SECURITY
 
 ## Retention
 
-| Data | Default engineering policy |
-|------|----------------------------|
-| Active academic records | Keep while institution is active |
-| Soft-archived students | Keep; exclude from default lists |
-| Sessions | Expire (7 days idle default); delete on logout |
-| Invitations / password-reset tokens | Expire; hash; single-use |
-| In-app notifications | 90-day purge via `purgeExpiredNotifications` (callable; not a silent untested cron in this phase) |
-| Audit logs | Keep; tenant-scoped; no silent purge in MVP |
-| Billing invoices / payments / refunds | Keep for the life of the institution contract; do not rewrite totals |
-| Gate ENTRY/EXIT visible to parents | Last 30 days in the API query window |
-| RFID device secrets | Argon2 hash at rest; raw secret never in API JSON |
-| Uploaded files | Delete/orphan-clean with parent record archive (later job) |
+| Data | Default engineering policy | Automated deletion? |
+|------|----------------------------|---------------------|
+| Student records | Keep while institution is active; soft-archive via status / `archivedAt` | **NOT AUTOMATED** |
+| Attendance | Keep with the student academic record | **NOT AUTOMATED** |
+| Assessment results | Keep with the student academic record | **NOT AUTOMATED** |
+| In-app notifications | 90-day purge via `purgeExpiredNotifications` (callable) | Callable; **not** a silent untested production cron in this phase |
+| Audit logs | Keep; tenant-scoped | **NOT AUTOMATED** — no silent purge |
+| Invitations | Expire; hash; single-use | Expired tokens not usable; row cleanup **NOT AUTOMATED** as a silent job |
+| Billing invoices / payments / refunds | Keep for the life of the institution contract; **do not delete historical financial records because a subscription ends** | **NOT AUTOMATED** |
+| SafeTrack movement | Last 30 days in the parent API window; rows remain in Postgres | **NOT AUTOMATED** beyond the query window |
+| Uploaded files | Delete/orphan-clean with parent record archive (later job) | **NOT AUTOMATED** |
+| Sessions | Expire (7 days idle default); delete on logout | Session expiry implemented |
 
-Do not permanently delete educational records in casual admin “delete” actions. MVP uses status + `archivedAt`.
+Do not permanently delete educational records in casual admin “delete” actions. Do not silently delete student academic history. Do not claim automation that is not implemented.
 
 ---
 

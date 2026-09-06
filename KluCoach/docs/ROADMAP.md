@@ -136,3 +136,17 @@ School/college add workflows (sections, board exams, credit systems) **above** t
 ## Explicit non-goals
 
 Marketplace, advertising, behavioral ad profiles, live video classes, chat product, microservices split, Kubernetes.
+
+## Phase 11 — Pilot operations + commercial readiness
+
+Turn the Phase 10 checkpoint into a controlled real-world pilot. Prefer hardening existing workflows. **COMPLETE — VALIDATED** 2026-09-06. See [PROGRESS.md](./PROGRESS.md), [PILOT_OPERATIONS.md](./PILOT_OPERATIONS.md).
+
+Do not start from this phase:
+
+- SafeTrack 9B / GPS
+- live chat / video
+- advanced AI / RAG
+- WhatsApp/SMS product
+- new academic ERP modules
+
+Next investment should wait for pilot evidence (activation, weekly parent use, attendance usage, SafeTrack add-on demand).

@@ -10,12 +10,27 @@ Lightweight intake for the first institute. Not a CRM.
 | Institute | |
 | Reporter role | admin / teacher / parent / student / KluNex |
 | Category | **BUG** / **UX ISSUE** / **FEATURE REQUEST** / **COMMERCIAL REQUEST** |
-| Severity | blocker / high / medium / low |
+| Severity | **P0** / **P1** / **P2** / **P3** (see below) |
+| Affected workflow | onboarding / import / invitation / attendance / assessment / assignment / Student 360 / notifications / billing / SafeTrack / other |
 | Affected users | count or role |
 | Frequency | once / daily / always |
-| Product area | auth / import / attendance / assessments / Student 360 / notifications / billing / SafeTrack / other |
+| Reproducibility | steps |
+| Status | open / investigating / resolved / deferred |
+| Owner | |
+| Resolution | |
 | Description | what happened vs expected |
 | Proposed action | fix / document / defer to roadmap |
+
+## Severity
+
+| Level | Meaning |
+|-------|---------|
+| **P0** | Security, data loss, or system unusable |
+| **P1** | Major workflow blocked (cannot take attendance, cannot activate parents, cannot log in) |
+| **P2** | Workflow degraded (awkward, slow, missing copy, partial import confusion) |
+| **P3** | Cosmetic / minor |
+
+Legacy labels blocker / high / medium / low map to P0–P3.
 
 ## Rules
 

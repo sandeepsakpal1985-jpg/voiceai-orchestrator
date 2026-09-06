@@ -1,4 +1,73 @@
-# Progress
+﻿# Progress
+
+Updated: 2026-09-06 (Phase 11 — Pilot operations + commercial readiness — COMPLETE — VALIDATED for controlled pilot operations; not a general launch)
+
+Validation rule: COMPLETE only with execution evidence. Statuses: IMPLEMENTED / VALIDATED / BLOCKED — EXTERNAL PROVIDER / NOT IMPLEMENTED.
+
+Starting checkpoint: `3ef2df4`. GPS / SafeTrack 9B / chat / advanced AI: **not started**.
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| Existing foundation (auth, tenancy, RBAC, 360, billing, AI, SafeTrack 9A) | VALIDATED | Untouched product modules; security suites still green |
+| Admin onboarding checklist | VALIDATED | `GET /dashboard/onboarding` from live counts; `/admin` KluCoach Setup; vitest + `e2e/pilot.spec.ts` |
+| Bulk import 500 / 1,000 rows | VALIDATED | Unit: 500 and 1,000 rows with one malformed row reported, not dropped. Cap 2,000. Email/phone checks. Partial import explicit. Valid rows stay on the job, not the browser. |
+| Parent activation | VALIDATED | Existing invite/accept + pilot journey create/activate; invitation counts on `GET /pilot/metrics` |
+| Teacher daily workflow | VALIDATED | Attendance, assessment, assignment in `e2e/pilot.spec.ts`; teacher 403 on billing |
+| Parent daily workflow | VALIDATED | Student 360, attendance history (not the 8-row snippet), notifications, prefs UI |
+| Notification preferences | VALIDATED | UI on `/notifications`; PATCH own prefs only; foreign `userId` ignored; `attendanceAlerts: false` suppresses that parent's absence notices |
+| Institution billing without KluNex/partner share | VALIDATED | `toInstitutionSubscriptionView`; admin e2e KluNex count 0; super-admin commercial still shows economics |
+| Super-admin pilot metrics | VALIDATED | `GET /pilot/metrics` 403 for institution admin; no student names; Commercial **Pilot operations** table |
+| SafeTrack 9A | VALIDATED | Pilot journey ENTRY/EXIT ingest; GPS **NOT IMPLEMENTED** |
+| Production config / payments default | VALIDATED | Unchanged fail-fast; `PAYMENTS_ENABLED=false` remains the production default |
+| Health / readiness | VALIDATED | `/health`, `/ready`, alias `/readiness` |
+| Backup/restore | **RESTORE_VERIFIED** 2026-09-06 | Copy DB `klucoach_restore_check`: 2 institutions, 17 invoices, 146 attendance, 19 movement events. Source not dropped. |
+| Performance smoke | VALIDATED | Search, parent 360, onboarding, billing subscription, pilot metrics each under the timed budget in vitest |
+| Playwright | **36/36 PASS** | includes `e2e/pilot.spec.ts` commercial demo journey |
+| Vitest | **152/152 PASS** | was 141; +onboarding/metrics/import/prefs/readiness/billing strip |
+| Typecheck | PASS | `pnpm typecheck` |
+| Web build | PASS | `pnpm --filter @klucoach/web build` |
+| Full `pnpm build` | **BLOCKED — ENVIRONMENT** | Prisma engine lock when API holds `query_engine-windows.dll.node` (same as Phase 10) |
+| Lint | PASS | `pnpm lint` `--if-present` (no package lint scripts) |
+| Docker web image | **NOT RE-RUN this session** | Phase 10 `klucoach-web:phase10` image still structurally valid (`USER nginx`, 8080). Host Vite bundle **PASS**. Rebuild the image before a real deploy so the SPA includes Setup / prefs / stripped billing. |
+| Live Razorpay | **BLOCKED — EXTERNAL PROVIDER** | |
+| Live SMTP | **BLOCKED — EXTERNAL PROVIDER** | |
+| Public HTTPS | **BLOCKED — INFRASTRUCTURE** | |
+| Physical RFID hardware | **NOT VALIDATED — HARDWARE** | software ingest + test punch validated |
+| New npm dependencies | **NOT IMPLEMENTED** | None required |
+
+## Phase 11 close-out gate
+
+- [x] Foundation and security boundaries preserved
+- [x] Onboarding from real DB state
+- [x] Import 500 / 1,000 validation
+- [x] Parent activation in the comprehensive Playwright journey
+- [x] Teacher / parent / student workflows in that journey
+- [x] Notification preferences + suppression
+- [x] SafeTrack 9A ENTRY/EXIT in the journey
+- [x] Pilot metrics (super-admin)
+- [x] Feedback process documented (P0–P3)
+- [x] Production config reviewed (unchanged fail-fast)
+- [x] Health / readiness
+- [x] Backup restore to a copy
+- [x] Performance smoke
+- [x] Vitest 152/152, Playwright 36/36, typecheck, web build, lint
+- [ ] Live payments, SMTP, public TLS, physical readers, Docker SPA rebuild for deploy — honest leftovers
+
+Do not claim “production-ready for unrestricted launch.” This is **controlled first-institute pilot operations**.
+
+## Session summary (Phase 11)
+
+1. **Starting commit:** `3ef2df4`
+2. **Vitest:** **152/152 PASS**
+3. **Playwright:** **36/36 PASS**
+4. **Typecheck:** PASS
+5. **Build:** web PASS; full monorepo `pnpm build` **BLOCKED — ENVIRONMENT**
+6. **Lint:** PASS (`--if-present`)
+7. **Exact next decision:** Stop. Run a real institute pilot. Do not start SafeTrack 9B, GPS, chat, or advanced AI until activation and weekly parent use are measured.
+
+---
+
+# Progress (Phase 10 archive)
 
 Updated: 2026-09-06 (Phase 10 — Production hardening + pilot readiness — COMPLETE — VALIDATED for controlled pilot; not a general launch)
 

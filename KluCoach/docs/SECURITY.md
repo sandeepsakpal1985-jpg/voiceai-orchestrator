@@ -42,7 +42,7 @@ Production rate limits (in-process `@fastify/rate-limit`; no Redis):
 | `POST /ai/students/:id/ask`, `/ai/batches/:id/ask`, `/ai/institution/ask` | 20 | 1 minute | Model cost; keyed by tenant + user after session bind |
 | `POST /imports/students/preview` | 20 | 1 minute | Parse CPU |
 | Global (other routes) | 300 | 1 minute | Generic abuse |
-| `/health`, `/ready`, `/webhooks/*` | allow-listed | — | Probes and provider retries |
+| `/health`, `/ready`, `/readiness`, `/webhooks/*` | allow-listed | — | Probes and provider retries |
 
 HTTP 429 was executed in Vitest against a Fastify app with `max: 1` (`rateLimits.test.ts`). Production ceilings are asserted as numbers. Live production 429 against a public host is **BLOCKED — INFRASTRUCTURE**.
 

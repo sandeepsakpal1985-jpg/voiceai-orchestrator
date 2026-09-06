@@ -1,6 +1,6 @@
 # Pilot runbook
 
-Operational path for a **controlled first institute**, not a general launch. Companion to [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md), [DEPLOYMENT.md](./DEPLOYMENT.md), and [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md).
+Operational path for a **controlled first institute**, not a general launch. Companion to [PILOT_OPERATIONS.md](./PILOT_OPERATIONS.md), [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md), [DEPLOYMENT.md](./DEPLOYMENT.md), and [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md).
 
 This is engineering procedure. It is not a legal, GST, or DPDP compliance sign-off.
 

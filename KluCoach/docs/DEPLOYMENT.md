@@ -36,6 +36,9 @@ Never use `prisma db push` as the production migration strategy.
 
 - `GET /health` — process up
 - `GET /ready` — database reachable
+- `GET /readiness` — alias of `/ready` (same probe)
+
+Production default remains `PAYMENTS_ENABLED=false`. Do not turn live payments on from this repository. Do not commit secrets.
 
 ## Backups
 

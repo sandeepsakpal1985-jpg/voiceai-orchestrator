@@ -67,9 +67,11 @@ Import parse port: `apps/api/src/platform/import/parseSpreadsheet.ts`. Validatio
 ## Security notes
 
 - Helmet is registered (CSP disabled for cookie SPA; revisit at HTTPS deploy).
-- Rate limit: global 300/min in production; **stricter** on login (10), register (5), invite accept (10), invite create (20), password reset (5), payment start (10), AI ask (20, tenant+user key), import preview (20). `/health`, `/ready`, and `/webhooks/*` are allow-listed. Vitest uses a 10_000 ceiling so isolation suites do not 429. HTTP 429 was executed in `rateLimits.test.ts`.
-- Papa Parse / ExcelJS never authorize; jobs are `institutionId`-scoped. Commit is a transaction and **does not silently skip** invalid rows.
+- Rate limit: global 300/min in production; **stricter** on login (10), register (5), invite accept (10), invite create (20), password reset (5), payment start (10), AI ask (20, tenant+user key), import preview (20). `/health`, `/ready`, `/readiness`, and `/webhooks/*` are allow-listed. Vitest uses a 10,000 ceiling so isolation suites do not 429. HTTP 429 was executed in `rateLimits.test.ts`.
+- Papa Parse / ExcelJS never authorize; jobs are `institutionId`-scoped. Commit is a transaction. Invalid rows are listed; only valid rows commit (partial import is explicit). Maximum 2,000 rows per preview.
 - Do not put ExcelJS in the parent PWA bundle.
+
+Phase 11: **No new dependencies required.** Onboarding checklist, import caps, pilot metrics, and preference UI use the existing Fastify / Prisma / React Query stack.
 
 ---
 

@@ -49,6 +49,28 @@ Demo reader: device id `demo-access-device-a`, secret `DemoDeviceSecret!`, Aarav
 
 ---
 
+## Physical pilot setup (9A only)
+
+One USB/Ethernet RFID reader at the institute entrance, mapped to one `AccessGate` + one device secret.
+
+```
+Gate reader
+    ↓
+POST /access/ingest
+    ↓
+KluCoach
+    ↓
+Movement event
+    ↓
+NotificationService
+    ↓
+Parent (if movementAlerts enabled)
+```
+
+Admin Gate test punch is the software substitute when hardware is not on site. Physical RFID installation remains **NOT VALIDATED — HARDWARE**. GPS and multi-gate 9B are **NOT IMPLEMENTED**.
+
+---
+
 ## What this phase does not do
 
 - Live GPS / last-known coordinates / maps

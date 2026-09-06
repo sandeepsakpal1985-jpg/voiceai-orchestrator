@@ -4,7 +4,7 @@ KluCoach / KluNex Education Platform processes personal data of students, includ
 
 **We do not sell student data. We do not use student data for advertising. We do not build behavioral advertising profiles. We do not expose student data between institutions.**
 
-This document is engineering intent. Legal compliance (DPDP Act, school/board rules, contract terms) must be validated separately before commercial launch.
+This document is engineering intent. **LEGAL REVIEW REQUIRED** before broad commercial launch. Do not treat this file as DPDP Act certification, board-rule compliance, or a signed DPA.
 
 ---
 
@@ -59,8 +59,24 @@ Not for: ads, resale, cross-institution profiling, training public AI models on 
 - Parent/guardian relationship is authoritative for minors' product access
 - Student accounts may exist; they do not override guardian access policy
 - Invitations use opaque tokens; tokens are hashed at rest
+- Student academic data, movement (gate ENTRY/EXIT), and notifications are visible only to linked guardians, the student (self), and authorized tenant staff — never another institution
+- Data minimization: Student 360 and AI context omit passwords, sessions, payment secrets, and unnecessary contacts
 
----
+## Responsibilities
+
+| Party | Responsibility |
+|-------|----------------|
+| Institution | Lawful collection of student/guardian data; accurate guardian links; parent consent where required; staff access hygiene |
+| KluNex | Tenant isolation, RBAC, hashing secrets, not selling data, not advertising, hosting controls described in SECURITY.md |
+| Parent / guardian | Keep login private; set notification preferences |
+
+## Retention
+
+See [DATA_PROTECTION.md](./DATA_PROTECTION.md). Automated destruction of academic or billing history is **not implemented**. Do not claim it is.
+
+## Deletion requests
+
+Record the request. Soft-archive in product. Hard delete only under written agreement. **LEGAL REVIEW REQUIRED** for DPDP data-principal requests before treating the product as a complete workflow.
 
 ## Third parties (processors)
 
@@ -69,9 +85,10 @@ MVP:
 | Processor | Data | Notes |
 |-----------|------|-------|
 | Hosting VPS / Postgres | all | operator-controlled |
-| Email provider (optional) | email, name, invite link | only if configured |
-| AI provider (optional) | minimized Student 360 / batch / institution facts plus the user question | only if `AI_ENABLED=true` and a provider is configured; see [AI.md](./AI.md) |
-| SMS / WhatsApp | none in MVP | interfaces only |
+| Email provider (optional) | email, name, invite link | only if SMTP is configured; **BLOCKED — EXTERNAL PROVIDER** until then |
+| Payment provider (Razorpay) | invoice/checkout metadata | only if `PAYMENTS_ENABLED=true`; live keys **BLOCKED** in this environment |
+| AI provider (optional) | minimized Student 360 / batch / institution facts plus the user question | only if `AI_ENABLED=true` |
+| SMS / WhatsApp | none in this phase | future providers would be institution-paid; interfaces only |
 
 No analytics SDKs that profile children. No advertising pixels.
 

@@ -127,7 +127,7 @@ Counts use tenant-scoped SQL aggregation, not loading every student into memory.
 | Role | Access |
 |------|--------|
 | SUPER_ADMIN | Plans, config, issue invoice, record payment/refund, cross-tenant report |
-| INSTITUTION_ADMIN | Own subscription, billable count, invoices (read). Cannot change KluNex/partner rates |
+| INSTITUTION_ADMIN | Own subscription, billable count, **gross / list price / invoices**. Cannot see KluNex realization or partner share. Cannot change rates |
 | TEACHER / STAFF / STUDENT | No billing |
 | PARENT | Child `FeeInvoice` / Student 360 fee card only |
 
@@ -143,7 +143,7 @@ Issuing an institution invoice notifies institution admins in-app (`INVOICE_ISSU
 
 ## API (session tenant; never trust body `institutionId` as authority)
 
-Institution admin: `GET /billing/subscription`, `GET /billing/invoices`, `GET /billing/invoices/:id`
+Institution admin: `GET /billing/subscription` (list price + gross only — no KluNex/partner fields), `GET /billing/invoices`, `GET /billing/invoices/:id`
 
 Super-admin: `/billing/plans`, `/billing/report`, `/billing/invoices/issue`, `/billing/payments`, `/billing/refunds`, `/billing/lifecycle/apply`, `/billing/config`
 
