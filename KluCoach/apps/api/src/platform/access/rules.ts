@@ -11,19 +11,25 @@ export function isDuplicateScan(lastOccurredAt: Date | null, now: Date, windowMs
   return now.getTime() - lastOccurredAt.getTime() < windowMs;
 }
 
+export function movementClock(at: Date) {
+  return `${String(at.getUTCHours()).padStart(2, "0")}:${String(at.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 export function movementCopy(
   type: "ENTRY" | "EXIT",
   firstName: string,
   institutionName: string,
+  occurredAt = new Date(),
 ): { title: string; body: string } {
+  const at = movementClock(occurredAt);
   if (type === "ENTRY") {
     return {
       title: "Entered institute",
-      body: `${firstName} entered ${institutionName}.`,
+      body: `${firstName} entered ${institutionName} at ${at}.`,
     };
   }
   return {
     title: "Left institute",
-    body: `${firstName} left ${institutionName}.`,
+    body: `${firstName} left ${institutionName} at ${at}.`,
   };
 }

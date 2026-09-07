@@ -96,6 +96,12 @@ describe("SafeTrack movement authorization", () => {
         where: { studentId: aarav.id, type: "MOVEMENT_ENTRY", userId: (await prisma.user.findFirst({ where: { email: "parent@example.test" } }))!.id },
       }),
     ).toBe(1);
+    const movementNotice = await prisma.notification.findFirst({
+      where: { studentId: aarav.id, type: "MOVEMENT_ENTRY" },
+      select: { body: true, title: true },
+    });
+    expect(movementNotice?.title).toBe("Entered institute");
+    expect(movementNotice?.body).toBe("Aarav entered Demo Coaching Institute at 08:02.");
 
     const list = await app.inject({ method: "GET", url: `/students/${aarav.id}/movement`, headers: parent.headers });
     expect(list.statusCode).toBe(200);

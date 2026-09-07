@@ -33,13 +33,13 @@ export async function assembleOnboarding(institutionId: string) {
   ]);
 
   const items: OnboardingItem[] = [
-    { id: "institution", label: "Institution profile", done: true, href: "/admin" },
+    { id: "institution", label: "Institution", done: true, href: "/admin" },
     { id: "branch", label: "Branch", done: branches > 0, href: "/batches" },
     { id: "programs", label: "Programs", done: programs > 0, href: "/batches" },
     { id: "batches", label: "Batches", done: batches > 0, href: "/batches" },
     { id: "teachers", label: "Teachers", done: teachers > 0, href: "/teachers" },
     { id: "students", label: "Students", done: students > 0, href: "/students" },
-    { id: "parentLinks", label: "Parent links", done: guardians > 0, href: "/parents" },
+    { id: "parentLinks", label: "Parents", done: guardians > 0, href: "/parents" },
     { id: "parentActivation", label: "Parent activation", done: activated > 0, href: "/parents" },
     { id: "timetable", label: "Timetable", done: timetable > 0, href: "/timetable" },
     { id: "firstAttendance", label: "First attendance", done: attendance > 0, href: "/attendance" },

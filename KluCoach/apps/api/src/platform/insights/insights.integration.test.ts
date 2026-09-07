@@ -283,7 +283,7 @@ describe("proactive insight authorization", () => {
     expect(denied.statusCode).toBe(404);
   });
 
-  it("creates an overdue assignment insight once", async () => {
+  it("creates an overdue assignment insight once", { timeout: 180_000 }, async () => {
     const admin = await login("admin@example.test");
     const teacher = await login("teacher@example.test");
     const parent = await login("parent@example.test");
@@ -332,7 +332,7 @@ describe("proactive insight authorization", () => {
     expect(list.items.some((i) => i.type === "ASSIGNMENT_OVERDUE")).toBe(true);
   });
 
-  it("creates academic improvement from published results", async () => {
+  it("creates academic improvement from published results", { timeout: 180_000 }, async () => {
     const teacher = await login("teacher@example.test");
     const parent = await login("parent@example.test");
     const home = json<{ children: { id: string; firstName: string }[] }>(

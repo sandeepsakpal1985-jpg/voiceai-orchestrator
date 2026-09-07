@@ -15,10 +15,14 @@ describe("movement rules", () => {
     expect(isDuplicateScan(null, now)).toBe(false);
   });
 
-  it("uses factual entered/left wording without location or risk language", () => {
-    expect(movementCopy("ENTRY", "Aarav", "Demo Coaching Institute").body).toBe(
-      "Aarav entered Demo Coaching Institute.",
+  it("uses factual entered/left wording with clock time and without location or risk language", () => {
+    const at = new Date("2026-09-05T08:32:00.000Z");
+    expect(movementCopy("ENTRY", "Aarav", "Demo Coaching Institute", at).body).toBe(
+      "Aarav entered Demo Coaching Institute at 08:32.",
     );
-    expect(movementCopy("EXIT", "Aarav", "Demo Coaching Institute").title).toBe("Left institute");
+    expect(movementCopy("EXIT", "Aarav", "Demo Coaching Institute", at).title).toBe("Left institute");
+    expect(movementCopy("EXIT", "Aarav", "Demo Coaching Institute", at).body).toBe(
+      "Aarav left Demo Coaching Institute at 08:32.",
+    );
   });
 });

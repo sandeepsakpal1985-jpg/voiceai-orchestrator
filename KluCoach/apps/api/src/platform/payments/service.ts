@@ -38,19 +38,28 @@ export async function createInvoiceCheckout(institutionId: string, invoiceId: st
   const due = outstandingPaise(invoice.totalPaise, invoice.paidPaise);
   if (due <= 0) throw validationError("Invoice has no outstanding balance");
 
-  const existingPending = await prisma.billingPayment.findFirst({
-    where: { invoiceId: invoice.id, status: "PENDING", provider: provider.name.toUpperCase() },
-    orderBy: { createdAt: "desc" },
-  });
-  if (existingPending?.providerOrderId) {
-    return {
-      provider: provider.name,
-      orderId: existingPending.providerOrderId,
-      amountPaise: existingPending.amountPaise,
-      currency: invoice.currency,
-      keyId: provider.name === "razorpay" ? config.razorpayKeyId : "rzp_test_local",
-      invoiceId: invoice.id,
-    } satisfies CheckoutSession;
+  for (;;) {
+    const existingPending = await prisma.billingPayment.findFirst({
+      where: { invoiceId: invoice.id, status: "PENDING", provider: provider.name.toUpperCase() },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!existingPending?.providerOrderId) break;
+    const reusable =
+      !(provider instanceof TestPaymentProvider) || provider.hasOrder(existingPending.providerOrderId);
+    if (reusable) {
+      return {
+        provider: provider.name,
+        orderId: existingPending.providerOrderId,
+        amountPaise: existingPending.amountPaise,
+        currency: invoice.currency,
+        keyId: provider.name === "razorpay" ? config.razorpayKeyId : "rzp_test_local",
+        invoiceId: invoice.id,
+      } satisfies CheckoutSession;
+    }
+    await prisma.billingPayment.update({
+      where: { id: existingPending.id },
+      data: { status: "FAILED", providerStatus: "stale_session" },
+    });
   }
 
   const session = await provider.createOrder({

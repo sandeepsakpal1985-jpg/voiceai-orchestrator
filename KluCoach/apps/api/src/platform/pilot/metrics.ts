@@ -3,6 +3,12 @@ import { partnerReport } from "../billing/billing-service.js";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
+function latestIso(...dates: (Date | null | undefined)[]) {
+  const stamps = dates.filter((d): d is Date => d instanceof Date).map((d) => d.getTime());
+  if (stamps.length === 0) return null;
+  return new Date(Math.max(...stamps)).toISOString();
+}
+
 export async function assemblePilotMetrics(asOf = new Date()) {
   const weekAgo = new Date(asOf.getTime() - WEEK_MS);
   const commercial = await partnerReport(asOf);
@@ -32,6 +38,9 @@ export async function assemblePilotMetrics(asOf = new Date()) {
         movementEvents,
         accessGates,
         subscription,
+        lastAttendance,
+        lastNotification,
+        lastMovement,
       ] = await Promise.all([
         prisma.student.count({ where: { institutionId, status: "ACTIVE" } }),
         prisma.teacher.count({ where: { institutionId } }),
@@ -63,6 +72,21 @@ export async function assemblePilotMetrics(asOf = new Date()) {
           where: { institutionId },
           select: { status: true, plan: { select: { code: true } } },
         }),
+        prisma.attendanceRecord.findFirst({
+          where: { institutionId },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        }),
+        prisma.notification.findFirst({
+          where: { institutionId },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        }),
+        prisma.movementEvent.findFirst({
+          where: { institutionId },
+          orderBy: { occurredAt: "desc" },
+          select: { occurredAt: true },
+        }),
       ]);
 
       const commercialRow = commercial.rows.find((r) => r.institutionId === institutionId);
@@ -87,6 +111,7 @@ export async function assemblePilotMetrics(asOf = new Date()) {
         notificationsRead,
         safetrackEnabled: accessGates > 0,
         safetrackEvents: movementEvents,
+        lastActivityAt: latestIso(lastAttendance?.createdAt, lastNotification?.createdAt, lastMovement?.occurredAt),
         subscriptionStatus: subscription?.status ?? null,
         planCode: subscription?.plan.code ?? null,
         billableStudents: commercialRow?.billableStudents ?? 0,

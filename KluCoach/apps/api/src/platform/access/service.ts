@@ -54,8 +54,9 @@ async function notifyMovement(
   eventId: string,
   firstName: string,
   institutionName: string,
+  occurredAt: Date,
 ) {
-  const copy = movementCopy(type, firstName, institutionName);
+  const copy = movementCopy(type, firstName, institutionName, occurredAt);
   const noticeType = type === "ENTRY" ? "MOVEMENT_ENTRY" : "MOVEMENT_EXIT";
   const parents = await parentsForStudent(institutionId, studentId);
   for (const p of parents) {
@@ -240,6 +241,7 @@ async function recordScan(input: {
     event.id,
     student?.firstName ?? "Student",
     input.institutionName,
+    input.occurredAt,
   );
   await writeSystemAudit({
     action: type === "ENTRY" ? "movement.entry" : "movement.exit",

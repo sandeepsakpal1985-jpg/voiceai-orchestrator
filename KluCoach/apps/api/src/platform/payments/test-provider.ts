@@ -89,4 +89,8 @@ export class TestPaymentProvider implements PaymentProvider {
     order.status = outcome;
     return { ...order, paymentId };
   }
+
+  hasOrder(orderId: string) {
+    return orders.has(orderId);
+  }
 }

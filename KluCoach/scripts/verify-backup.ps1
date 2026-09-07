@@ -22,13 +22,27 @@ Write-Host "Recreating $restoreDb"
 & pg_restore -h $hostName -p $port -U $user --no-owner -d $restoreDb $dump
 if ($LASTEXITCODE -ne 0) { throw "pg_restore failed" }
 
-$count = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM institutions;"
-$billing = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM billing_invoices;"
-$attendance = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM attendance_records;"
-$movement = & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM movement_events;"
+function Query-Count($table) {
+  & psql -h $hostName -p $port -U $user -d $restoreDb -tAc "SELECT count(*) FROM $table;"
+}
+
+$count = Query-Count "institutions"
+$students = Query-Count "students"
+$guardians = Query-Count "guardians"
+$attendance = Query-Count "attendance_records"
+$assessments = Query-Count "assessments"
+$assignments = Query-Count "assignments"
+$notifications = Query-Count "notifications"
+$billing = Query-Count "billing_invoices"
+$movement = Query-Count "movement_events"
 Write-Host "Restored institution count: $count"
-Write-Host "Restored billing invoices: $billing"
+Write-Host "Restored students: $students"
+Write-Host "Restored guardians/parents: $guardians"
 Write-Host "Restored attendance records: $attendance"
+Write-Host "Restored assessments: $assessments"
+Write-Host "Restored assignments: $assignments"
+Write-Host "Restored notifications: $notifications"
+Write-Host "Restored billing invoices: $billing"
 Write-Host "Restored movement events: $movement"
 if (-not $count) { throw "restore verification query failed" }
 

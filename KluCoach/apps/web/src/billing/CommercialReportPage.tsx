@@ -51,6 +51,7 @@ type PilotRow = {
   notificationsRead: number;
   safetrackEnabled: boolean;
   safetrackEvents: number;
+  lastActivityAt: string | null;
   subscriptionStatus: string | null;
 };
 
@@ -65,8 +66,8 @@ function PilotOps() {
     <>
       <h2 className="label">Pilot operations</h2>
       <p className="hint">
-        Counts only. No student names. KluNex / partner economics stay on this super-admin page, not the institute billing
-        screen.
+        Counts only. No student names. Last activity is a timestamp, not a student dump. KluNex / partner economics stay on
+        this super-admin page, not the institute billing screen. System health is GET /health and GET /ready.
       </p>
       <div className="list" data-testid="pilot-ops">
         {metrics.data.rows.map((r) => (
@@ -83,7 +84,8 @@ function PilotOps() {
             </p>
             <p className="hint">
               Notifications {r.notificationsDelivered} delivered / {r.notificationsRead} read · SafeTrack{" "}
-              {r.safetrackEnabled ? "on" : "off"} ({r.safetrackEvents} events) · {r.subscriptionStatus ?? "no subscription"}
+              {r.safetrackEnabled ? "on" : "off"} ({r.safetrackEvents} events) · {r.subscriptionStatus ?? "no subscription"}{" "}
+              · last activity {r.lastActivityAt ?? "none"}
             </p>
           </div>
         ))}

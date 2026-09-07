@@ -45,11 +45,13 @@ describe("pilot onboarding", () => {
   it("returns live checklist progress for the tenant admin", async () => {
     const res = await app.inject({ method: "GET", url: "/dashboard/onboarding", headers: adminA.headers });
     expect(res.statusCode, res.body).toBe(200);
-    const body = json<{ items: { id: string; done: boolean }[]; complete: number; total: number }>(res);
+    const body = json<{ items: { id: string; label: string; done: boolean }[]; complete: number; total: number }>(res);
     expect(body.total).toBe(11);
     expect(body.complete).toBeGreaterThanOrEqual(8);
     expect(body.items.every((item) => item.done)).toBe(true);
     expect(body.complete).toBe(body.items.filter((item) => item.done).length);
+    expect(body.items.find((item) => item.id === "institution")?.label).toBe("Institution");
+    expect(body.items.find((item) => item.id === "parentLinks")?.label).toBe("Parents");
   });
 
   it("denies teachers and 404-equivalent isolation for tenant B reading A is not applicable — each tenant sees own counts", async () => {
@@ -76,10 +78,18 @@ describe("pilot metrics", () => {
     expect(teacherDenied.statusCode).toBe(403);
     const ok = await app.inject({ method: "GET", url: "/pilot/metrics", headers: superA.headers });
     expect(ok.statusCode, ok.body).toBe(200);
-    const body = json<{ rows: { institution: string; activeStudents: number; klunexRealizationPaise: number }[] }>(ok);
+    const body = json<{
+      rows: {
+        institution: string;
+        activeStudents: number;
+        klunexRealizationPaise: number;
+        lastActivityAt: string | null;
+      }[];
+    }>(ok);
     expect(body.rows.length).toBeGreaterThanOrEqual(2);
     expect(body.rows.some((r) => r.institution.includes("Demo"))).toBe(true);
     expect(body.rows.some((r) => r.activeStudents > 0)).toBe(true);
+    expect(body.rows.some((r) => r.lastActivityAt)).toBe(true);
     expect(JSON.stringify(body)).not.toMatch(/Aarav|Meera|O-1001/);
   });
 });
