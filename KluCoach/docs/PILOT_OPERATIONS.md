@@ -12,13 +12,13 @@ Institution admin home (`/admin`) shows **KluCoach Setup** from live database co
 
 | Step | Done when |
 |------|-----------|
-| Institution profile | Tenant exists (always true after login) |
+| Institution | Tenant exists (always true after login) |
 | Branch | ≥1 branch |
 | Programs | ≥1 program |
 | Batches | ≥1 batch |
 | Teachers | ≥1 teacher |
 | Students | ≥1 active student |
-| Parent links | ≥1 guardian |
+| Parents | ≥1 guardian |
 | Parent activation | ≥1 guardian with a user account |
 | Timetable | ≥1 timetable slot |
 | First attendance | ≥1 attendance row |
@@ -46,7 +46,7 @@ Typical order for a new institute:
 | Teacher | Assigned batches → today's attendance → assessments/marks → assignments |
 | Parent | Student 360 home, notifications + preferences, attendance history, fees status, movement if SafeTrack is on |
 | Student | Own 360, assignments submit |
-| Super-admin | `/commercial` — partner economics **and** pilot operation counts. No student-name dump. |
+| Super-admin | `/commercial` — partner economics **and** pilot operation counts (including last activity timestamp). No student-name dump. System health remains `GET /health` and `GET /ready`. |
 
 Teachers cannot open billing or another tenant. Parents cannot subscribe another user to alerts.
 
@@ -80,24 +80,23 @@ NotificationService (if ENTRY/EXIT and parent has movementAlerts)
 Parent Student 360 + inbox
 ```
 
-Do not put raw card UIDs or device secrets in tickets. GPS is not implemented.
+Do not put raw card UIDs or device secrets in tickets. GPS is not implemented. Parent copy is factual clock time in UTC (`HH:mm`), for example: `Aarav entered Demo Coaching Institute at 08:32.`
 
 ---
 
 ## Troubleshooting
 
+Operator first checks: `GET /health` (process) then `GET /ready` / `GET /readiness` (database). Every API error includes `error.requestId`. Structured JSON logs go to stdout. Do not paste session cookies, CSRF tokens, or device secrets into chat.
+
 | Symptom | Inspect |
 |---------|---------|
-| App down | `GET /health` then `GET /ready` (alias `GET /readiness`) |
-| Login fails | API logs (`requestId`), session cookie Secure/CORS, lockouts |
-| Import rejected | Row cap 2,000; preview errors; tenant-scoped branch/batch names |
-| Parent sees no child | Guardian link; invitation accepted; wrong tenant email |
-| No absence alert | Parent **Attendance alerts** preference; server prefs are authoritative |
-| Invoice but cannot pay | `PAYMENTS_ENABLED=false` is the production default |
-| Gate silent | Device id/secret, card assignment, `UNKNOWN_CARD` / `DUPLICATE_SCAN` |
-| Worker stale | Billing lifecycle + payment reconciliation jobs; notification purge is callable, not a silent untested cron |
-
-Every API error includes `error.requestId`. Do not paste session cookies, CSRF tokens, or device secrets into chat.
+| Application unavailable | `GET /health`. If it fails, the API process/container is down. Check Compose `api` logs, `APP_ENV`, session secret, CORS, cookie Secure. Restart `api` after config is valid. |
+| Database unavailable | `GET /ready` fails while `/health` may still be 200. Check Postgres is up, `DATABASE_URL`, and disk. Do not drop the source database. |
+| Worker stopped | Compose `worker` logs. Hourly jobs are `billing.lifecycle`, `payment.reconcile`, and `student.insights`. If the worker is stopped they do not run; super-admin can still `POST /billing/lifecycle/apply`, `POST /billing/reconciliation/run`, and `POST /insights/run`. |
+| Notification failure | Confirm the intended event was created (`notifications` row / inbox). Preference suppression and 60s SafeTrack dedupe are not failures. SMTP delivery is **BLOCKED — EXTERNAL PROVIDER** until live mail is configured. |
+| Payment reconciliation issue | Super-admin `POST /billing/reconciliation/run` and `GET /billing/reconciliation`. Live Razorpay is **BLOCKED — EXTERNAL PROVIDER**. Production default remains `PAYMENTS_ENABLED=false`. |
+| Import failure | Preview errors (row-level). Cap 2,000 rows. Tenant-scoped branch/batch names. Partial import commits only valid rows; malformed rows do not silently update unrelated records. |
+| SafeTrack ingest failure | Device id/secret headers, card assignment, `UNKNOWN_CARD` / `DUPLICATE_SCAN`. Admin Gate test punch is the software substitute. Physical RFID remains **NOT VALIDATED — HARDWARE**. |
 
 ---
 

@@ -51,6 +51,8 @@ Phase 10 evidence (2026-09-05): Vitest **141/141**. Playwright **35/35**. Typech
 
 Phase 11 evidence (2026-09-06): Vitest **152/152**. Playwright **36/36** including `e2e/pilot.spec.ts`. Typecheck PASS. Web Vite build PASS. Lint `--if-present` PASS. Adds admin onboarding checklist (`GET /dashboard/onboarding`), `GET /pilot/metrics` (super-admin), import row cap + email/phone validation (500/1,000 row unit tests), notification preference UI + suppression, institution billing without KluNex/partner share. Do not raise Student 360's 8-row attendance window to make tests pass. Live Razorpay/SMTP/HTTPS/hardware remain blocked. See [PROGRESS.md](./PROGRESS.md).
 
+Phase 11 close-out evidence (2026-09-07): Typecheck PASS. Web Vite build PASS. Lint `--if-present` PASS. Restore-to-copy `RESTORE_VERIFIED` with students/guardians/attendance/assessments/assignments/notifications/billing/movement counts. SafeTrack unit + access integration (clock copy `at HH:mm`) PASS. Pilot metrics/onboarding PASS. Payment test-complete after stale in-memory checkout PASS. Full Vitest **146/152** then isolated retries: phase6 **7/7**, access **4/4**, insights **5/6** (attendance-decline job hung on Prisma engine empty while notifying Aarav's 24 guardian links). Playwright this session **BLOCKED — ENVIRONMENT** (host CPU; specs hit the 60s timeout before first assertion). Last green Playwright remains **36/36** on 2026-09-06. See [PROGRESS.md](./PROGRESS.md).
+
 ## Cross-tenant matrix
 
 Tenant A must not access Tenant B via:

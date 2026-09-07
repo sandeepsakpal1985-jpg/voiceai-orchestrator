@@ -13,8 +13,8 @@ GPS, SafeTrack 9B, chat, advanced AI, RAG, and new academic modules stay on [ROA
 | Parent activation | Existing invite/accept; surface invitation stats on pilot metrics |
 | Notification preferences | Existing API; parent/teacher UI; suppression tests |
 | Institution billing | Invoice + list price only; KluNex/partner share super-admin only |
-| Super-admin support view | Operational counts + existing commercial report; no student PII dump |
-| SafeTrack 9A | Document physical ingest path; no GPS |
+| Super-admin support view | Operational counts + last activity timestamp + existing commercial report; no student PII dump |
+| SafeTrack 9A | Factual ENTRY/EXIT copy includes UTC clock time; no GPS |
 | One Playwright pilot journey | Real UI/API against demo seed |
 | Docs | Operations, metrics targets, feedback P0–P3, retention honesty |
 

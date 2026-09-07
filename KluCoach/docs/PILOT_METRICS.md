@@ -23,7 +23,9 @@ SafeTrack adoption is optional and counted only if a gate is configured.
 
 ## Super-admin API
 
-`GET /pilot/metrics` — `SUPER_ADMIN` only. Institution admins receive **403**. Payload is counts (students, teachers, parents, invitations, attendance days, assessments, assignments, notices, notifications, SafeTrack events) plus commercial totals. **No student names.**
+`GET /pilot/metrics` — `SUPER_ADMIN` only. Institution admins receive **403**. Payload is counts (students, teachers, parents, invitations, attendance days, assessments, assignments, notices, notifications, SafeTrack events, last activity timestamp) plus commercial totals. **No student names.**
+
+Last activity is the latest of attendance `createdAt`, notification `createdAt`, and SafeTrack `occurredAt`. System health stays on `GET /health` and `GET /ready` — not a second observability product.
 
 KluNex realization and partner share remain super-admin only (`GET /billing/report` and this metrics payload). Institution `GET /billing/subscription` returns list price + gross only.
 

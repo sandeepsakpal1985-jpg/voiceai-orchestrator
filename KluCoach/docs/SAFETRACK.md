@@ -85,3 +85,5 @@ Admin Gate test punch is the software substitute when hardware is not on site. P
 ## Privacy
 
 Children's presence at a gate is restricted. 30-day parent-visible ENTRY/EXIT window. No public links. Not in ordinary search. Legal review is still required before commercial location (9C) launch.
+
+Parent notification body uses the gate timestamp in UTC `HH:mm`, for example: `Aarav entered Demo Coaching Institute at 08:32.` It does not claim live location.

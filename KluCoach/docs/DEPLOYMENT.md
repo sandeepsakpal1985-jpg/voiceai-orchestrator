@@ -38,6 +38,8 @@ Never use `prisma db push` as the production migration strategy.
 - `GET /ready` — database reachable
 - `GET /readiness` — alias of `/ready` (same probe)
 
+Operator troubleshooting (app down, database down, worker stopped, notifications, reconciliation, import, SafeTrack ingest) is in [PILOT_OPERATIONS.md](./PILOT_OPERATIONS.md). This is not a full observability platform.
+
 Production default remains `PAYMENTS_ENABLED=false`. Do not turn live payments on from this repository. Do not commit secrets.
 
 ## Backups

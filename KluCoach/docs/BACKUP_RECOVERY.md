@@ -56,4 +56,4 @@ Executed 2026-09-05 (Phase 10): `pg_dump -Fc` of local `klucoach` on `localhost:
 
 Executed 2026-09-06 (Phase 10): restore onto copy database `klucoach_restore_check` counted **2** institutions, then dropped the copy. Source `klucoach` was not dropped. `RESTORE_VERIFIED`.
 
-Also confirm on the copy (do not drop source): `billing_invoices`, `attendance_records`, and `movement_events` counts are non-zero when those tables have data. Script: `scripts/verify-backup.ps1`.
+Executed 2026-09-07 (Phase 11): `scripts/verify-backup.ps1` restored onto `klucoach_restore_check` then dropped the copy. Source `klucoach` was not dropped. Copy counts: institutions **2**, students **72**, guardians **54**, attendance_records **230**, assessments **215**, assignments **56**, notifications **1148**, billing_invoices **17**, movement_events **29**. `RESTORE_VERIFIED`.
