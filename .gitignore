@@ -3,8 +3,14 @@
 # Virtual environment
 venv/
 .venv/
+backend/.venv/
 env/
-.env/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # Python cache
 __pycache__/
@@ -73,4 +79,4 @@ pnpm-debug.log*
 *.pem
 .husky/_
 .aider*
-.env
+node_modules

@@ -8,8 +8,12 @@ import json
 import os
 import sys
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "REDACTED")
-TO_EMAIL = "sandeep.sakpal1985@gmail.com"
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+if not RESEND_API_KEY:
+    print("ERROR: set RESEND_API_KEY in the environment (never commit API keys).")
+    sys.exit(1)
+
+TO_EMAIL = os.getenv("RESEND_TEST_TO_EMAIL", "sandeep.sakpal1985@gmail.com")
 FROM_EMAIL = "VoiceAI <onboarding@resend.dev>"
 
 payload = {
