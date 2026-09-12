@@ -1,0 +1,36 @@
+# Hostinger / creamylane VPS overlay for KluCaller V2
+#
+# IMPORTANT: Do NOT run Caddy on ports 80/443 on this VPS.
+# Ports 80/443 are owned by kluknow-production-nginx-1.
+#
+# Phase 1: app binds 127.0.0.1:8090 only (private — no public/nginx yet).
+# Phase 3: after explicit approval, may set KLUCALLER_BIND_HOST=0.0.0.0 so
+#           kluknow-production-nginx-1 can reach host:8090 via docker bridge.
+#
+# Usage (on the VPS, from klucaller-v2/):
+#   cp deployment/env.hostinger.example .env
+#   docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.hostinger.yml up -d --build
+#
+# See deployment/VPS_SAFETY_RULES.md before any automation.
+
+services:
+  app:
+    ports: !override
+      - "${KLUCALLER_BIND_HOST:-127.0.0.1}:${KLUCALLER_HOST_PORT:-8090}:8080"
+    environment:
+      KLUCALLER_LLM: ${KLUCALLER_LLM:-mock}
+      KLUCALLER_STT: ${KLUCALLER_STT:-dev}
+      KLUCALLER_TTS: ${KLUCALLER_TTS:-stub}
+      KLUCALLER_LIVEKIT_AUDIO: ${KLUCALLER_LIVEKIT_AUDIO:-0}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:-wss://klucaller.creamylane.com/livekit}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://klucaller.creamylane.com}
+      PUBLIC_HOST: ${PUBLIC_HOST:-klucaller.creamylane.com}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://klucaller.creamylane.com}
+    networks:
+      - klucaller-net
+
+  livekit:
+    ports: !override []
+    networks:
+      - klucaller-net

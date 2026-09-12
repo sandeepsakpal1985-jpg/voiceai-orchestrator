@@ -1,0 +1,16 @@
+# HTTPS reverse proxy for klucaller.creamylane.com (standalone hosts only).
+# NOT for Hostinger VPS 1822157 — ports 80/443 are owned by kluknow-production-nginx-1.
+# On that VPS use deployment/nginx-klucaller.inc.conf + scripts/vps_add_klucaller_nginx.sh instead.
+{$PUBLIC_HOST:klucaller.creamylane.com} {
+	encode gzip
+
+	# LiveKit signaling (browser connects here when LIVEKIT_PUBLIC_URL uses /livekit)
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+
+	# App (HTTP + WebSocket /v1/voice/ws)
+	handle {
+		reverse_proxy app:8080
+	}
+}
