@@ -1,0 +1,7 @@
+crm/config.php
+crm/mail-config.php
+crm/setup.lock
+*.log
+deploy/dist/
+deploy/prod-credentials.local.txt
+test-out/

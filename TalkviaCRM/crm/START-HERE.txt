@@ -1,0 +1,243 @@
+V15 - ONE SCRIPT BUTTON, CAMPAIGN LANGUAGE
+India hospital: Hinglish script. US hospital: existing English script.
+US + India agents receive the language of the CURRENT hospital campaign.
+One Calling script button opens the correct guide in a new tab.
+Unassigned hospital: admin must set its campaign first.
+Script access is checked against the agent current reservation and campaign access.
+No additional database migration beyond V14. For upgrades from older versions,
+complete the V14 campaign update below. Keep config.php and mail-config.php.
+
+V14 - US / INDIA CAMPAIGN ALLOCATION (LATEST INSTRUCTIONS)
+
+1. Extract crm/ into public_html/ and Replace/Overwrite matching files.
+   Keep existing config.php and mail-config.php. Do not reinstall or delete crm/.
+2. Log in as admin and open https://talkviaglobal.com/crm/update.php
+   Click Complete update once. This version DOES require the database update.
+   It is safe to rerun; existing hospitals, call history, users and schedules remain.
+3. Manage agents: set US, India or US + India, then Save campaign for each agent.
+   Old agents initially have No campaign access, deliberately.
+4. Existing hospitals initially have Unassigned campaign and are not allocated.
+   Open individual hospitals and set US/India for mixed data.
+   If ALL old hospitals are from one campaign, use Classify old Unassigned
+   hospitals in the pipeline to move them together. Confirm only after checking.
+5. Import: select US or India before choosing your CSV. Selection applies to
+   every row in that file. Use separate files for US and India. No Campaign
+   column is required or read from the CSV. Excel must be saved as CSV UTF-8.
+6. Set India hospital timezone to IST; US uses EST/CST/MST/PST as before.
+7. Ctrl+F5 after upload. Agents use their existing email/password.
+
+Only agents permitted for a campaign can claim/view/write its active record.
+Both permits both pools, still one current hospital per agent. None gets none.
+Unassigned never enters the agent pool. Admin can see all campaigns and filter.
+Campaign/access changes release incompatible reservations; existing saved notes
+and history stay with the hospital. Save open call notes before admin changes
+campaign access. Stale forms cannot update a different active hospital.
+The dispatcher lock and UNIQUE active_lead_id protection remain in place.
+No telephony integration: next lead opens automatically; dialing is separate.
+Duplicate-import checks use hospital name + phone within the selected campaign.
+
+The instructions below document earlier releases; V14 instructions take precedence,
+especially any earlier statement that no database update is required.
+
+NEW CONTACT AFTER REFERRAL (VERSION 13)
+Choose Referred to Another Number, put the referred number in Callback number,
+and keep Number dialed as the number just called. Click Save call & stay.
+The completed call and full source snapshot are saved before clearing the next
+contact draft. Source name, title, email, comments and outcome reset for the next
+call at the SAME hospital. Callback/demo inputs also start blank for the new contact.
+The referred phone is retained in Callback number and becomes Number dialed, so
+resuming after logout or in another browser does not lose the new number.
+Hospital details, Last Contact, existing call history and reservation stay saved.
+Previous source details is available in the Source / contact section, with the
+latest saved call for up to 10 distinct contacts from the latest 100 call snapshots.
+Use View full call history for the full attempt detail view (latest 100 activities).
+Old entries without a full snapshot remain in Call history; they are not fabricated
+into previous-contact cards. Other outcomes keep their current source fields.
+No database migration is required.
+
+REFERRAL OUTCOME + SCRIPT IN A NEW TAB (VERSION 12)
+Select Referred to Another Number when the person directs you to a different
+contact/number. A callback date/time is NOT mandatory for that outcome.
+Put the referred number in Callback number and explain the referral in Comments.
+Keep Number dialed as the number used for the call just completed, then click
+Save call & stay. Dial the referred number, update source/outcome/notes and log the
+next attempt. If a future callback is agreed, select Callback Requested and set it.
+A referral without a callback does not schedule a future attempt automatically;
+use Save call & stay to continue working the hospital immediately.
+The Calling script link on the right of workspace tabs now opens an authenticated
+script page in a NEW TAB. It does not submit or navigate away from the CRM form.
+No database migration is required. Replace matching files and refresh the browser.
+
+MULTIPLE CALLS AT ONE HOSPITAL + SCRIPT BUTTON (VERSION 11)
+Use Number dialed to identify the actual number called. Update source name/title,
+call notes and status after each conversation/attempt.
+- Save details: draft update only, not a logged call.
+- Save call & stay: logs ONE call attempt with timestamp/agent, number dialed,
+  source details, outcome, notes and appointment snapshot. The same hospital stays
+  open and reserved, ready for another call at a different number/person.
+- Dispose & next hospital: logs the FINAL call and moves to the next free lead.
+Example: calls 1/2/3 use Save call & stay; call 4 uses Dispose & next hospital.
+Do not log the same final call with both buttons, as each call-log action records
+an attempt. Call history shows individual snapshots even if field values repeat.
+Last Contact updates on every logged attempt. Each successful save increments the
+record version so an identical stale/replayed form cannot silently log another call.
+The Calling script button sits to the right of the workspace tabs. It opens the Klu Care script in a separate browser tab. Close that tab to return
+to the still-open CRM form. No database migration is required.
+
+SHORT TIMEZONE LABELS (VERSION 10)
+Hospital Details dropdown shows EST, CST, MST and PST. Hospital clock captions,
+callback/demo timezone hints and pipeline timezone cells use the same short labels.
+Underlying region identifiers remain unchanged for correct DST-aware calculation.
+Any existing non-US timezone is retained as an extra option, not removed or reset.
+Agents still cannot edit hospital master fields. No database migration required.
+
+SHORT TIMEZONE CODES FOR CSV (VERSION 9)
+Use EST, CST, MST, PST in the Timezone column. IST is also accepted for India.
+Codes are case-insensitive and surrounding spaces are ignored.
+EST = US Eastern (New York), CST = US Central (Chicago),
+MST = US Mountain (Denver), PST = US Pacific (Los Angeles).
+These are region codes for this CRM import: daylight-saving changes are automatic,
+not fixed UTC offsets. Mountain here follows Denver, not Arizona.
+Existing full IANA names remain accepted. No schema migration is needed.
+CSV example header:
+Hospital Name,Address,City,State,Phone Number,Timezone
+Example timezone cell for California: PST
+
+HOSPITAL-LOCAL SCHEDULING (VERSION 8)
+Agents enter callback and demo appointments in the hospital's selected local
+IANA timezone. The exact timezone is printed under the field. IST is shown as an
+automatic reference conversion, not an input. The admin pipeline also shows local
+time plus IST. Dates are stored in UTC as before, so existing appointments keep
+the same actual instant without a database migration.
+If a hospital timezone is missing, the appointment inputs are disabled until
+admin sets it. Existing stored appointments are retained, not erased.
+Daylight-saving offsets use the appointment date. Nonexistent spring-forward
+times and newly entered ambiguous fall-back times are rejected with an explanation;
+choose a time outside the repeated hour. An unchanged existing appointment in the
+repeated hour retains its original UTC occurrence. Changing a known hospital zone
+re-projects entered appointment times rather than silently moving their instant.
+Upload/replace code files and refresh. No database update for this change.
+
+LIVE TIME ZONE STRIP (VERSION 7)
+The workspace heading has India and US Eastern/Central/Mountain/Pacific clocks on
+its right. IANA time zones apply daylight saving automatically: EST/EDT, CST/CDT,
+MST/MDT and PST/PDT. Each card displays its own local date and active abbreviation.
+Mountain uses Denver (not Arizona, which has different daylight saving rules).
+No database update required for the clock strip. Refresh after replacing files.
+
+SOURCE CONTACT EMAIL SHORTCUT (VERSION 6)
+Enter Source email, then click Send email directly in Source / contact.
+It saves the current details as a draft and opens the email composer immediately.
+Review the message and confirm Send email to actually send. The lead stays open;
+it is not disposed and no next lead is allocated. A valid email is required.
+Email is blocked for Do Not Call, Not Interested, Wrong Number and Closed Lost.
+SMTP settings must be configured by admin. No database change for this UI shortcut.
+
+STALE-FORM FIX
+An outdated agent form now redirects to the current workspace instead of returning
+HTTP 409. That outdated submission is not saved against another lead. A notice is
+shown. No database migration is required for this fix if version 5 was installed.
+
+TALKVIA CRM — COMMON LEAD POOL (VERSION 5)
+
+UPDATE EXISTING CRM
+1. Back up the existing crm folder and database.
+2. Upload/extract this ZIP in public_html and replace matching code files.
+   DO NOT delete the crm folder. Keep config.php and mail-config.php.
+3. Log in as admin and click Complete update once. This creates the shared
+   allocation lock and unique active-lead constraint. Old records stay saved.
+4. Refresh the browser. Agents open the same login URL as before.
+
+NORMAL DAILY FLOW
+Admin uploads hospital CSV ONCE into a common pool. No agent assignment is needed.
+All ready agents automatically receive one eligible, unreserved hospital at a time.
+With five agents ready, each receives a different record when opening their workspace.
+This is on-demand distribution: the next ready agent receives the next available
+record, rather than pre-assigning equal batches or guaranteeing equal daily totals.
+Previous/manual ownership does not prevent allocation from the shared pool.
+The admin Current / last agent column is for audit, not a manual assignment control.
+
+NON-DUPLICATE ALLOCATION
+A short database transaction locks the dispatcher, selects an eligible record that
+is not already reserved, sets the agent reservation and records ownership atomically.
+A database UNIQUE index independently prevents two active agents reserving the same
+lead. An agent also has only one current reservation. Direct links, refresh and
+multiple tabs cannot choose a different hospital or overwrite another queue record.
+
+AGENT WORKFLOW
+- Log in using the agent's email/password. A lead opens automatically.
+- Save details persists contact/status/notes without finishing the call. For email:
+  select Interested, Save details, Compose email, review and send.
+- Dispose & next hospital logs the call attempt and immediately opens the next
+  eligible lead on the same screen. No extra next button or selectable list.
+- Choose a status other than New / Not Contacted before disposing.
+- Take break pauses allocation; Resume returns to the SAME pending lead.
+- Logout marks the user offline. Start work on the next login resumes that lead.
+- Save unsaved edits before leaving. A pending reservation is kept over a break or
+  logout so another agent does not call the same hospital while it is in progress.
+- If no free eligible leads remain, the workspace checks again every 30 seconds.
+
+FOLLOW-UP RULES
+Due callbacks/demos take priority over untouched new records. When due, follow-ups
+return to the shared pool and may reach a different ready agent; history stays with
+that hospital. This is a later scheduled attempt, not simultaneous duplication.
+Callback Requested / Follow-up Required: enter a future callback time.
+Demo Scheduled: enter a future demo time.
+Busy: retry after 30 minutes. No Answer / Voicemail: retry after four hours.
+Interested / Information Requested: requeue only when a future callback is supplied;
+otherwise hold for sales follow-up, visible to admin.
+Do Not Call, Wrong Number, Not Interested, Closed Won and Closed Lost do not requeue.
+Admin can update status or scheduled time to reintroduce an eligible record.
+No hospital-time calling window is enforced; follow your calling process rules.
+
+ADMIN
+Search/filter all hospital records. Hospital name, address, city, state, phone and
+timezone are admin-only; agents can edit source/contact/call fields on their current
+record. Agent availability shows last recorded mode, reason, current reservation and
+recent activity. This is not a live browser-presence monitor. Closing a browser or
+losing the network does not automatically mark a user offline or release their lead.
+Disable/enable agents and reset passwords using Manage agents. Admin password reset
+invalidates previous sessions. Passwords are hashed, not stored as plain text.
+
+IMPORT
+CSV UTF-8 columns: Hospital Name,Address,City,State,Phone Number
+Optional column: Timezone (IANA value, e.g. America/New_York or Asia/Kolkata).
+Download the template from the CRM. Export Excel to CSV UTF-8 before importing;
+.xlsx files are not supported directly. Keep phone numbers as text, preserving +
+and leading zeros. Limit: 5 MB / 5,000 rows. All five base fields are required.
+Same hospital name + phone is skipped as a duplicate. Invalid rows roll back the
+complete import. New records join the shared pool without selecting an agent.
+
+TIMEZONES
+Admin selects the hospital timezone or supplies it in the CSV; it is never guessed
+from the state/city. Existing unspecified zones show Not set. Current hospital-local
+time is displayed. Callback/demo inputs use the hospital local timezone, with an
+IST equivalent below the field. Data is stored in UTC; date-specific daylight saving is
+applied when displaying hospital time.
+
+EMAIL / TELEPHONY
+Admin configures the authorised sales mailbox in Email settings. Use SMTP 587 with
+STARTTLS or 465 with SSL. Saved passwords are not displayed. Save settings, then test
+using a contact/mailbox you control before sending client messages. Each send is
+reviewed and confirmed. SMTP acceptance is not guaranteed inbox delivery. Pending or
+failed sends require review before retrying; emails are not retried automatically.
+
+Auto-next means automatic RECORD LOADING. This CRM does not dial phone calls or
+automatically detect when the conversation ends. Agents call manually, then dispose.
+
+NEW INSTALLATION / CONNECTION RECOVERY
+New installation: extract the crm folder under your website root, open /crm/,
+provide Hostinger MySQL connection details and create the admin email/password.
+Existing database but missing config.php: enter the original database connection
+and ORIGINAL admin email/password on setup.php. It restores the connection only
+after authenticating that admin; it does not reset users or erase records.
+Never use setup to change an existing user's password or create a replacement DB.
+
+REQUIREMENTS / BACKUP
+PHP 8.0+ with mysqli/mysqlnd, MySQL/MariaDB with InnoDB, PHP sessions, HTTPS and an
+Apache-compatible .htaccess. PHPMailer is bundled; no Composer installation needed.
+Back up the database and server-side config.php/mail-config.php privately. Do not
+include those passwords in public ZIPs. If the admin password is lost, a hosting
+administrator must restore/reset its hash securely; there is no public reset link.
+
+See VALIDATION.txt for local checks and remaining hosting acceptance tests.

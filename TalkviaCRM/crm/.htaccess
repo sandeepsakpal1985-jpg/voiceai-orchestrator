@@ -1,0 +1,19 @@
+Options -Indexes
+DirectoryIndex index.php login.php
+# Force HTTPS when the host terminates TLS (Hostinger / proxy).
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTP_HOST} ^(www\.)?crm\.klucare\.com$ [NC]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+<IfModule mod_headers.c>
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+# Deny direct web access to internals and secrets.
+<FilesMatch "^(config\.php|schema\.sql|mail-config\.php|mail-config\.example\.php|mail\.php|local-seed\.php|calling-script\.php|calling-script-hinglish\.php|scheduling\.php|queue\.php|campaigns\.php|hospital-policy\.php|bootstrap\.php|session\.php|actions\.php|setup\.lock|START-HERE\.txt|VALIDATION\.txt)$">
+Require all denied
+</FilesMatch>

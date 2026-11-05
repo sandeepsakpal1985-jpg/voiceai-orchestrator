@@ -1,0 +1,92 @@
+V15 validation
+All 23 PHP files passed PHP grammar parsing. Reviewed one-button record-ID route,
+current reservation/campaign authorization before script rendering, India Hinglish
+selection, unchanged US English content, and protected script partials.
+No PHP runtime or live browser verification performed for this change.
+
+V14 validation
+- All 22 PHP files passed tree-sitter PHP grammar parsing.
+- Actual queue candidate SELECT tested with SQLite time/locking adaptations:
+  US-only / India-only isolation, Both, None, due callback priority, future callback,
+  terminal status and Unassigned exclusion, existing reservation exclusion.
+- Five parallel claims using a serialized SQLite transaction returned distinct
+  eligible leads, preserving the unique active reservation constraint.
+- Reviewed campaign access at lead read/write guard, dispatcher serialization,
+  agent master-field retention and reservation release on campaign/access changes.
+- ZIP integrity and absence of live database/mail config verified.
+Limit: PHP/MySQL runtime, migration on Hostinger and browser integration not run.
+The SQLite check does not substitute for MySQL concurrency integration testing.
+
+Version 13 checks
+- PHP grammar parsing passed for all files; extracted JavaScript syntax passed.
+- Static checks verified that only Referral + Save call & stay triggers reset,
+  the complete call snapshot is written before reset in the same transaction,
+  Last Contact and queue reservation are not cleared, and the referred number
+  remains persisted for resume. Old-contact rendering remains scoped to the
+  authorised hospital ID and escapes source fields.
+- End-to-end PHP/MySQL save/reset, resume and browser layout remain unverified here.
+
+Version 12 checks
+- PHP syntax parsing passed for all 21 PHP files; extracted JS passed node --check.
+- Referral is accepted by the shared status list and absent from mandatory-callback
+  rules. Existing save/stay, call snapshot and queue reservation paths are unchanged.
+- Script link uses target=_blank with noopener/noreferrer, authenticated script.php,
+  and the old dialog include/listeners are removed from the CRM workspace.
+- Package integrity and dependency/config-preservation checks passed.
+- Live browser new-tab behaviour and production save/stay remain unverified here.
+
+Version 11 checks
+- Parsed all 20 PHP files using the PHP grammar with no syntax errors.
+- Extracted JavaScript passed node --check.
+- Script dialog open/close/backdrop handler tests passed with DOM stubs.
+- Static checks confirmed full per-call snapshot fields, Last Contact update path,
+  save/stay staying separate from the reservation-release/dispose branch, action
+  restore handling and required files in the ZIP.
+- Live browser layout, PHP/MySQL call-log transactions and multi-agent acceptance
+  for this addition remain unverified. No production calls or emails were made.
+
+Version 10: short-label mappings, unchanged canonical dropdown values and JavaScript syntax checked. Live browser/server verification remains pending.
+
+Version 9: timezone alias mapping and import validation wiring checked. Native PHP execution of the new alias test remains unverified in this runtime.
+
+Version 8 hospital-local scheduling
+- JavaScript syntax and local-to-UTC/IST conversion tests passed for Pacific winter,
+  Pacific summer, spring-forward nonexistent time and fall-back repeated time.
+- Server request wiring, dependency paths, handling of missing zones and preservation
+  branches for existing UTC appointments reviewed.
+- Native PHP tests for the new scheduling helper are provided in the development
+  workspace but could not run in this turn: the temporary PHP runtime was absent,
+  and restoring it was blocked by execution transport failures. Server runtime and
+  live form acceptance therefore remain to be verified on hosting.
+- No database migration or reinterpretation of existing stored UTC values.
+
+Version 7: workspace clock strip passed PHP/JavaScript syntax and winter/summer zone offset tests for all five clocks. Live browser layout remains unverified.
+
+Version 5 common-pool allocation validation
+
+PASSED LOCALLY
+- Native PHP syntax checks, hospital permission and queue scheduling tests.
+- Actual common-pool SELECT, allocation updates and UNIQUE reservation constraint
+  exercised on isolated MariaDB 10.11 using five agent records.
+- Five sequential allocations produced five distinct lead IDs; old manual ownership
+  did not restrict eligibility. A forced duplicate active reservation was rejected
+  by the UNIQUE index (test used INSERT IGNORE and verified no duplicate row existed).
+- Disposal selected the next unreserved record. A break reservation stayed excluded
+  from the common pool. Future callbacks / terminal outcomes stayed excluded.
+- Upgrade from a legacy schema with duplicate/stale reservations retained the valid
+  current reservation, cleared the stale one and preserved the hospital notes.
+- Dependency paths, package integrity and exclusion of server configuration files.
+
+NOT VERIFIED HERE
+- Simultaneous HTTP sessions and live concurrent transaction load. The design uses a
+  database dispatcher row lock plus UNIQUE active-lead constraint; local tests used
+  sequential database transactions, not simultaneous browser requests.
+- Full PHP/mysqli HTTP workflow, production hosting/browser layout or SMTP delivery.
+  Database SQL was exercised in MariaDB bootstrap mode because listener sockets
+  were unavailable in this environment.
+
+HOSTING ACCEPTANCE
+Use five test agents and at least six new test hospitals. Each agent must receive a
+different current hospital without manual assignment. Dispose one record and verify
+that agent receives the next free record. Check break/resume, logout/start, refresh,
+stale tabs, future callbacks and direct URLs. Review the admin availability monitor.
